@@ -1,0 +1,19 @@
+---
+description: Site yönetimi geliştirme kuralları — her oturumda uygula
+alwaysApply: true
+---
+
+# Site yönetimi — geliştirme kuralları
+
+Tüm kod, refactor ve mimari kararlar için önce **[DEVELOPMENT_RULES.md](../../DEVELOPMENT_RULES.md)** dosyasını oku ve buna uy.
+
+Özet zorunluluklar:
+
+- Modular monolith: Contract → Repository → Service; UI ve API doğrudan DB/Prisma erişemez.
+- Modüller servisler üzerinden konuşur; cross-module dependency ve UI’da business logic yasak.
+- i18n: yalnızca `tr.json` ve `en.json`; mock data yasak; Prisma varsayılan.
+- Redis merkezi cache; event-driven invalidation; SLA/deadline/timer canonical DB’de.
+- Soft delete (`deleted`, `deletedDate`, `deletedUserId`); merkezi audit; responsive UI; server-side pagination tablolarda.
+- UI kontrolleri: yalnızca **shadcn/ui** (`components/ui`); başka UI kiti veya ham HTML kontrol yasak.
+
+Ayrıntılar ve numaralı maddeler **DEVELOPMENT_RULES.md** içindedir.

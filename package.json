@@ -1,0 +1,21 @@
+{
+  "name": "siteyonetim",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/modules/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @siteyonetim/web",
+    "build": "npm run build -w @siteyonetim/web",
+    "lint": "npm run lint -w @siteyonetim/web",
+    "db:generate": "npm run generate -w @siteyonetim/db",
+    "db:migrate": "npm run migrate:dev -w @siteyonetim/db",
+    "db:seed": "npm run seed -w @siteyonetim/db",
+    "postinstall": "npm run generate -w @siteyonetim/db"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

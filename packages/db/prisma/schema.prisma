@@ -1,0 +1,548 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PropertyKind {
+  APARTMAN
+  APARTMAN_SITE
+}
+
+enum OrganizationRole {
+  ORG_ADMIN
+  PROPERTY_MANAGER
+  ACCOUNTANT
+  BOARD_MEMBER
+  STAFF
+}
+
+enum PartyType {
+  PERSON
+  COMPANY
+}
+
+enum OccupancyRole {
+  OWNER
+  TENANT
+}
+
+enum FinancePeriodStatus {
+  OPEN
+  CLOSED
+}
+
+enum FinanceCategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceAccountKind {
+  PARTY
+  SUPPLIER
+  GENERAL
+}
+
+enum LedgerEntryType {
+  INCOME
+  EXPENSE
+}
+
+enum CashboxMovementDirection {
+  IN
+  OUT
+}
+
+enum PaymentChannel {
+  MANUAL
+  ONLINE
+  BANK
+}
+
+enum DueCalculationMode {
+  FIXED
+  AREA_M2
+}
+
+enum DueAccrualStatus {
+  DRAFT
+  POSTED
+}
+
+enum DueLineStatus {
+  OPEN
+  PARTIAL
+  PAID
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deleted         Boolean   @default(false)
+  deletedDate     DateTime?
+  deletedUserId   String?
+
+  users      UserOrganization[]
+  properties Property[]
+  parties    Party[]
+  auditLogs  AuditLog[]
+  financePeriods   FinancePeriod[]
+  financeCategories FinanceCategory[]
+  financeAccounts  FinanceAccount[]
+  cashboxes        Cashbox[]
+  ledgerEntries    LedgerEntry[]
+  dueDefinitions   DueDefinition[]
+  dueAccrualRuns   DueAccrualRun[]
+  payments         Payment[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organizations UserOrganization[]
+  auditLogs     AuditLog[]
+  portalParty   Party?           @relation("PortalUser")
+}
+
+model UserOrganization {
+  id             String           @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrganizationRole @default(PROPERTY_MANAGER)
+  createdAt      DateTime         @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  kind           PropertyKind @default(APARTMAN)
+  name           String
+  address        String?
+  settings       Json         @default("{}")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  blocks       Block[]
+  units        Unit[]
+  financePeriods    FinancePeriod[]
+  financeCategories FinanceCategory[]
+  financeAccounts   FinanceAccount[]
+  cashboxes         Cashbox[]
+  ledgerEntries     LedgerEntry[]
+  dueDefinitions    DueDefinition[]
+  dueAccrualRuns    DueAccrualRun[]
+  payments          Payment[]
+
+  @@index([organizationId, deleted])
+}
+
+model Block {
+  id         String   @id @default(cuid())
+  propertyId String
+  name       String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+  units    Unit[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId, deleted])
+}
+
+model Unit {
+  id         String   @id @default(cuid())
+  propertyId String
+  blockId    String?
+  code       String
+  floor      Int?
+  areaM2     Decimal? @db.Decimal(10, 2)
+  shareRatio Decimal? @db.Decimal(10, 6)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property    Property     @relation(fields: [propertyId], references: [id])
+  block       Block?       @relation(fields: [blockId], references: [id])
+  occupancies Occupancy[]
+  dueAccrualLines DueAccrualLine[]
+
+  @@unique([propertyId, code])
+  @@index([propertyId, deleted])
+  @@index([blockId])
+}
+
+model Party {
+  id             String    @id @default(cuid())
+  organizationId String
+  type           PartyType @default(PERSON)
+  displayName    String
+  email          String?
+  phone          String?
+  portalUserId   String?   @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  portalUser   User?        @relation("PortalUser", fields: [portalUserId], references: [id])
+  occupancies  Occupancy[]
+  financeAccounts FinanceAccount[]
+  dueAccrualLines DueAccrualLine[]
+  payments        Payment[]
+
+  @@index([organizationId, deleted])
+  @@index([email])
+}
+
+model Occupancy {
+  id        String         @id @default(cuid())
+  unitId    String
+  partyId   String
+  role      OccupancyRole
+  startDate DateTime       @default(now())
+  endDate   DateTime?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  unit  Unit  @relation(fields: [unitId], references: [id])
+  party Party @relation(fields: [partyId], references: [id])
+
+  @@index([unitId, deleted])
+  @@index([partyId, deleted])
+  @@index([unitId, role, endDate])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String?
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model FinancePeriod {
+  id             String               @id @default(cuid())
+  organizationId String
+  propertyId     String
+  year           Int
+  month          Int
+  status         FinancePeriodStatus    @default(OPEN)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property     @relation(fields: [propertyId], references: [id])
+  ledgerEntries LedgerEntry[]
+  dueAccrualRuns DueAccrualRun[]
+
+  @@unique([propertyId, year, month])
+  @@index([organizationId, propertyId, status])
+}
+
+model FinanceCategory {
+  id             String              @id @default(cuid())
+  organizationId String
+  propertyId     String
+  name           String
+  type           FinanceCategoryType
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property     @relation(fields: [propertyId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@unique([propertyId, name, type])
+  @@index([propertyId, deleted])
+}
+
+model FinanceAccount {
+  id             String             @id @default(cuid())
+  organizationId String
+  propertyId     String
+  partyId        String?
+  code           String
+  name           String
+  kind           FinanceAccountKind @default(GENERAL)
+  balance        Decimal            @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property     @relation(fields: [propertyId], references: [id])
+  party        Party?       @relation(fields: [partyId], references: [id])
+  ledgerEntries LedgerEntry[]
+  dueAccrualLines DueAccrualLine[]
+  payments      Payment[]
+
+  @@unique([propertyId, code])
+  @@index([propertyId, deleted])
+  @@index([partyId])
+}
+
+model Cashbox {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  name           String
+  balance        Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  property     Property          @relation(fields: [propertyId], references: [id])
+  movements    CashboxMovement[]
+  ledgerEntries LedgerEntry[]
+  payments     Payment[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId, deleted])
+}
+
+model CashboxMovement {
+  id           String                   @id @default(cuid())
+  cashboxId    String
+  direction    CashboxMovementDirection
+  amount       Decimal                  @db.Decimal(14, 2)
+  ledgerEntryId String?                 @unique
+  description  String?
+  movementDate DateTime                 @default(now())
+  createdAt    DateTime                 @default(now())
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  cashbox     Cashbox      @relation(fields: [cashboxId], references: [id])
+  ledgerEntry LedgerEntry? @relation(fields: [ledgerEntryId], references: [id])
+
+  @@index([cashboxId, movementDate])
+}
+
+model LedgerEntry {
+  id              String          @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  financePeriodId String
+  entryType       LedgerEntryType
+  categoryId      String
+  financeAccountId String?
+  cashboxId       String?
+  amount          Decimal         @db.Decimal(14, 2)
+  documentNo      String?
+  description     String?
+  entryDate       DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  property      Property       @relation(fields: [propertyId], references: [id])
+  financePeriod FinancePeriod  @relation(fields: [financePeriodId], references: [id])
+  category      FinanceCategory @relation(fields: [categoryId], references: [id])
+  financeAccount FinanceAccount? @relation(fields: [financeAccountId], references: [id])
+  cashbox       Cashbox?        @relation(fields: [cashboxId], references: [id])
+  cashboxMovement CashboxMovement?
+
+  @@index([propertyId, entryDate])
+  @@index([financePeriodId])
+  @@index([organizationId, deleted])
+}
+
+model DueDefinition {
+  id              String             @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  name            String
+  calculationMode DueCalculationMode @default(FIXED)
+  fixedAmount     Decimal?           @db.Decimal(14, 2)
+  ratePerM2       Decimal?           @db.Decimal(14, 4)
+  active          Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  property     Property        @relation(fields: [propertyId], references: [id])
+  accrualRuns  DueAccrualRun[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId, deleted])
+}
+
+model DueAccrualRun {
+  id              String           @id @default(cuid())
+  organizationId  String
+  propertyId      String
+  dueDefinitionId String
+  financePeriodId String
+  year            Int
+  month           Int
+  status          DueAccrualStatus @default(DRAFT)
+  totalAmount     Decimal          @default(0) @db.Decimal(14, 2)
+  postedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id])
+  property      Property       @relation(fields: [propertyId], references: [id])
+  dueDefinition DueDefinition  @relation(fields: [dueDefinitionId], references: [id])
+  financePeriod FinancePeriod  @relation(fields: [financePeriodId], references: [id])
+  lines         DueAccrualLine[]
+
+  @@unique([propertyId, dueDefinitionId, year, month])
+  @@index([propertyId, status])
+}
+
+model DueAccrualLine {
+  id               String        @id @default(cuid())
+  accrualRunId     String
+  unitId           String
+  partyId          String?
+  financeAccountId String?
+  amount           Decimal       @db.Decimal(14, 2)
+  paidAmount       Decimal       @default(0) @db.Decimal(14, 2)
+  status           DueLineStatus @default(OPEN)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  accrualRun     DueAccrualRun       @relation(fields: [accrualRunId], references: [id])
+  unit           Unit                @relation(fields: [unitId], references: [id])
+  party          Party?              @relation(fields: [partyId], references: [id])
+  financeAccount FinanceAccount?     @relation(fields: [financeAccountId], references: [id])
+  allocations    PaymentAllocation[]
+
+  @@unique([accrualRunId, unitId])
+  @@index([unitId, status])
+  @@index([partyId])
+}
+
+model Payment {
+  id               String         @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  channel          PaymentChannel @default(MANUAL)
+  amount           Decimal        @db.Decimal(14, 2)
+  cashboxId        String
+  financeAccountId String?
+  partyId          String?
+  paymentDate      DateTime       @default(now())
+  documentNo       String?
+  description      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  property       Property            @relation(fields: [propertyId], references: [id])
+  cashbox        Cashbox             @relation(fields: [cashboxId], references: [id])
+  financeAccount FinanceAccount?     @relation(fields: [financeAccountId], references: [id])
+  party          Party?              @relation(fields: [partyId], references: [id])
+  allocations    PaymentAllocation[]
+
+  @@index([propertyId, paymentDate])
+  @@index([partyId])
+}
+
+model PaymentAllocation {
+  id               String   @id @default(cuid())
+  paymentId        String
+  dueAccrualLineId String
+  amount           Decimal  @db.Decimal(14, 2)
+  createdAt        DateTime @default(now())
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  payment        Payment        @relation(fields: [paymentId], references: [id])
+  dueAccrualLine DueAccrualLine @relation(fields: [dueAccrualLineId], references: [id])
+
+  @@unique([paymentId, dueAccrualLineId])
+  @@index([dueAccrualLineId])
+}
