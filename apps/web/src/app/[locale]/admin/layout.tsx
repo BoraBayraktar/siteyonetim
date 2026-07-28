@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 
 import { auth, signOut } from "@/auth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,9 @@ export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const session = await auth();
+  if (!session?.user || session.user.sessionKind !== "ADMIN") {
+    redirect(`/${locale}/login`);
+  }
   const t = await getTranslations("nav");
   const tAuth = await getTranslations("auth");
 

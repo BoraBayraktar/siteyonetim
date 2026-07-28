@@ -1,0 +1,17 @@
+# Site Yönetimi — yalnızca bu repo. beemmb veya başka projelerle paylaşılmaz.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: siteyonetim-postgres
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: siteyonetim
+    volumes:
+      - siteyonetim_pgdata:/var/lib/postgresql/data
+
+volumes:
+  siteyonetim_pgdata:

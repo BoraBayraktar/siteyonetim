@@ -13,6 +13,8 @@
     "db:generate": "npm run generate -w @siteyonetim/db",
     "db:migrate": "npm run migrate:dev -w @siteyonetim/db",
     "db:seed": "npm run seed -w @siteyonetim/db",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
     "postinstall": "npm run generate -w @siteyonetim/db"
   },
   "engines": {

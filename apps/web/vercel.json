@@ -1,5 +1,5 @@
 {
   "installCommand": "npm install --prefix=../..",
-  "buildCommand": "npm run build",
+  "buildCommand": "cd ../.. && if [ -n \"$DATABASE_URL\" ] && ! echo \"$DATABASE_URL\" | grep -qE 'localhost|127\\.0\\.0\\.1'; then npm run migrate:deploy -w @siteyonetim/db; else echo 'Skipping migrate (no remote DATABASE_URL)'; fi && npm run build -w @siteyonetim/web",
   "framework": "nextjs"
 }

@@ -5,14 +5,17 @@ Modüler monolith, multi-tenant SaaS apartman yönetimi (FAZ 1). Kurallar: [DEVE
 ## Gereksinimler
 
 - Node.js 20+
-- PostgreSQL
+- PostgreSQL (bu repo için ayrı Docker servisi — **beemmb ile paylaşılmaz**)
 - (Önerilen) Upstash Redis — Vercel’de entegrasyon
 
 ## Kurulum
 
 ```bash
 cp .env.example .env
-# DATABASE_URL ve AUTH_SECRET düzenleyin (AUTH_SECRET: openssl rand -base64 32)
+# AUTH_SECRET: openssl rand -base64 32
+
+# Site yönetimine özel Postgres (port 5433 — beemmb 5432 kullanıyorsa çakışmaz)
+docker compose up -d
 
 npm install
 npm run db:migrate
@@ -39,10 +42,23 @@ Uygulama: [http://localhost:3000/tr](http://localhost:3000/tr)
 
 ## Vercel deploy
 
-1. Repoyu Vercel’e bağlayın.
-2. **Root Directory:** `apps/web`
-3. Ortam değişkenleri: `DATABASE_URL`, `AUTH_SECRET`, isteğe bağlı Upstash.
-4. Build sonrası migration: Vercel **Build Command** içinde veya ayrı job ile `npm run migrate:deploy -w @siteyonetim/db` çalıştırın (Production Postgres hazır olmalı).
+**Team:** [Site Yonetimi](https://vercel.com/siteyonetim) (`siteyonetim`) — **beemmb-arge ile paylaşılmaz.**
+
+1. GitHub reposunu bu team altındaki projeye bağlayın: [siteyonetim/siteyonetim](https://vercel.com/siteyonetim/siteyonetim)
+2. **Root Directory:** `apps/web` (projede ayarlı)
+3. CLI her zaman bu team ile: `npx vercel -S siteyonetim …`
+4. Deploy (monorepo **kökünden**): `npx vercel deploy --prod -S siteyonetim`
+5. **Neon + migration + seed:**
+   ```bash
+   cd ~/Documents/GitHub/siteyonetim
+   ./scripts/vercel-neon-setup.sh
+   ```
+   Neon şartları: [siteyonetim team Neon terms](https://vercel.com/siteyonetim/~/integrations/accept-terms/neon?source=cli)
+6. Ortam: `AUTH_SECRET` (Production + Preview); Neon sonrası `DATABASE_URL` otomatik gelir.
+
+**Eski kurulum:** `beemmb-arge/siteyonetim-web` artık kullanılmamalı; karışıklığı önlemek için Vercel panelinden **silebilirsiniz** (`devbeemmb` projesine dokunmayın).
+
+Canlı demo giriş (seed sonrası): `admin@demo.local` / `Demo123!`
 
 ## Komutlar
 
