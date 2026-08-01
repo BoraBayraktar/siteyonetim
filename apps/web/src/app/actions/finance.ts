@@ -13,7 +13,9 @@ import { getFinanceService } from "@/lib/services";
 export type FinanceActionState = { error?: string; success?: boolean };
 
 function revalidateFinance(locale: string, propertyId: string) {
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/dues`, "page");
   revalidatePath(`/${locale}/admin/properties/${propertyId}/finance`, "page");
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/dashboard`, "page");
 }
 
 async function adminContext() {

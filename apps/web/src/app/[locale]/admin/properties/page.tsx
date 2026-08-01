@@ -3,7 +3,8 @@ import { PropertyKind } from "@siteyonetim/db";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { getAdminSession } from "@/lib/cached-admin";
+import { resolveAccessiblePropertyIds } from "@/lib/auth-context";
 import { CreatePropertyForm } from "@/components/create-property-form";
 import { ServerPagination } from "@/components/server-pagination";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,28 +31,32 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
   const { page: pageParam } = await searchParams;
   setRequestLocale(locale);
 
-  const session = await auth();
+  const session = await getAdminSession();
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     redirect(`/${locale}/login`);
   }
 
   const page = Math.max(1, Number(pageParam ?? "1") || 1);
   const t = await getTranslations("properties");
+  const scope = await resolveAccessiblePropertyIds(session);
 
   const data = await getPropertyService().list({
     organizationId: session.user.organizationId,
     page,
     pageSize: PAGE_SIZE,
+    ...(scope && scope !== "ALL" ? { propertyIds: scope } : {}),
   });
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-      <Card>
-        <CardHeader>
+    <Card>
+      <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
           <CardTitle>{t("title")}</CardTitle>
           <CardDescription>{t("subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        </div>
+        <CreatePropertyForm />
+      </CardHeader>
+      <CardContent className="space-y-6">
           {data.items.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("empty")}</p>
           ) : (
@@ -71,7 +76,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
                   <TableRow key={property.id}>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/${locale}/admin/properties/${property.id}`}
+                        href={`/${locale}/admin/properties/${property.id}/dashboard`}
                         className="underline-offset-4 hover:underline"
                       >
                         {property.name}
@@ -83,7 +88,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
                     <TableCell className="text-right">{property.unitCount}</TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/${locale}/admin/properties/${property.id}`}>{t("openDetail")}</Link>
+                        <Link href={`/${locale}/admin/properties/${property.id}/dashboard`}>{t("openDetail")}</Link>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -100,7 +105,5 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
           />
         </CardContent>
       </Card>
-      <CreatePropertyForm />
-    </div>
   );
 }

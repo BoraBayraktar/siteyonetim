@@ -9,6 +9,7 @@ export class PropertyRepository {
     const where = {
       organizationId: input.organizationId,
       ...notDeleted,
+      ...(input.propertyIds?.length ? { id: { in: input.propertyIds } } : {}),
     };
 
     const [properties, total] = await Promise.all([
@@ -104,5 +105,68 @@ export class PropertyRepository {
       unitCount: property._count.units,
       createdAt: property.createdAt,
     };
+  }
+
+  private toDto(
+    property: {
+      id: string;
+      organizationId: string;
+      kind: PropertyKind;
+      name: string;
+      address: string | null;
+      createdAt: Date;
+      _count: { blocks: number; units: number };
+    },
+  ): PropertyDto {
+    return {
+      id: property.id,
+      organizationId: property.organizationId,
+      kind: property.kind,
+      name: property.name,
+      address: property.address,
+      blockCount: property._count.blocks,
+      unitCount: property._count.units,
+      createdAt: property.createdAt,
+    };
+  }
+
+  async findByIdAny(propertyId: string): Promise<PropertyDto | null> {
+    const property = await prisma.property.findFirst({
+      where: {
+        id: propertyId,
+        ...notDeleted,
+        organization: { deleted: false },
+      },
+      include: {
+        _count: {
+          select: {
+            blocks: { where: notDeleted },
+            units: { where: notDeleted },
+          },
+        },
+      },
+    });
+
+    return property ? this.toDto(property) : null;
+  }
+
+  async findShowcaseProperty(): Promise<PropertyDto | null> {
+    const property = await prisma.property.findFirst({
+      where: {
+        ...notDeleted,
+        organization: { deleted: false },
+      },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      include: {
+        _count: {
+          select: {
+            blocks: { where: notDeleted },
+            units: { where: notDeleted },
+          },
+        },
+      },
+    });
+
+    return property ? this.toDto(property) : null;
   }
 }

@@ -1,0 +1,18 @@
+{
+  "name": "@siteyonetim/comm-announcements",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./body-format": "./src/body-format.ts",
+    "./publish-window": "./src/publish-window.ts"
+  },
+  "dependencies": {
+    "@siteyonetim/db": "*",
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/platform-files": "^0.1.0",
+    "isomorphic-dompurify": "^3.19.0"
+  }
+}

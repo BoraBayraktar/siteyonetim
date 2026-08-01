@@ -69,6 +69,14 @@ export class PropertyService implements PropertyServiceContract {
   async getById(organizationId: string, propertyId: string): Promise<import("./contract").PropertyDto | null> {
     return this.repository.getById(organizationId, propertyId);
   }
+
+  async getShowcaseProperty(): Promise<import("./contract").PropertyDto | null> {
+    const configuredId = process.env.HOME_SHOWCASE_PROPERTY_ID?.trim();
+    if (configuredId) {
+      return this.repository.findByIdAny(configuredId);
+    }
+    return this.repository.findShowcaseProperty();
+  }
 }
 
 export function createPropertyService(): PropertyService {

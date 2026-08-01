@@ -1,6 +1,8 @@
 import {
   CashboxMovementDirection,
   DueAccrualStatus,
+  DueAccrualLineKind,
+  DueCalculationMode,
   DueLineStatus,
   FinanceAccountKind,
   FinancePeriodStatus,
@@ -11,13 +13,60 @@ import {
 
 import type {
   CreateDueDefinitionInput,
+  DebtRowDto,
   DuesContext,
   GenerateAccrualInput,
+  ListDebtRowsInput,
+  ListOpenLinesInput,
+  ListPeriodRegisterInput,
   PaymentAllocationInput,
   RecordPaymentInput,
+  UpdateDueDefinitionInput,
 } from "./contract";
+import { queryDebtRowsPaginated } from "./debt-rows-query";
+import { queryOpenLinesPaginated } from "./open-lines-query";
+import {
+  queryPeriodRegisterLinesForUnits,
+  queryPeriodRegisterUnitsPaginated,
+} from "./period-register-query";
 
 export const notDeleted = { deleted: false };
+
+const BULK_ACCRUAL_TX_TIMEOUT_MS = 120_000;
+
+async function applyAccountBalanceDeltas(
+  tx: Prisma.TransactionClient,
+  deltas: Map<string, Prisma.Decimal>,
+) {
+  for (const [accountId, delta] of deltas) {
+    if (delta.eq(0)) continue;
+    if (delta.gt(0)) {
+      await tx.financeAccount.update({
+        where: { id: accountId },
+        data: { balance: { increment: delta } },
+      });
+    } else {
+      await tx.financeAccount.update({
+        where: { id: accountId },
+        data: { balance: { decrement: delta.abs() } },
+      });
+    }
+  }
+}
+
+function balanceDeltasFromLines(
+  lines: Array<{ financeAccountId: string | null; amount: Prisma.Decimal }>,
+  direction: "increment" | "decrement",
+) {
+  const deltas = new Map<string, Prisma.Decimal>();
+  for (const line of lines) {
+    if (!line.financeAccountId) continue;
+    const signed = direction === "increment" ? line.amount : line.amount.neg();
+    const current = deltas.get(line.financeAccountId) ?? new Prisma.Decimal(0);
+    deltas.set(line.financeAccountId, current.add(signed));
+  }
+  return deltas;
+}
 
 export class DuesRepository {
   async assertProperty(organizationId: string, propertyId: string) {
@@ -28,8 +77,23 @@ export class DuesRepository {
 
   async listDefinitions(ctx: DuesContext) {
     return prisma.dueDefinition.findMany({
-      where: { propertyId: ctx.propertyId, organizationId: ctx.organizationId, ...notDeleted },
+      where: {
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        isSystem: false,
+        ...notDeleted,
+      },
       orderBy: { name: "asc" },
+    });
+  }
+
+  async findDefinitionByName(propertyId: string, name: string) {
+    return prisma.dueDefinition.findFirst({
+      where: {
+        propertyId,
+        name,
+        isSystem: false,
+      },
     });
   }
 
@@ -42,8 +106,117 @@ export class DuesRepository {
         calculationMode: input.calculationMode,
         fixedAmount: input.fixedAmount ? new Prisma.Decimal(input.fixedAmount) : null,
         ratePerM2: input.ratePerM2 ? new Prisma.Decimal(input.ratePerM2) : null,
+        meterKind: input.meterKind ?? null,
+        autoAccrualMonthly: input.autoAccrualMonthly ?? false,
       },
     });
+  }
+
+  async updateDefinition(input: UpdateDueDefinitionInput) {
+    const existing = await prisma.dueDefinition.findFirst({
+      where: {
+        id: input.definitionId,
+        propertyId: input.propertyId,
+        organizationId: input.organizationId,
+        isSystem: false,
+        ...notDeleted,
+      },
+    });
+    if (!existing) {
+      return null;
+    }
+
+    return prisma.dueDefinition.update({
+      where: { id: input.definitionId },
+      data: {
+        name: input.name,
+        calculationMode: input.calculationMode,
+        fixedAmount: input.fixedAmount ? new Prisma.Decimal(input.fixedAmount) : null,
+        ratePerM2: input.ratePerM2 ? new Prisma.Decimal(input.ratePerM2) : null,
+        meterKind: input.meterKind ?? null,
+        autoAccrualMonthly: input.autoAccrualMonthly ?? false,
+      },
+    });
+  }
+
+  async setDefinitionAutoAccrual(ctx: DuesContext, definitionId: string, autoAccrualMonthly: boolean) {
+    const existing = await prisma.dueDefinition.findFirst({
+      where: {
+        id: definitionId,
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        isSystem: false,
+        ...notDeleted,
+      },
+    });
+    if (!existing) return null;
+    return prisma.dueDefinition.update({
+      where: { id: definitionId },
+      data: { autoAccrualMonthly },
+    });
+  }
+
+  async listAutoAccrualDefinitionTargets() {
+    return prisma.dueDefinition.findMany({
+      where: {
+        autoAccrualMonthly: true,
+        active: true,
+        isSystem: false,
+        ...notDeleted,
+      },
+      select: {
+        id: true,
+        organizationId: true,
+        propertyId: true,
+        calculationMode: true,
+      },
+    });
+  }
+
+  async listDraftAccrualReminderTargets(year: number, month: number) {
+    const runs = await prisma.dueAccrualRun.findMany({
+      where: {
+        year,
+        month,
+        status: DueAccrualStatus.DRAFT,
+        ...notDeleted,
+      },
+      select: {
+        organizationId: true,
+        propertyId: true,
+        property: { select: { name: true, deleted: true } },
+      },
+    });
+
+    const map = new Map<
+      string,
+      { organizationId: string; propertyId: string; propertyName: string; count: number }
+    >();
+
+    for (const run of runs) {
+      if (run.property.deleted) continue;
+      const key = `${run.organizationId}:${run.propertyId}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(key, {
+          organizationId: run.organizationId,
+          propertyId: run.propertyId,
+          propertyName: run.property.name,
+          count: 1,
+        });
+      }
+    }
+
+    return [...map.values()].map((row) => ({
+      organizationId: row.organizationId,
+      propertyId: row.propertyId,
+      propertyName: row.propertyName,
+      year,
+      month,
+      draftRunCount: row.count,
+    }));
   }
 
   async getDefinition(ctx: DuesContext, id: string) {
@@ -71,8 +244,49 @@ export class DuesRepository {
       where: { propertyId: ctx.propertyId, organizationId: ctx.organizationId, ...notDeleted },
       orderBy: [{ year: "desc" }, { month: "desc" }],
       include: {
-        dueDefinition: { select: { name: true } },
+        dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
         _count: { select: { lines: { where: notDeleted } } },
+      },
+    });
+  }
+
+  async listRunLinesByProperty(ctx: DuesContext) {
+    return prisma.dueAccrualLine.findMany({
+      where: {
+        deleted: false,
+        accrualRun: {
+          propertyId: ctx.propertyId,
+          organizationId: ctx.organizationId,
+          deleted: false,
+        },
+      },
+      orderBy: [
+        { accrualRun: { year: "desc" } },
+        { accrualRun: { month: "desc" } },
+        { unit: { code: "asc" } },
+      ],
+      include: {
+        unit: {
+          select: {
+            id: true,
+            code: true,
+            occupancies: {
+              where: { deleted: false, endDate: null },
+              orderBy: { role: "asc" },
+              take: 1,
+              include: { party: { select: { displayName: true } } },
+            },
+          },
+        },
+        party: { select: { displayName: true } },
+        accrualRun: {
+          select: {
+            id: true,
+            year: true,
+            month: true,
+            dueDefinition: { select: { calculationMode: true, meterKind: true } },
+          },
+        },
       },
     });
   }
@@ -85,6 +299,8 @@ export class DuesRepository {
       partyId: string | null;
       financeAccountId: string | null;
       amount: Prisma.Decimal;
+      lineKind?: import("@siteyonetim/db").DueAccrualLineKind;
+      sourceLineId?: string | null;
     }[],
   ) {
     return prisma.$transaction(async (tx) => {
@@ -135,6 +351,8 @@ export class DuesRepository {
             partyId: line.partyId,
             financeAccountId: line.financeAccountId,
             amount: line.amount,
+            lineKind: line.lineKind ?? "STANDARD",
+            sourceLineId: line.sourceLineId ?? null,
           },
         });
       }
@@ -143,77 +361,394 @@ export class DuesRepository {
         where: { id: run.id },
         data: { totalAmount: total },
         include: {
-          dueDefinition: { select: { name: true } },
+          dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
           _count: { select: { lines: { where: notDeleted } } },
         },
       });
     });
   }
 
+  async getPostedRun(ctx: DuesContext, runId: string) {
+    return prisma.dueAccrualRun.findFirst({
+      where: {
+        id: runId,
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        status: DueAccrualStatus.POSTED,
+        ...notDeleted,
+      },
+      include: {
+        dueDefinition: true,
+        financePeriod: true,
+        lines: { where: notDeleted },
+      },
+    });
+  }
+
+  async getDraftRun(ctx: DuesContext, runId: string) {
+    return prisma.dueAccrualRun.findFirst({
+      where: {
+        id: runId,
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        status: DueAccrualStatus.DRAFT,
+        ...notDeleted,
+      },
+      include: {
+        dueDefinition: true,
+        financePeriod: true,
+        lines: { where: notDeleted },
+      },
+    });
+  }
+
+  async assertRecalculateAllowed(ctx: DuesContext, runId: string) {
+    const run = await this.getPostedRun(ctx, runId);
+    if (!run) throw new Error("RUN_NOT_FOUND");
+
+    if (run.lines.some((line) => line.paidAmount.gt(0))) {
+      throw new Error("ACCRUAL_HAS_PAYMENTS");
+    }
+
+    const lineIds = run.lines.map((line) => line.id);
+    if (lineIds.length === 0) {
+      return run;
+    }
+
+    const [allocationCount, lateFeeCount] = await Promise.all([
+      prisma.paymentAllocation.count({
+        where: { dueAccrualLineId: { in: lineIds }, deleted: false },
+      }),
+      prisma.dueAccrualLine.count({
+        where: { sourceLineId: { in: lineIds }, deleted: false },
+      }),
+    ]);
+
+    if (allocationCount > 0) throw new Error("ACCRUAL_HAS_PAYMENTS");
+    if (lateFeeCount > 0) throw new Error("ACCRUAL_HAS_LATE_FEES");
+
+    return run;
+  }
+
+  async replacePostedRunLines(
+    ctx: DuesContext,
+    runId: string,
+    lineData: {
+      unitId: string;
+      partyId: string | null;
+      financeAccountId: string | null;
+      amount: Prisma.Decimal;
+    }[],
+  ) {
+    const accountDeltas = new Map<string, Prisma.Decimal>();
+
+    return prisma.$transaction(
+      async (tx) => {
+        const run = await tx.dueAccrualRun.findFirst({
+          where: {
+            id: runId,
+            propertyId: ctx.propertyId,
+            organizationId: ctx.organizationId,
+            status: DueAccrualStatus.POSTED,
+            ...notDeleted,
+          },
+          include: {
+            dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
+            lines: { where: notDeleted },
+          },
+        });
+        if (!run) throw new Error("RUN_NOT_FOUND");
+
+        if (run.lines.some((line) => line.paidAmount.gt(0))) {
+          throw new Error("ACCRUAL_HAS_PAYMENTS");
+        }
+
+        for (const line of run.lines) {
+          if (!line.financeAccountId) continue;
+          const current = accountDeltas.get(line.financeAccountId) ?? new Prisma.Decimal(0);
+          accountDeltas.set(line.financeAccountId, current.sub(line.amount));
+        }
+
+        await tx.dueAccrualLine.updateMany({
+          where: { accrualRunId: run.id },
+          data: { deleted: true, deletedDate: new Date(), deletedUserId: ctx.actorUserId ?? null },
+        });
+
+        let total = new Prisma.Decimal(0);
+        for (const line of lineData) {
+          total = total.add(line.amount);
+          if (line.financeAccountId) {
+            const current = accountDeltas.get(line.financeAccountId) ?? new Prisma.Decimal(0);
+            accountDeltas.set(line.financeAccountId, current.add(line.amount));
+          }
+        }
+
+        if (lineData.length > 0) {
+          await tx.dueAccrualLine.createMany({
+            data: lineData.map((line) => ({
+              accrualRunId: run.id,
+              unitId: line.unitId,
+              partyId: line.partyId,
+              financeAccountId: line.financeAccountId,
+              amount: line.amount,
+            })),
+          });
+        }
+
+        await applyAccountBalanceDeltas(tx, accountDeltas);
+
+        return tx.dueAccrualRun.update({
+          where: { id: run.id },
+          data: { totalAmount: total },
+          include: {
+            dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
+            _count: { select: { lines: { where: notDeleted } } },
+          },
+        });
+      },
+      { timeout: BULK_ACCRUAL_TX_TIMEOUT_MS },
+    );
+  }
+
   async postRun(ctx: DuesContext, runId: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        const run = await tx.dueAccrualRun.findFirst({
+          where: {
+            id: runId,
+            propertyId: ctx.propertyId,
+            organizationId: ctx.organizationId,
+            ...notDeleted,
+          },
+          include: {
+            lines: { where: notDeleted },
+            financePeriod: true,
+          },
+        });
+        if (!run) throw new Error("RUN_NOT_FOUND");
+        if (run.status === DueAccrualStatus.POSTED) throw new Error("ACCRUAL_ALREADY_POSTED");
+        if (run.financePeriod.status !== FinancePeriodStatus.OPEN) throw new Error("PERIOD_CLOSED");
+
+        await applyAccountBalanceDeltas(tx, balanceDeltasFromLines(run.lines, "increment"));
+
+        return tx.dueAccrualRun.update({
+          where: { id: run.id },
+          data: { status: DueAccrualStatus.POSTED, postedAt: new Date() },
+          include: {
+            dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
+            _count: { select: { lines: { where: notDeleted } } },
+          },
+        });
+      },
+      { timeout: BULK_ACCRUAL_TX_TIMEOUT_MS },
+    );
+  }
+
+  async getRunCorrectionFacts(ctx: DuesContext) {
+    const lines = await prisma.dueAccrualLine.findMany({
+      where: {
+        deleted: false,
+        accrualRun: {
+          propertyId: ctx.propertyId,
+          organizationId: ctx.organizationId,
+          deleted: false,
+        },
+      },
+      select: {
+        id: true,
+        unitId: true,
+        paidAmount: true,
+        accrualRunId: true,
+      },
+    });
+
+    const runs = await prisma.dueAccrualRun.findMany({
+      where: { propertyId: ctx.propertyId, organizationId: ctx.organizationId, ...notDeleted },
+      select: {
+        id: true,
+        status: true,
+        dueDefinition: { select: { calculationMode: true } },
+        financePeriod: { select: { status: true } },
+      },
+    });
+
+    const lineIds = lines.map((line) => line.id);
+    const [allocationGroups, lateFeeGroups] =
+      lineIds.length === 0
+        ? [[], []]
+        : await Promise.all([
+            prisma.paymentAllocation.groupBy({
+              by: ["dueAccrualLineId"],
+              where: { dueAccrualLineId: { in: lineIds }, deleted: false },
+              _count: { _all: true },
+            }),
+            prisma.dueAccrualLine.groupBy({
+              by: ["sourceLineId"],
+              where: { sourceLineId: { in: lineIds }, deleted: false },
+              _count: { _all: true },
+            }),
+          ]);
+
+    const allocatedLineIds = new Set(allocationGroups.map((row) => row.dueAccrualLineId));
+    const lateFeeSourceIds = new Set(
+      lateFeeGroups.map((row) => row.sourceLineId).filter((id): id is string => id != null),
+    );
+
+    const facts = new Map<
+      string,
+      {
+        accruedUnitIds: Set<string>;
+        hasPayments: boolean;
+        hasLateFees: boolean;
+        periodOpen: boolean;
+        status: DueAccrualStatus;
+        calculationMode: DueCalculationMode;
+      }
+    >();
+
+    for (const run of runs) {
+      facts.set(run.id, {
+        accruedUnitIds: new Set(),
+        hasPayments: false,
+        hasLateFees: false,
+        periodOpen: run.financePeriod.status === FinancePeriodStatus.OPEN,
+        status: run.status,
+        calculationMode: run.dueDefinition.calculationMode,
+      });
+    }
+
+    for (const line of lines) {
+      const fact = facts.get(line.accrualRunId);
+      if (!fact) continue;
+      fact.accruedUnitIds.add(line.unitId);
+      if (line.paidAmount.gt(0) || allocatedLineIds.has(line.id)) {
+        fact.hasPayments = true;
+      }
+      if (lateFeeSourceIds.has(line.id)) {
+        fact.hasLateFees = true;
+      }
+    }
+
+    return facts;
+  }
+
+  async voidPostedRun(ctx: DuesContext, runId: string) {
+    return prisma.$transaction(
+      async (tx) => {
+        const run = await tx.dueAccrualRun.findFirst({
+          where: {
+            id: runId,
+            propertyId: ctx.propertyId,
+            organizationId: ctx.organizationId,
+            status: DueAccrualStatus.POSTED,
+            ...notDeleted,
+          },
+          include: {
+            lines: { where: notDeleted },
+            financePeriod: true,
+          },
+        });
+        if (!run) throw new Error("RUN_NOT_FOUND");
+        if (run.financePeriod.status !== FinancePeriodStatus.OPEN) throw new Error("PERIOD_CLOSED");
+
+        if (run.lines.some((line) => line.paidAmount.gt(0))) {
+          throw new Error("ACCRUAL_HAS_PAYMENTS");
+        }
+
+        const lineIds = run.lines.map((line) => line.id);
+        if (lineIds.length > 0) {
+          const [allocationCount, lateFeeCount] = await Promise.all([
+            tx.paymentAllocation.count({
+              where: { dueAccrualLineId: { in: lineIds }, deleted: false },
+            }),
+            tx.dueAccrualLine.count({
+              where: { sourceLineId: { in: lineIds }, deleted: false },
+            }),
+          ]);
+          if (allocationCount > 0) throw new Error("ACCRUAL_HAS_PAYMENTS");
+          if (lateFeeCount > 0) throw new Error("ACCRUAL_HAS_LATE_FEES");
+        }
+
+        await applyAccountBalanceDeltas(tx, balanceDeltasFromLines(run.lines, "decrement"));
+
+        return tx.dueAccrualRun.update({
+          where: { id: run.id },
+          data: { status: DueAccrualStatus.DRAFT, postedAt: null },
+          include: {
+            dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
+            _count: { select: { lines: { where: notDeleted } } },
+          },
+        });
+      },
+      { timeout: BULK_ACCRUAL_TX_TIMEOUT_MS },
+    );
+  }
+
+  async appendPostedRunLines(
+    ctx: DuesContext,
+    runId: string,
+    lineData: {
+      unitId: string;
+      partyId: string | null;
+      financeAccountId: string | null;
+      amount: Prisma.Decimal;
+    }[],
+  ) {
+    if (lineData.length === 0) throw new Error("NO_MISSING_UNITS");
+
     return prisma.$transaction(async (tx) => {
       const run = await tx.dueAccrualRun.findFirst({
         where: {
           id: runId,
           propertyId: ctx.propertyId,
           organizationId: ctx.organizationId,
+          status: DueAccrualStatus.POSTED,
           ...notDeleted,
         },
         include: {
-          lines: { where: notDeleted },
+          dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
           financePeriod: true,
+          lines: { where: notDeleted },
         },
       });
       if (!run) throw new Error("RUN_NOT_FOUND");
-      if (run.status === DueAccrualStatus.POSTED) throw new Error("ACCRUAL_ALREADY_POSTED");
       if (run.financePeriod.status !== FinancePeriodStatus.OPEN) throw new Error("PERIOD_CLOSED");
 
-      for (const line of run.lines) {
-        if (line.financeAccountId) {
-          await tx.financeAccount.update({
-            where: { id: line.financeAccountId },
-            data: { balance: { increment: line.amount } },
-          });
-        }
-      }
+      const existingUnitIds = new Set(run.lines.map((line) => line.unitId));
+      const newLines = lineData.filter((line) => !existingUnitIds.has(line.unitId));
+      if (newLines.length === 0) throw new Error("NO_MISSING_UNITS");
+
+      const addedTotal = newLines.reduce(
+        (sum, line) => sum.add(line.amount),
+        new Prisma.Decimal(0),
+      );
+      await applyAccountBalanceDeltas(tx, balanceDeltasFromLines(newLines, "increment"));
+
+      await tx.dueAccrualLine.createMany({
+        data: newLines.map((line) => ({
+          accrualRunId: run.id,
+          unitId: line.unitId,
+          partyId: line.partyId,
+          financeAccountId: line.financeAccountId,
+          amount: line.amount,
+        })),
+      });
 
       return tx.dueAccrualRun.update({
         where: { id: run.id },
-        data: { status: DueAccrualStatus.POSTED, postedAt: new Date() },
+        data: { totalAmount: run.totalAmount.add(addedTotal) },
         include: {
-          dueDefinition: { select: { name: true } },
+          dueDefinition: { select: { name: true, calculationMode: true, meterKind: true } },
           _count: { select: { lines: { where: notDeleted } } },
         },
       });
-    });
+    }, { timeout: BULK_ACCRUAL_TX_TIMEOUT_MS });
   }
 
-  async listOpenLines(ctx: DuesContext, skip: number, take: number) {
-    const where = {
-      deleted: false,
-      status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
-      accrualRun: {
-        propertyId: ctx.propertyId,
-        organizationId: ctx.organizationId,
-        status: DueAccrualStatus.POSTED,
-        deleted: false,
-      },
-    };
-    const [rows, total] = await Promise.all([
-      prisma.dueAccrualLine.findMany({
-        where,
-        skip,
-        take,
-        orderBy: [{ accrualRun: { year: "desc" } }, { accrualRun: { month: "desc" } }],
-        include: {
-          unit: { select: { code: true } },
-          party: { select: { displayName: true } },
-          accrualRun: { select: { year: true, month: true } },
-        },
-      }),
-      prisma.dueAccrualLine.count({ where }),
-    ]);
-    return { rows, total };
+  async listOpenLinesPaginated(
+    input: ListOpenLinesInput & { dueDay: number },
+  ): Promise<{ items: Awaited<ReturnType<typeof queryOpenLinesPaginated>>["items"]; total: number }> {
+    return queryOpenLinesPaginated(input);
   }
 
   async listDebtLines(ctx: DuesContext) {
@@ -229,9 +764,47 @@ export class DuesRepository {
         },
       },
       include: {
-        unit: { select: { id: true, code: true } },
-        party: { select: { displayName: true } },
+        unit: { select: { id: true, code: true, blockId: true, block: { select: { id: true, name: true } } } },
+        party: { select: { id: true, displayName: true } },
         accrualRun: { select: { year: true, month: true } },
+      },
+    });
+  }
+
+  async listDebtRowsPaginated(
+    input: ListDebtRowsInput & { dueDay: number },
+  ): Promise<{ rows: DebtRowDto[]; total: number }> {
+    return queryDebtRowsPaginated(input);
+  }
+
+  async listPeriodRegisterPaginated(input: ListPeriodRegisterInput & { dueDay: number }) {
+    const { units, total } = await queryPeriodRegisterUnitsPaginated(input);
+    const unitIds = units.map((unit) => unit.unitId);
+    const lines =
+      unitIds.length > 0
+        ? await queryPeriodRegisterLinesForUnits({ ...input, unitIds })
+        : [];
+    return { units, lines, total };
+  }
+
+  async listOpenLinesByUnit(ctx: DuesContext, unitId: string) {
+    return prisma.dueAccrualLine.findMany({
+      where: {
+        deleted: false,
+        unitId,
+        status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
+        accrualRun: {
+          propertyId: ctx.propertyId,
+          organizationId: ctx.organizationId,
+          status: DueAccrualStatus.POSTED,
+          deleted: false,
+        },
+      },
+      orderBy: [{ accrualRun: { year: "asc" } }, { accrualRun: { month: "asc" } }],
+      include: {
+        unit: { select: { id: true, code: true } },
+        party: { select: { id: true, displayName: true } },
+        accrualRun: { select: { year: true, month: true, dueDefinition: { select: { name: true } } } },
       },
     });
   }
@@ -278,22 +851,104 @@ export class DuesRepository {
     });
   }
 
-  async resolvePartyAccountsForUnits(ctx: DuesContext, units: Awaited<ReturnType<DuesRepository["getUnitsWithArea"]>>) {
-    return prisma.$transaction(async (tx) => {
-      const map = new Map<string, { partyId: string; accountId: string }>();
-      for (const unit of units) {
-        const occ = unit.occupancies.find((o) => o.role === OccupancyRole.OWNER) ?? unit.occupancies[0];
-        if (!occ) continue;
-        const party = await tx.party.findFirst({ where: { id: occ.partyId, deleted: false } });
-        if (!party) continue;
-        const account = await this.getOrCreatePartyAccount(tx, ctx, party.id, party.displayName);
-        map.set(unit.id, { partyId: party.id, accountId: account.id });
-      }
-      return map;
-    });
+  private partyAccountWhere(ctx: DuesContext, partyId: string) {
+    return {
+      propertyId: ctx.propertyId,
+      partyId,
+      kind: FinanceAccountKind.PARTY,
+      deleted: false,
+    } as const;
   }
 
-  async recordPaymentTx(input: RecordPaymentInput, allocations: PaymentAllocationInput[], amount: Prisma.Decimal) {
+  async ensurePartyAccount(ctx: DuesContext, partyId: string, partyName: string) {
+    const existing = await prisma.financeAccount.findFirst({
+      where: this.partyAccountWhere(ctx, partyId),
+    });
+    if (existing) return existing;
+
+    const suffix = partyId.slice(-6).toUpperCase();
+    try {
+      return await prisma.financeAccount.create({
+        data: {
+          organizationId: ctx.organizationId,
+          propertyId: ctx.propertyId,
+          partyId,
+          code: `CARI-${suffix}`,
+          name: partyName,
+          kind: FinanceAccountKind.PARTY,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const retry = await prisma.financeAccount.findFirst({
+          where: this.partyAccountWhere(ctx, partyId),
+        });
+        if (retry) return retry;
+      }
+      throw error;
+    }
+  }
+
+  async resolvePartyAccountsForUnits(ctx: DuesContext, units: Awaited<ReturnType<DuesRepository["getUnitsWithArea"]>>) {
+    const links: Array<{ unitId: string; partyId: string }> = [];
+    for (const unit of units) {
+      const occ = unit.occupancies.find((o) => o.role === OccupancyRole.OWNER) ?? unit.occupancies[0];
+      if (!occ) continue;
+      links.push({ unitId: unit.id, partyId: occ.partyId });
+    }
+
+    const map = new Map<string, { partyId: string; accountId: string }>();
+    if (links.length === 0) {
+      return map;
+    }
+
+    const partyIds = [...new Set(links.map((link) => link.partyId))];
+    const [parties, existingAccounts] = await Promise.all([
+      prisma.party.findMany({
+        where: { id: { in: partyIds }, deleted: false },
+        select: { id: true, displayName: true },
+      }),
+      prisma.financeAccount.findMany({
+        where: {
+          propertyId: ctx.propertyId,
+          partyId: { in: partyIds },
+          kind: FinanceAccountKind.PARTY,
+          deleted: false,
+        },
+      }),
+    ]);
+
+    const partyById = new Map(parties.map((party) => [party.id, party]));
+    const accountByPartyId = new Map(
+      existingAccounts
+        .filter((account) => account.partyId)
+        .map((account) => [account.partyId!, account]),
+    );
+
+    const missingPartyIds = partyIds.filter((partyId) => partyById.has(partyId) && !accountByPartyId.has(partyId));
+    for (const partyId of missingPartyIds) {
+      const party = partyById.get(partyId);
+      if (!party) continue;
+      const account = await this.ensurePartyAccount(ctx, party.id, party.displayName);
+      accountByPartyId.set(partyId, account);
+    }
+
+    for (const link of links) {
+      const party = partyById.get(link.partyId);
+      const account = accountByPartyId.get(link.partyId);
+      if (!party || !account) continue;
+      map.set(link.unitId, { partyId: party.id, accountId: account.id });
+    }
+
+    return map;
+  }
+
+  async recordPaymentTx(
+    input: RecordPaymentInput,
+    allocations: PaymentAllocationInput[],
+    amount: Prisma.Decimal,
+    allowPartialAllocation: boolean,
+  ) {
     return prisma.$transaction(async (tx) => {
       const cashbox = await tx.cashbox.findFirst({
         where: { id: input.cashboxId, propertyId: input.propertyId, deleted: false },
@@ -356,7 +1011,10 @@ export class DuesRepository {
         });
       }
 
-      if (!allocatedTotal.eq(amount)) {
+      if (allocatedTotal.gt(amount)) {
+        throw new Error("ALLOCATION_SUM_MISMATCH");
+      }
+      if (!allowPartialAllocation && !allocatedTotal.eq(amount)) {
         throw new Error("ALLOCATION_SUM_MISMATCH");
       }
 
@@ -384,10 +1042,11 @@ export class DuesRepository {
     });
   }
 
-  async fetchOpenLinesForParty(ctx: DuesContext, partyId: string) {
+  async fetchOpenLinesForParty(ctx: DuesContext, partyId: string, unitId?: string | null) {
     return prisma.dueAccrualLine.findMany({
       where: {
         partyId,
+        ...(unitId ? { unitId } : {}),
         deleted: false,
         status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
         accrualRun: {
@@ -398,6 +1057,50 @@ export class DuesRepository {
       },
       orderBy: [{ accrualRun: { year: "asc" } }, { accrualRun: { month: "asc" } }],
     });
+  }
+
+  async getActivePartyMapByUnit(ctx: DuesContext) {
+    const occupancies = await prisma.occupancy.findMany({
+      where: {
+        deleted: false,
+        OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+        unit: {
+          propertyId: ctx.propertyId,
+          deleted: false,
+          property: { organizationId: ctx.organizationId },
+        },
+      },
+      orderBy: [{ role: "asc" }],
+      include: {
+        party: { select: { id: true, displayName: true } },
+      },
+    });
+    const map = new Map<string, { partyId: string; partyName: string }>();
+    for (const occ of occupancies) {
+      if (!map.has(occ.unitId)) {
+        map.set(occ.unitId, { partyId: occ.party.id, partyName: occ.party.displayName });
+      }
+    }
+    return map;
+  }
+
+  async getActivePartyByUnit(ctx: DuesContext, unitId: string) {
+    const occ = await prisma.occupancy.findFirst({
+      where: {
+        unitId,
+        deleted: false,
+        OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+        unit: {
+          propertyId: ctx.propertyId,
+          deleted: false,
+          property: { organizationId: ctx.organizationId },
+        },
+      },
+      orderBy: [{ role: "asc" }],
+      include: { party: { select: { id: true, displayName: true } } },
+    });
+    if (!occ?.party) return null;
+    return { partyId: occ.party.id, partyName: occ.party.displayName };
   }
 
   async getPartyStatementData(ctx: DuesContext, partyId: string, since: Date) {
@@ -433,6 +1136,13 @@ export class DuesRepository {
     return prisma.party.findFirst({ where: { portalUserId: userId, deleted: false } });
   }
 
+  async findPropertyScope(propertyId: string) {
+    return prisma.property.findFirst({
+      where: { id: propertyId, deleted: false },
+      select: { id: true, organizationId: true, name: true },
+    });
+  }
+
   async findPartyById(partyId: string, organizationId: string) {
     return prisma.party.findFirst({
       where: { id: partyId, organizationId, deleted: false },
@@ -466,5 +1176,389 @@ export class DuesRepository {
       (acc, line) => acc.add(line.amount.sub(line.paidAmount)),
       new Prisma.Decimal(0),
     );
+  }
+
+  async sumOpenDebtForUnit(propertyId: string, unitId: string) {
+    const lines = await prisma.dueAccrualLine.findMany({
+      where: {
+        unitId,
+        deleted: false,
+        status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
+        accrualRun: {
+          status: DueAccrualStatus.POSTED,
+          deleted: false,
+          propertyId,
+        },
+      },
+    });
+    return lines.reduce(
+      (acc, line) => acc.add(line.amount.sub(line.paidAmount)),
+      new Prisma.Decimal(0),
+    );
+  }
+
+  async listPortalOpenLinesForParty(partyId: string) {
+    return prisma.dueAccrualLine.findMany({
+      where: {
+        partyId,
+        deleted: false,
+        status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
+        accrualRun: {
+          status: DueAccrualStatus.POSTED,
+          deleted: false,
+        },
+      },
+      orderBy: [
+        { accrualRun: { year: "desc" } },
+        { accrualRun: { month: "desc" } },
+        { lineKind: "asc" },
+      ],
+      include: {
+        unit: {
+          select: {
+            code: true,
+            block: { select: { name: true } },
+          },
+        },
+        accrualRun: {
+          select: {
+            year: true,
+            month: true,
+            dueDefinition: { select: { name: true } },
+          },
+        },
+        sourceLine: {
+          select: {
+            accrualRun: {
+              select: {
+                year: true,
+                month: true,
+                dueDefinition: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async listPortalOpenLinesForUnit(propertyId: string, unitId: string) {
+    return prisma.dueAccrualLine.findMany({
+      where: {
+        unitId,
+        deleted: false,
+        status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
+        accrualRun: {
+          propertyId,
+          status: DueAccrualStatus.POSTED,
+          deleted: false,
+        },
+      },
+      orderBy: [
+        { accrualRun: { year: "desc" } },
+        { accrualRun: { month: "desc" } },
+        { lineKind: "asc" },
+      ],
+      include: {
+        unit: {
+          select: {
+            code: true,
+            block: { select: { name: true } },
+          },
+        },
+        accrualRun: {
+          select: {
+            year: true,
+            month: true,
+            dueDefinition: { select: { name: true } },
+          },
+        },
+        sourceLine: {
+          select: {
+            accrualRun: {
+              select: {
+                year: true,
+                month: true,
+                dueDefinition: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getUnitStatementData(ctx: DuesContext, unitId: string, since: Date) {
+    const lines = await prisma.dueAccrualLine.findMany({
+      where: {
+        unitId,
+        deleted: false,
+        createdAt: { gte: since },
+        accrualRun: {
+          propertyId: ctx.propertyId,
+          organizationId: ctx.organizationId,
+          deleted: false,
+          status: DueAccrualStatus.POSTED,
+        },
+      },
+      include: {
+        accrualRun: { select: { year: true, month: true } },
+        unit: { select: { code: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const payments = await prisma.payment.findMany({
+      where: {
+        deleted: false,
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        allocations: {
+          some: {
+            deleted: false,
+            dueAccrualLine: { unitId, deleted: false },
+          },
+        },
+        paymentDate: { gte: since },
+      },
+      include: {
+        allocations: {
+          where: { deleted: false, dueAccrualLine: { unitId, deleted: false } },
+          include: { dueAccrualLine: true },
+        },
+      },
+      orderBy: { paymentDate: "asc" },
+    });
+
+    return { lines, payments };
+  }
+
+  async getLateFeePolicy(ctx: DuesContext) {
+    return prisma.dueLateFeePolicy.findFirst({
+      where: { propertyId: ctx.propertyId, organizationId: ctx.organizationId, ...notDeleted },
+    });
+  }
+
+  async upsertLateFeePolicy(
+    ctx: DuesContext,
+    input: {
+      rateKind: import("@siteyonetim/db").LateFeeRateKind;
+      monthlyRatePercent: string;
+      graceDays: number;
+      dueDayOfMonth: number;
+      active: boolean;
+    },
+  ) {
+    return prisma.$transaction(async (tx) => {
+      let def = await tx.dueDefinition.findFirst({
+        where: {
+          propertyId: ctx.propertyId,
+          organizationId: ctx.organizationId,
+          isSystem: true,
+          ...notDeleted,
+        },
+      });
+      if (!def) {
+        def = await tx.dueDefinition.create({
+          data: {
+            organizationId: ctx.organizationId,
+            propertyId: ctx.propertyId,
+            name: "Gecikme faizi",
+            calculationMode: "FIXED",
+            fixedAmount: 0,
+            isSystem: true,
+            active: true,
+          },
+        });
+      }
+
+      return tx.dueLateFeePolicy.upsert({
+        where: { propertyId: ctx.propertyId },
+        create: {
+          organizationId: ctx.organizationId,
+          propertyId: ctx.propertyId,
+          rateKind: input.rateKind,
+          monthlyRatePercent: new Prisma.Decimal(input.monthlyRatePercent),
+          graceDays: input.graceDays,
+          dueDayOfMonth: input.dueDayOfMonth,
+          lateFeeDefinitionId: def.id,
+          active: input.active,
+        },
+        update: {
+          rateKind: input.rateKind,
+          monthlyRatePercent: new Prisma.Decimal(input.monthlyRatePercent),
+          graceDays: input.graceDays,
+          dueDayOfMonth: input.dueDayOfMonth,
+          lateFeeDefinitionId: def.id,
+          active: input.active,
+          deleted: false,
+          deletedDate: null,
+          deletedUserId: null,
+        },
+      });
+    });
+  }
+
+  async appendLateFeeLines(
+    ctx: DuesContext,
+    definitionId: string,
+    periodId: string,
+    year: number,
+    month: number,
+    lines: {
+      unitId: string;
+      partyId: string | null;
+      financeAccountId: string | null;
+      amount: Prisma.Decimal;
+      sourceLineId: string;
+    }[],
+  ) {
+    if (lines.length === 0) return { added: 0, runId: null as string | null };
+
+    return prisma.$transaction(
+      async (tx) => {
+        let run = await tx.dueAccrualRun.findFirst({
+          where: {
+            propertyId: ctx.propertyId,
+            dueDefinitionId: definitionId,
+            year,
+            month,
+            ...notDeleted,
+          },
+        });
+
+        if (run?.status === DueAccrualStatus.POSTED) {
+          throw new Error("ACCRUAL_ALREADY_POSTED");
+        }
+
+        if (!run) {
+          run = await tx.dueAccrualRun.create({
+            data: {
+              organizationId: ctx.organizationId,
+              propertyId: ctx.propertyId,
+              dueDefinitionId: definitionId,
+              financePeriodId: periodId,
+              year,
+              month,
+            },
+          });
+        }
+
+        const sourceLineIds = lines.map((line) => line.sourceLineId);
+        const existing = await tx.dueAccrualLine.findMany({
+          where: {
+            accrualRunId: run.id,
+            lineKind: DueAccrualLineKind.LATE_FEE,
+            sourceLineId: { in: sourceLineIds },
+            ...notDeleted,
+          },
+          select: { sourceLineId: true },
+        });
+        const existingSourceIds = new Set(
+          existing.map((row) => row.sourceLineId).filter((id): id is string => id != null),
+        );
+
+        const toCreate = lines.filter((line) => !existingSourceIds.has(line.sourceLineId));
+        if (toCreate.length === 0) {
+          return { added: 0, runId: run.id };
+        }
+
+        await tx.dueAccrualLine.createMany({
+          data: toCreate.map((line) => ({
+            accrualRunId: run.id,
+            unitId: line.unitId,
+            partyId: line.partyId,
+            financeAccountId: line.financeAccountId,
+            amount: line.amount,
+            lineKind: DueAccrualLineKind.LATE_FEE,
+            sourceLineId: line.sourceLineId,
+          })),
+        });
+
+        const totalAdd = toCreate.reduce(
+          (acc, line) => acc.add(line.amount),
+          new Prisma.Decimal(0),
+        );
+        await tx.dueAccrualRun.update({
+          where: { id: run.id },
+          data: { totalAmount: { increment: totalAdd } },
+        });
+
+        return { added: toCreate.length, runId: run.id };
+      },
+      { timeout: 60_000 },
+    );
+  }
+
+  async listStandardOpenLines(ctx: DuesContext) {
+    return prisma.dueAccrualLine.findMany({
+      where: {
+        deleted: false,
+        lineKind: DueAccrualLineKind.STANDARD,
+        status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
+        accrualRun: {
+          propertyId: ctx.propertyId,
+          organizationId: ctx.organizationId,
+          status: DueAccrualStatus.POSTED,
+          deleted: false,
+        },
+      },
+      include: {
+        unit: { select: { id: true } },
+        party: { select: { id: true, displayName: true } },
+        accrualRun: { select: { year: true, month: true } },
+      },
+    });
+  }
+
+  async listActiveLateFeePolicyTargets() {
+    return prisma.dueLateFeePolicy.findMany({
+      where: { active: true, ...notDeleted },
+      select: { organizationId: true, propertyId: true, rateKind: true },
+    });
+  }
+
+  async getLegalInterestRate(year: number, month: number) {
+    return prisma.legalInterestRate.findFirst({
+      where: { year, month, ...notDeleted },
+    });
+  }
+
+  async listLegalInterestRates(year: number) {
+    return prisma.legalInterestRate.findMany({
+      where: { year, ...notDeleted },
+      orderBy: [{ month: "asc" }],
+    });
+  }
+
+  async upsertLegalInterestRate(input: {
+    year: number;
+    month: number;
+    annualRatePercent: Prisma.Decimal;
+    notes?: string | null;
+  }) {
+    const existing = await prisma.legalInterestRate.findFirst({
+      where: { year: input.year, month: input.month },
+    });
+    if (existing) {
+      return prisma.legalInterestRate.update({
+        where: { id: existing.id },
+        data: {
+          annualRatePercent: input.annualRatePercent,
+          notes: input.notes ?? null,
+          deleted: false,
+          deletedDate: null,
+          deletedUserId: null,
+        },
+      });
+    }
+    return prisma.legalInterestRate.create({
+      data: {
+        year: input.year,
+        month: input.month,
+        annualRatePercent: input.annualRatePercent,
+        notes: input.notes ?? null,
+      },
+    });
   }
 }

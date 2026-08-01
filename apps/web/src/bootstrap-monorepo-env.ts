@@ -1,4 +1,3 @@
-import { createRequire } from "node:module";
+import { loadMonorepoEnv } from "@/lib/monorepo-env";
 
-const require = createRequire(import.meta.url);
-require("../load-env.cjs");
+loadMonorepoEnv();

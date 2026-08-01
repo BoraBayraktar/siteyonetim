@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "npm run dev -w @siteyonetim/web",
     "build": "npm run build -w @siteyonetim/web",
+    "typecheck": "npm run generate -w @siteyonetim/db && tsc --noEmit",
     "lint": "npm run lint -w @siteyonetim/web",
     "db:generate": "npm run generate -w @siteyonetim/db",
     "db:migrate": "npm run migrate:dev -w @siteyonetim/db",

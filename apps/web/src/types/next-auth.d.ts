@@ -1,5 +1,10 @@
 import { DefaultSession } from "next-auth";
 
+export type PropertyAccessClaim = {
+  propertyId: string;
+  role: string;
+};
+
 declare module "next-auth" {
   interface Session {
     user: DefaultSession["user"] & {
@@ -8,6 +13,12 @@ declare module "next-auth" {
       organizationId: string;
       organizationName: string;
       role: string | null;
+      orgWideAccess?: boolean;
+      propertyAccess?: PropertyAccessClaim[];
+      portalAuthKind?: "EMAIL" | "UNIT";
+      propertyId?: string;
+      unitId?: string;
+      credentialId?: string;
     };
   }
 
@@ -16,6 +27,13 @@ declare module "next-auth" {
     organizationId: string;
     organizationName: string;
     role: string | null;
+    orgWideAccess?: boolean;
+    propertyAccess?: PropertyAccessClaim[];
+    portalAuthKind?: "EMAIL" | "UNIT";
+    propertyId?: string;
+    unitId?: string;
+    credentialId?: string;
+    rememberMe?: boolean;
   }
 }
 
@@ -25,5 +43,12 @@ declare module "next-auth/jwt" {
     organizationId?: string;
     organizationName?: string;
     role?: string | null;
+    orgWideAccess?: boolean;
+    propertyAccess?: PropertyAccessClaim[];
+    portalAuthKind?: "EMAIL" | "UNIT";
+    propertyId?: string;
+    unitId?: string;
+    credentialId?: string;
+    sessionMaxAge?: number;
   }
 }

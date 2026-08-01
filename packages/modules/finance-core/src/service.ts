@@ -9,6 +9,8 @@ import type {
   FinanceContext,
   FinanceServiceContract,
   ListLedgerInput,
+  OperatingBudgetDto,
+  SaveOperatingBudgetInput,
 } from "./contract";
 import { FinanceRepository } from "./repository";
 import { FinanceScopeRepository } from "./scope.repository";
@@ -246,6 +248,97 @@ export class FinanceService implements FinanceServiceContract {
       metadata: { year: closed.year, month: closed.month },
     });
     return mapPeriod(closed);
+  }
+
+  private mapOperatingBudget(
+    budget: {
+      id: string;
+      year: number;
+      notes: string | null;
+      lines: Array<{
+        categoryId: string;
+        plannedAmount: Prisma.Decimal;
+        category: { id: string; name: string; type: import("@siteyonetim/db").FinanceCategoryType };
+      }>;
+    },
+    actualByCategory: Map<string, Prisma.Decimal>,
+  ): OperatingBudgetDto {
+    let totalPlanned = new Prisma.Decimal(0);
+    let totalActual = new Prisma.Decimal(0);
+    const lines = budget.lines.map((line) => {
+      totalPlanned = totalPlanned.add(line.plannedAmount);
+      const actual = actualByCategory.get(line.categoryId) ?? new Prisma.Decimal(0);
+      totalActual = totalActual.add(actual);
+      return {
+        categoryId: line.categoryId,
+        categoryName: line.category.name,
+        categoryType: line.category.type,
+        plannedAmount: line.plannedAmount.toString(),
+        actualAmount: actual.toString(),
+      };
+    });
+    return {
+      id: budget.id,
+      year: budget.year,
+      notes: budget.notes,
+      lines,
+      totalPlanned: totalPlanned.toString(),
+      totalActual: totalActual.toString(),
+    };
+  }
+
+  private actualAmountsByCategory(
+    totals: Array<{ categoryId: string; amount: Prisma.Decimal }>,
+  ) {
+    const map = new Map<string, Prisma.Decimal>();
+    for (const row of totals) {
+      const current = map.get(row.categoryId) ?? new Prisma.Decimal(0);
+      map.set(row.categoryId, current.add(row.amount));
+    }
+    return map;
+  }
+
+  async getOperatingBudget(ctx: FinanceContext, year: number): Promise<OperatingBudgetDto | null> {
+    const allowed = await this.scope.assertProperty(ctx.organizationId, ctx.propertyId);
+    if (!allowed) throw new Error("PROPERTY_NOT_FOUND");
+
+    const budget = await this.repository.findOperatingBudget(ctx, year);
+    if (!budget) return null;
+
+    const totals = await this.repository.ledgerTotalsByCategoryYear(ctx, year);
+    return this.mapOperatingBudget(budget, this.actualAmountsByCategory(totals));
+  }
+
+  async saveOperatingBudget(input: SaveOperatingBudgetInput): Promise<OperatingBudgetDto> {
+    const allowed = await this.scope.assertProperty(input.organizationId, input.propertyId);
+    if (!allowed) throw new Error("PROPERTY_NOT_FOUND");
+
+    const categories = await this.repository.listCategories(input);
+    const categoryIds = new Set(categories.map((c) => c.id));
+    const lines = input.lines
+      .filter((line) => categoryIds.has(line.categoryId))
+      .map((line) => {
+        const amount = parseAmount(line.plannedAmount);
+        return { categoryId: line.categoryId, plannedAmount: amount };
+      });
+
+    const saved = await this.repository.upsertOperatingBudget({
+      ...input,
+      notes: input.notes?.trim() || null,
+      lines,
+    });
+
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "finance.operatingBudget.save",
+      entityType: "OperatingBudget",
+      entityId: saved.id,
+      metadata: { year: input.year, lineCount: lines.length },
+    });
+
+    const totals = await this.repository.ledgerTotalsByCategoryYear(input, input.year);
+    return this.mapOperatingBudget(saved, this.actualAmountsByCategory(totals));
   }
 }
 

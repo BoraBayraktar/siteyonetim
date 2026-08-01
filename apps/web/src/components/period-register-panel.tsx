@@ -1,0 +1,914 @@
+"use client";
+
+import type { CashboxDto } from "@siteyonetim/finance-core";
+import type {
+  PeriodRegisterCellDto,
+  PeriodRegisterColumnDto,
+  PeriodRegisterPageDto,
+  PeriodRegisterRowDto,
+  UnitDebtDetailDto,
+} from "@siteyonetim/finance-dues";
+import type { BlockDto } from "@siteyonetim/property-core";
+import { DueAccrualLineKind } from "@siteyonetim/db";
+import { Download, Filter, Search } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+
+import { getUnitDebtDetailAction, recordDuePaymentAction, type DuesActionState } from "@/app/actions/dues";
+import { debtUnitLabel, formatDebtMoney } from "@/components/debt-status-table";
+import { FormDrawer } from "@/components/form-drawer";
+import { ServerPagination } from "@/components/server-pagination";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+type Props = {
+  locale: string;
+  propertyId: string;
+  registerPage: PeriodRegisterPageDto;
+  blocks: BlockDto[];
+  cashboxes: CashboxDto[];
+  filters: {
+    q: string;
+    blockId: string | null;
+    overdueOnly: boolean;
+    withDebtOnly: boolean;
+    year: number;
+    month: number;
+  };
+  initialUnitId?: string | null;
+};
+
+const initialPayState: DuesActionState = {};
+
+type PaymentAllocationItem = {
+  lineId: string;
+  remaining: string;
+  definitionName: string;
+};
+
+type PaymentTarget = {
+  unitId: string;
+  unitCode: string;
+  blockName: string | null;
+  partyId: string;
+  partyName: string | null;
+  allocations: PaymentAllocationItem[];
+};
+
+type SelectedCellKey = string;
+
+function cellSelectionKey(unitId: string, lineId: string) {
+  return `${unitId}:${lineId}`;
+}
+
+function sumRemaining(allocations: PaymentAllocationItem[]) {
+  return allocations.reduce((sum, item) => sum + Number(item.remaining), 0).toFixed(2);
+}
+
+function todayInputValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatStatementDate(date: Date | string, locale: string) {
+  const value = typeof date === "string" ? new Date(date) : date;
+  return value.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US");
+}
+
+function resolveDetailParty(detail: UnitDebtDetailDto) {
+  const partyId = detail.row.partyId ?? detail.openLines.find((line) => line.partyId)?.partyId ?? null;
+  const partyName =
+    detail.row.partyName ?? detail.openLines.find((line) => line.partyName)?.partyName ?? null;
+  return { partyId, partyName };
+}
+
+function cellTone(cell: PeriodRegisterCellDto) {
+  if (cell.status === "NONE" || Number(cell.amount) <= 0) {
+    return "text-muted-foreground";
+  }
+  if (cell.isOverdue && Number(cell.remaining) > 0) {
+    return "bg-destructive/10 text-destructive";
+  }
+  if (cell.status === "PAID") {
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+  }
+  if (cell.status === "PARTIAL") {
+    return "bg-amber-500/10 text-amber-800 dark:text-amber-400";
+  }
+  return "bg-muted/50";
+}
+
+function RegisterCell({
+  locale,
+  cell,
+  selected,
+  bulkMode,
+  onCollect,
+  onToggleSelect,
+}: {
+  locale: string;
+  cell: PeriodRegisterCellDto;
+  selected: boolean;
+  bulkMode: boolean;
+  onCollect: () => void;
+  onToggleSelect: () => void;
+}) {
+  const t = useTranslations("periodRegister");
+
+  if (cell.status === "NONE" || Number(cell.amount) <= 0) {
+    return <span className="text-muted-foreground">{t("cellNone")}</span>;
+  }
+
+  const selectable = Boolean(cell.lineId) && Number(cell.remaining) > 0;
+
+  function handleClick() {
+    if (!selectable) {
+      return;
+    }
+    if (bulkMode) {
+      onToggleSelect();
+      return;
+    }
+    onCollect();
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={!selectable}
+      onClick={handleClick}
+      className={cn(
+        "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+        cellTone(cell),
+        selectable && "cursor-pointer hover:ring-2 hover:ring-primary/30",
+        !selectable && "cursor-default",
+        bulkMode && selected && "ring-2 ring-primary",
+      )}
+    >
+      <div className="font-medium tabular-nums">
+        {formatDebtMoney(cell.paidAmount, locale)} / {formatDebtMoney(cell.amount, locale)}
+      </div>
+      {Number(cell.remaining) > 0 ? (
+        <div className="tabular-nums opacity-80">{formatDebtMoney(cell.remaining, locale)}</div>
+      ) : null}
+      {cell.lastDocumentNo ? (
+        <div className="truncate opacity-70">{cell.lastDocumentNo}</div>
+      ) : null}
+      {cell.lineKind === DueAccrualLineKind.LATE_FEE ? (
+        <div className="text-[10px] uppercase tracking-wide opacity-70">{t("lateFeeBadge")}</div>
+      ) : null}
+    </button>
+  );
+}
+
+function serializeRegisterFilters(input: {
+  q: string;
+  blockId: string;
+  overdueOnly: boolean;
+  withDebtOnly: boolean;
+  year: number;
+  month: number;
+}) {
+  const params = new URLSearchParams();
+  params.set("tab", "register");
+  params.set("year", String(input.year));
+  params.set("month", String(input.month));
+  const trimmedQ = input.q.trim();
+  if (trimmedQ) {
+    params.set("q", trimmedQ);
+  }
+  if (input.blockId && input.blockId !== "all") {
+    params.set("blockId", input.blockId);
+  }
+  if (input.overdueOnly) {
+    params.set("overdueOnly", "1");
+  }
+  if (input.withDebtOnly) {
+    params.set("withDebtOnly", "1");
+  }
+  return params.toString();
+}
+
+function serializeExportParams(input: {
+  q: string;
+  blockId: string;
+  overdueOnly: boolean;
+  withDebtOnly: boolean;
+  year: number;
+  month: number;
+  format: "csv" | "xlsx" | "pdf";
+}) {
+  const params = new URLSearchParams();
+  params.set("year", String(input.year));
+  params.set("month", String(input.month));
+  params.set("format", input.format);
+  const trimmedQ = input.q.trim();
+  if (trimmedQ) {
+    params.set("q", trimmedQ);
+  }
+  if (input.blockId && input.blockId !== "all") {
+    params.set("blockId", input.blockId);
+  }
+  if (input.overdueOnly) {
+    params.set("overdueOnly", "1");
+  }
+  if (input.withDebtOnly) {
+    params.set("withDebtOnly", "1");
+  }
+  return params.toString();
+}
+
+export function PeriodRegisterPanel({
+  locale,
+  propertyId,
+  registerPage,
+  blocks,
+  cashboxes,
+  filters,
+  initialUnitId,
+}: Props) {
+  const t = useTranslations("periodRegister");
+  const tDues = useTranslations("dues");
+  const tDebt = useTranslations("unitsDebt");
+  const tPortal = useTranslations("portal");
+  const router = useRouter();
+  const pathname = usePathname();
+  const [, startTransition] = useTransition();
+  const [payState, payAction, payPending] = useActionState(
+    recordDuePaymentAction.bind(null, locale, propertyId),
+    initialPayState,
+  );
+
+  const [q, setQ] = useState(filters.q);
+  const [blockId, setBlockId] = useState(filters.blockId ?? "all");
+  const [overdueOnly, setOverdueOnly] = useState(filters.overdueOnly);
+  const [withDebtOnly, setWithDebtOnly] = useState(filters.withDebtOnly);
+  const [year, setYear] = useState(String(filters.year));
+  const [month, setMonth] = useState(String(filters.month));
+
+  const [cashboxId, setCashboxId] = useState(cashboxes[0]?.id ?? "");
+  const [payAmount, setPayAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(todayInputValue());
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
+
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedCells, setSelectedCells] = useState<
+    Record<SelectedCellKey, PaymentAllocationItem & { unitId: string; partyId: string; unitCode: string; blockName: string | null; partyName: string | null }>
+  >({});
+
+  const selectedCellList = useMemo(() => Object.values(selectedCells), [selectedCells]);
+  const selectedTotal = useMemo(() => sumRemaining(selectedCellList), [selectedCellList]);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detail, setDetail] = useState<UnitDebtDetailDto | null>(null);
+
+  const detailParty = useMemo(() => (detail ? resolveDetailParty(detail) : null), [detail]);
+
+  const paginationParams = {
+    tab: "register",
+    year: String(filters.year),
+    month: String(filters.month),
+    q: filters.q || undefined,
+    blockId: filters.blockId || undefined,
+    overdueOnly: filters.overdueOnly ? "1" : undefined,
+    withDebtOnly: filters.withDebtOnly ? "1" : undefined,
+  };
+
+  useEffect(() => {
+    setQ(filters.q);
+    setBlockId(filters.blockId ?? "all");
+    setOverdueOnly(filters.overdueOnly);
+    setWithDebtOnly(filters.withDebtOnly);
+    setYear(String(filters.year));
+    setMonth(String(filters.month));
+  }, [filters]);
+
+  useEffect(() => {
+    if (cashboxes.length === 0) {
+      setCashboxId("");
+      return;
+    }
+    if (!cashboxes.some((cashbox) => cashbox.id === cashboxId)) {
+      setCashboxId(cashboxes[0]!.id);
+    }
+  }, [cashboxId, cashboxes]);
+
+  useEffect(() => {
+    if (!payState.success) {
+      return;
+    }
+    setPaymentOpen(false);
+    setPaymentTarget(null);
+    setSelectedCells({});
+    setBulkMode(false);
+    router.refresh();
+  }, [payState.success, router]);
+
+  useEffect(() => {
+    if (!initialUnitId) {
+      return;
+    }
+    void openDetail(initialUnitId);
+  }, [initialUnitId]);
+
+  function pushFilters(
+    overrides: Partial<{
+      q: string;
+      blockId: string;
+      overdueOnly: boolean;
+      withDebtOnly: boolean;
+      year: number;
+      month: number;
+    }> = {},
+  ) {
+    const nextQuery = serializeRegisterFilters({
+      q: overrides.q !== undefined ? overrides.q : q,
+      blockId: overrides.blockId !== undefined ? overrides.blockId : blockId,
+      overdueOnly: overrides.overdueOnly !== undefined ? overrides.overdueOnly : overdueOnly,
+      withDebtOnly: overrides.withDebtOnly !== undefined ? overrides.withDebtOnly : withDebtOnly,
+      year: overrides.year !== undefined ? overrides.year : Number(year),
+      month: overrides.month !== undefined ? overrides.month : Number(month),
+    });
+    const currentQuery = serializeRegisterFilters({
+      q: filters.q,
+      blockId: filters.blockId ?? "all",
+      overdueOnly: filters.overdueOnly,
+      withDebtOnly: filters.withDebtOnly,
+      year: filters.year,
+      month: filters.month,
+    });
+
+    if (nextQuery === currentQuery) {
+      return;
+    }
+
+    startTransition(() => {
+      router.push(`${pathname}?${nextQuery}`);
+    });
+  }
+
+  useEffect(() => {
+    const trimmed = q.trim();
+    if (trimmed === filters.q) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      pushFilters({ q: trimmed });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [q, filters.q]);
+
+  async function openDetail(unitId: string) {
+    setDetailOpen(true);
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const result = await getUnitDebtDetailAction(propertyId, unitId);
+      setDetail(result);
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  function openPaymentTarget(target: PaymentTarget, amount: string) {
+    setPaymentTarget(target);
+    setPayAmount(amount);
+    setPaymentDate(todayInputValue());
+    setPaymentOpen(true);
+  }
+
+  function openCellPayment(row: PeriodRegisterRowDto, column: PeriodRegisterColumnDto, cell: PeriodRegisterCellDto) {
+    if (!cell.lineId || !row.partyId || Number(cell.remaining) <= 0) {
+      return;
+    }
+    openPaymentTarget(
+      {
+        unitId: row.unitId,
+        unitCode: row.unitCode,
+        blockName: row.blockName,
+        partyId: row.partyId,
+        partyName: row.partyName,
+        allocations: [{ lineId: cell.lineId, remaining: cell.remaining, definitionName: column.name }],
+      },
+      cell.remaining,
+    );
+  }
+
+  function toggleCellSelection(
+    row: PeriodRegisterRowDto,
+    column: PeriodRegisterColumnDto,
+    cell: PeriodRegisterCellDto,
+  ) {
+    if (!cell.lineId || !row.partyId || Number(cell.remaining) <= 0) {
+      return;
+    }
+
+    const key = cellSelectionKey(row.unitId, cell.lineId);
+    setSelectedCells((current) => {
+      if (current[key]) {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      }
+
+      const existing = Object.values(current)[0];
+      if (existing && (existing.unitId !== row.unitId || existing.partyId !== row.partyId)) {
+        return {
+          [key]: {
+            lineId: cell.lineId!,
+            remaining: cell.remaining,
+            definitionName: column.name,
+            unitId: row.unitId,
+            partyId: row.partyId!,
+            unitCode: row.unitCode,
+            blockName: row.blockName,
+            partyName: row.partyName,
+          },
+        };
+      }
+
+      return {
+        ...current,
+        [key]: {
+          lineId: cell.lineId!,
+          remaining: cell.remaining,
+          definitionName: column.name,
+          unitId: row.unitId,
+          partyId: row.partyId!,
+          unitCode: row.unitCode,
+          blockName: row.blockName,
+          partyName: row.partyName,
+        },
+      };
+    });
+  }
+
+  function openBulkPayment() {
+    const first = selectedCellList[0];
+    if (!first) {
+      return;
+    }
+    openPaymentTarget(
+      {
+        unitId: first.unitId,
+        unitCode: first.unitCode,
+        blockName: first.blockName,
+        partyId: first.partyId,
+        partyName: first.partyName,
+        allocations: selectedCellList.map(({ lineId, remaining, definitionName }) => ({
+          lineId,
+          remaining,
+          definitionName,
+        })),
+      },
+      selectedTotal,
+    );
+  }
+
+  function openRowPayment(row: Pick<PeriodRegisterRowDto, "unitId" | "unitCode" | "blockName" | "totalOpenDebt">) {
+    if (!detailParty?.partyId) {
+      return;
+    }
+    openPaymentTarget(
+      {
+        unitId: row.unitId,
+        unitCode: row.unitCode,
+        blockName: row.blockName,
+        partyId: detailParty.partyId,
+        partyName: detailParty.partyName,
+        allocations: [],
+      },
+      row.totalOpenDebt,
+    );
+  }
+
+  function exportHref(format: "csv" | "xlsx" | "pdf") {
+    const query = serializeExportParams({
+      q: filters.q,
+      blockId: filters.blockId ?? "all",
+      overdueOnly: filters.overdueOnly,
+      withDebtOnly: filters.withDebtOnly,
+      year: filters.year,
+      month: filters.month,
+      format,
+    });
+    return `/api/properties/${propertyId}/period-register/export?${query}`;
+  }
+
+  const paymentDrawerTitle =
+    paymentTarget != null
+      ? tDues("recordPaymentForUnit", {
+          unit: paymentTarget.partyName
+            ? `${paymentTarget.unitCode} — ${paymentTarget.partyName}`
+            : debtUnitLabel(paymentTarget),
+        })
+      : tDues("recordPayment");
+
+  const canRecordPayment = cashboxes.length > 0 && Boolean(paymentTarget?.partyId);
+  const paymentAllocationsJson =
+    paymentTarget && paymentTarget.allocations.length > 0
+      ? JSON.stringify(
+          paymentTarget.allocations.map((item) => ({
+            dueAccrualLineId: item.lineId,
+            amount: item.remaining,
+          })),
+        )
+      : "";
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+            <div className="relative min-w-0 flex-1 md:max-w-sm">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={q}
+                onChange={(event) => setQ(event.target.value)}
+                placeholder={tDebt("searchPlaceholder")}
+                className="bg-background pl-9"
+                aria-label={tDebt("searchLabel")}
+              />
+            </div>
+            <Select
+              value={blockId}
+              onValueChange={(value) => {
+                setBlockId(value);
+                pushFilters({ blockId: value });
+              }}
+            >
+              <SelectTrigger className="w-full bg-background md:w-44">
+                <SelectValue placeholder={tDebt("blockFilter")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{tDebt("allBlocks")}</SelectItem>
+                {blocks.map((block) => (
+                  <SelectItem key={block.id} value={block.id}>
+                    {block.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-2 md:w-auto">
+              <Input
+                type="number"
+                min={2000}
+                max={2100}
+                value={year}
+                onChange={(event) => setYear(event.target.value)}
+                onBlur={() => pushFilters({ year: Number(year) })}
+                aria-label={t("year")}
+              />
+              <Input
+                type="number"
+                min={1}
+                max={12}
+                value={month}
+                onChange={(event) => setMonth(event.target.value)}
+                onBlur={() => pushFilters({ month: Number(month) })}
+                aria-label={t("month")}
+              />
+            </div>
+            <Button
+              type="button"
+              variant={overdueOnly ? "default" : "outline"}
+              size="sm"
+              className={cn("gap-2", !overdueOnly && "bg-background")}
+              onClick={() => {
+                const next = !overdueOnly;
+                setOverdueOnly(next);
+                pushFilters({ overdueOnly: next });
+              }}
+            >
+              <Filter className="size-4" aria-hidden />
+              {tDebt("overdueOnly")}
+            </Button>
+            <Button
+              type="button"
+              variant={withDebtOnly ? "default" : "outline"}
+              size="sm"
+              className={cn("gap-2", !withDebtOnly && "bg-background")}
+              onClick={() => {
+                const next = !withDebtOnly;
+                setWithDebtOnly(next);
+                pushFilters({ withDebtOnly: next });
+              }}
+            >
+              <Filter className="size-4" aria-hidden />
+              {t("withDebtOnly")}
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={bulkMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setBulkMode((value) => !value);
+                setSelectedCells({});
+              }}
+            >
+              {t("bulkMode")}
+            </Button>
+            {bulkMode && selectedCellList.length > 0 ? (
+              <Button type="button" size="sm" onClick={openBulkPayment} disabled={cashboxes.length === 0}>
+                {t("collectSelected", { count: selectedCellList.length })}
+              </Button>
+            ) : null}
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={exportHref("csv")}>
+                <Download className="mr-2 size-4" aria-hidden />
+                {t("exportCsv")}
+              </a>
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={exportHref("xlsx")}>{t("exportExcel")}</a>
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <a href={exportHref("pdf")}>{t("exportPdf")}</a>
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="w-full whitespace-nowrap rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 z-10 min-w-[120px] bg-card">{t("columnUnit")}</TableHead>
+                <TableHead className="sticky left-[120px] z-10 min-w-[140px] bg-card">{t("columnParty")}</TableHead>
+                {registerPage.columns.map((column) => (
+                  <TableHead key={column.id} className="min-w-[130px]">
+                    {column.name}
+                  </TableHead>
+                ))}
+                <TableHead className="min-w-[110px]">{t("columnPeriodRemaining")}</TableHead>
+                <TableHead className="min-w-[110px]">{t("columnTotalOpen")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {registerPage.rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={registerPage.columns.length + 4}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
+                    {t("empty")}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                registerPage.rows.map((row) => (
+                  <TableRow key={row.unitId}>
+                    <TableCell className="sticky left-0 z-10 bg-card">
+                      <button
+                        type="button"
+                        className="font-medium text-left hover:underline"
+                        onClick={() => void openDetail(row.unitId)}
+                      >
+                        {debtUnitLabel(row)}
+                      </button>
+                    </TableCell>
+                    <TableCell className="sticky left-[120px] z-10 bg-card">{row.partyName ?? "—"}</TableCell>
+                    {registerPage.columns.map((column) => {
+                      const cell = row.cells[column.id];
+                      if (!cell) {
+                        return (
+                          <TableCell key={column.id}>
+                            <span className="text-muted-foreground">{t("cellNone")}</span>
+                          </TableCell>
+                        );
+                      }
+                      return (
+                        <TableCell key={column.id}>
+                          <RegisterCell
+                            locale={locale}
+                            cell={cell}
+                            bulkMode={bulkMode}
+                            selected={Boolean(
+                              cell.lineId && selectedCells[cellSelectionKey(row.unitId, cell.lineId)],
+                            )}
+                            onCollect={() => openCellPayment(row, column, cell)}
+                            onToggleSelect={() => toggleCellSelection(row, column, cell)}
+                          />
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="font-medium tabular-nums">
+                      {formatDebtMoney(row.periodRemaining, locale)}
+                    </TableCell>
+                    <TableCell className="tabular-nums">{formatDebtMoney(row.totalOpenDebt, locale)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+
+        <ServerPagination
+          page={registerPage.page}
+          pageSize={registerPage.pageSize}
+          total={registerPage.total}
+          basePath={`/admin/properties/${propertyId}/dues`}
+          locale={locale}
+          extraSearchParams={paginationParams}
+          variant="saas"
+        />
+      </div>
+
+      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+          <SheetHeader className="border-b px-4 py-4 text-left">
+            <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="flex-1 px-4 py-4">
+            {detailLoading ? (
+              <p className="text-sm text-muted-foreground">{tDebt("detailLoading")}</p>
+            ) : detail ? (
+              <div className="space-y-6 pb-8">
+                <div className="space-y-1">
+                  <p className="text-lg font-semibold">{debtUnitLabel(detail.row)}</p>
+                  <p className="text-sm text-muted-foreground">{detailParty?.partyName ?? "—"}</p>
+                  <p className="text-2xl font-semibold tracking-tight">
+                    {formatDebtMoney(detail.row.totalDebt, locale)}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-2 text-sm font-medium">{tDebt("openLinesTitle")}</h3>
+                  {detail.openLines.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{tDebt("noOpenLines")}</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {detail.openLines.map((line) => (
+                        <li key={line.id} className="flex items-center justify-between gap-3 text-sm">
+                          <span>
+                            {line.month}/{line.year}
+                          </span>
+                          <span className="font-medium tabular-nums">{formatDebtMoney(line.remaining, locale)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {detail.statement.length > 0 ? (
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium">{tDebt("statementTitle")}</h3>
+                    <div className="overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{tPortal("statementDate")}</TableHead>
+                            <TableHead>{tPortal("statementLabel")}</TableHead>
+                            <TableHead>{tPortal("statementDebit")}</TableHead>
+                            <TableHead>{tPortal("statementCredit")}</TableHead>
+                            <TableHead>{tPortal("statementBalance")}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {detail.statement.map((line, index) => (
+                            <TableRow key={`${line.kind}-${index}`}>
+                              <TableCell>{formatStatementDate(line.date, locale)}</TableCell>
+                              <TableCell className="max-w-[180px] truncate">{line.label}</TableCell>
+                              <TableCell>
+                                {line.debit !== "0" ? formatDebtMoney(line.debit, locale) : "—"}
+                              </TableCell>
+                              <TableCell>
+                                {line.credit !== "0" ? formatDebtMoney(line.credit, locale) : "—"}
+                              </TableCell>
+                              <TableCell>{formatDebtMoney(line.balance, locale)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ) : null}
+
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={!detailParty?.partyId || cashboxes.length === 0}
+                  onClick={() =>
+                    openRowPayment({
+                      unitId: detail.row.unitId,
+                      unitCode: detail.row.unitCode,
+                      blockName: detail.row.blockName,
+                      totalOpenDebt: detail.row.totalDebt,
+                    })
+                  }
+                >
+                  {tDebt("recordPayment")}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{tDebt("detailNotFound")}</p>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {paymentTarget ? (
+        <FormDrawer
+          triggerLabel={tDebt("recordPayment")}
+          title={paymentDrawerTitle}
+          success={payState.success}
+          disabled={!canRecordPayment}
+          open={paymentOpen}
+          onOpenChange={setPaymentOpen}
+          hideTrigger
+        >
+          <form action={payAction} className="grid gap-3">
+            <input type="hidden" name="cashboxId" value={cashboxId} />
+            <input type="hidden" name="partyId" value={paymentTarget.partyId} />
+            <input type="hidden" name="unitId" value={paymentTarget.unitId} />
+            {paymentAllocationsJson ? (
+              <>
+                <input type="hidden" name="allocationsJson" value={paymentAllocationsJson} />
+                <input type="hidden" name="autoAllocate" value="off" />
+              </>
+            ) : (
+              <input type="hidden" name="allowAdvance" value="on" />
+            )}
+            <div className="grid gap-1 text-sm">
+              <p className="font-medium">{debtUnitLabel(paymentTarget)}</p>
+              <p className="text-muted-foreground">{paymentTarget.partyName ?? "—"}</p>
+              {paymentTarget.allocations.length > 0 ? (
+                <ul className="space-y-1 text-muted-foreground">
+                  {paymentTarget.allocations.map((item) => (
+                    <li key={item.lineId}>
+                      {item.definitionName}: {formatDebtMoney(item.remaining, locale)}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="text-muted-foreground">
+                {tDues("unitOpenDebt", { amount: formatDebtMoney(payAmount, locale) })}
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>{tDues("cashbox")}</Label>
+              <Select value={cashboxId} onValueChange={setCashboxId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {cashboxes.map((cashbox) => (
+                    <SelectItem key={cashbox.id} value={cashbox.id}>
+                      {cashbox.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="register-pay-amount">{tDues("amount")}</Label>
+              <Input
+                id="register-pay-amount"
+                name="amount"
+                required
+                value={payAmount}
+                onChange={(event) => setPayAmount(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="register-pay-date">{t("paymentDate")}</Label>
+              <Input
+                id="register-pay-date"
+                name="paymentDate"
+                type="date"
+                value={paymentDate}
+                onChange={(event) => setPaymentDate(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="register-pay-doc">{tDues("documentNo")}</Label>
+              <Input id="register-pay-doc" name="documentNo" />
+            </div>
+            {payState.success ? (
+              <p className="text-xs text-muted-foreground">
+                {payState.advanceAmount
+                  ? tDues("paymentAdvanceSuccess", { amount: formatDebtMoney(payState.advanceAmount, locale) })
+                  : tDues("paymentSuccess")}
+              </p>
+            ) : null}
+            {payState.error ? (
+              <p className="text-sm text-destructive">{tDues(`errors.${payState.error}` as "errors.AMOUNT_INVALID")}</p>
+            ) : null}
+            <Button type="submit" disabled={payPending || !canRecordPayment} className="w-full sm:w-auto">
+              {tDues("recordPayment")}
+            </Button>
+          </form>
+        </FormDrawer>
+      ) : null}
+    </>
+  );
+}

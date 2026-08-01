@@ -1,8 +1,11 @@
 import { setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
+import { getAdminLandingPathForOrganization } from "@/app/actions/admin-landing";
 import { auth } from "@/auth";
 import { LoginForm } from "@/components/login-form";
+import { PortalLoginShell } from "@/components/portal-login-shell";
+import { PortalLoginTabs } from "@/components/portal-login-tabs";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -16,17 +19,23 @@ export default async function PortalLoginPage({ params }: Props) {
   if (session?.user?.sessionKind === "PORTAL") {
     redirect(`/${locale}/portal`);
   }
-  if (session?.user?.sessionKind === "ADMIN") {
-    redirect(`/${locale}/admin/properties`);
+  if (session?.user?.sessionKind === "ADMIN" && session.user.organizationId) {
+    redirect(await getAdminLandingPathForOrganization(locale, session.user.organizationId));
   }
 
   return (
-    <main className="flex min-h-screen items-center px-4 py-12">
-      <LoginForm
+    <PortalLoginShell locale={locale}>
+      <PortalLoginTabs
         locale={locale}
-        redirectPath={`/${locale}/portal`}
-        titleKey="portalLoginTitle"
+        emailForm={
+          <LoginForm
+            locale={locale}
+            redirectPath={`/${locale}/portal`}
+            titleKey="portalLoginTitle"
+            embedded
+          />
+        }
       />
-    </main>
+    </PortalLoginShell>
   );
 }

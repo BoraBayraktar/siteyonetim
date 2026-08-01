@@ -1,32 +1,10 @@
-import { loadEnvConfig } from "@next/env";
-import path from "path";
-
-function tryLoadMonorepoEnv(): void {
-  if (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET) {
-    return;
-  }
-  if (process.env.VERCEL === "1") {
-    return;
-  }
-
-  const dirs = new Set<string>([
-    path.resolve(process.cwd(), "../.."),
-    path.resolve(process.cwd(), ".."),
-    process.cwd(),
-  ]);
-
-  for (const dir of dirs) {
-    loadEnvConfig(dir);
-    if (process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET) {
-      return;
-    }
-  }
-}
+import { loadMonorepoEnv, reloadMonorepoEnvIfNeeded } from "@/lib/monorepo-env";
 
 export function assertAuthSecret(): string {
-  tryLoadMonorepoEnv();
+  loadMonorepoEnv();
+  reloadMonorepoEnvIfNeeded();
 
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  const secret = process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim();
   if (secret) {
     return secret;
   }

@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { prisma } from "@siteyonetim/db";
 
 import type { AuthUserDto } from "./contract";
@@ -37,6 +38,22 @@ export class AuthRepository {
         },
       },
     });
+  }
+
+  async validateAdminCredentials(input: { email: string; password: string }): Promise<AuthUserDto | null> {
+    const user = await this.findByEmail(input.email.trim());
+    if (!user) {
+      return null;
+    }
+    const valid = await bcrypt.compare(input.password, user.passwordHash);
+    if (!valid) {
+      return null;
+    }
+    const dto = this.toDto(user);
+    if (!dto || dto.sessionKind !== "ADMIN") {
+      return null;
+    }
+    return dto;
   }
 
   toDto(user: UserWithRelations): AuthUserDto | null {

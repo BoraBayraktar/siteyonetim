@@ -5,6 +5,9 @@ if (process.env.VERCEL === "1") {
   return;
 }
 
-const monorepoRoot = path.resolve(__dirname, "../..");
-loadEnvConfig(monorepoRoot);
-loadEnvConfig(__dirname);
+const webRoot = __dirname;
+const repoRoot = path.resolve(webRoot, "../..");
+
+for (const dir of [repoRoot, webRoot]) {
+  loadEnvConfig(dir);
+}

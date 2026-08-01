@@ -6,6 +6,8 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@siteyonetim/db": "*",
-    "@siteyonetim/platform-audit": "*"
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/property-meters": "*",
+    "@siteyonetim/reporting-core": "*"
   }
 }

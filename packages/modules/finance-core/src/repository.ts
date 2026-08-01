@@ -268,4 +268,121 @@ export class FinanceRepository {
       return entry;
     });
   }
+
+  async findOperatingBudget(ctx: FinanceContext, year: number) {
+    return prisma.operatingBudget.findFirst({
+      where: {
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        year,
+        ...notDeleted,
+      },
+      include: {
+        lines: {
+          where: notDeleted,
+          include: { category: { select: { id: true, name: true, type: true } } },
+        },
+      },
+    });
+  }
+
+  async ledgerTotalsByCategoryYear(ctx: FinanceContext, year: number) {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year + 1, 0, 1);
+    const grouped = await prisma.ledgerEntry.groupBy({
+      by: ["categoryId", "entryType"],
+      where: {
+        organizationId: ctx.organizationId,
+        propertyId: ctx.propertyId,
+        entryDate: { gte: start, lt: end },
+        ...notDeleted,
+      },
+      _sum: { amount: true },
+    });
+    const categories = await prisma.financeCategory.findMany({
+      where: {
+        propertyId: ctx.propertyId,
+        organizationId: ctx.organizationId,
+        ...notDeleted,
+      },
+    });
+    const nameById = new Map(categories.map((c) => [c.id, c]));
+    return grouped.map((g) => ({
+      categoryId: g.categoryId,
+      category: nameById.get(g.categoryId),
+      entryType: g.entryType,
+      amount: g._sum.amount ?? new Prisma.Decimal(0),
+    }));
+  }
+
+  async upsertOperatingBudget(
+    input: FinanceContext & {
+      year: number;
+      notes?: string | null;
+      lines: Array<{ categoryId: string; plannedAmount: Prisma.Decimal }>;
+    },
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const budget = await tx.operatingBudget.upsert({
+        where: {
+          propertyId_year: { propertyId: input.propertyId, year: input.year },
+        },
+        create: {
+          organizationId: input.organizationId,
+          propertyId: input.propertyId,
+          year: input.year,
+          notes: input.notes ?? null,
+        },
+        update: {
+          notes: input.notes ?? null,
+          deleted: false,
+          deletedDate: null,
+          deletedUserId: null,
+        },
+      });
+
+      const categoryIds = input.lines.map((line) => line.categoryId);
+      await tx.operatingBudgetLine.updateMany({
+        where: {
+          budgetId: budget.id,
+          categoryId: { notIn: categoryIds },
+          deleted: false,
+        },
+        data: {
+          deleted: true,
+          deletedDate: new Date(),
+          deletedUserId: input.actorUserId ?? null,
+        },
+      });
+
+      for (const line of input.lines) {
+        await tx.operatingBudgetLine.upsert({
+          where: {
+            budgetId_categoryId: { budgetId: budget.id, categoryId: line.categoryId },
+          },
+          create: {
+            budgetId: budget.id,
+            categoryId: line.categoryId,
+            plannedAmount: line.plannedAmount,
+          },
+          update: {
+            plannedAmount: line.plannedAmount,
+            deleted: false,
+            deletedDate: null,
+            deletedUserId: null,
+          },
+        });
+      }
+
+      return tx.operatingBudget.findFirstOrThrow({
+        where: { id: budget.id },
+        include: {
+          lines: {
+            where: notDeleted,
+            include: { category: { select: { id: true, name: true, type: true } } },
+          },
+        },
+      });
+    });
+  }
 }

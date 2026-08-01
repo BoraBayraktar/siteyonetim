@@ -11,6 +11,8 @@ export type {
   FinanceServiceContract,
   LedgerEntryDto,
   ListLedgerInput,
+  OperatingBudgetDto,
   PaginatedLedger,
+  SaveOperatingBudgetInput,
 } from "./contract";
 export { createFinanceService, FinanceService } from "./service";

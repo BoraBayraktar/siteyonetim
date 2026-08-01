@@ -1,0 +1,14 @@
+{
+  "name": "@siteyonetim/reporting-standard",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@siteyonetim/comm-notifications": "*",
+    "@siteyonetim/db": "*",
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/platform-files": "*",
+    "@siteyonetim/reporting-core": "*"
+  }
+}

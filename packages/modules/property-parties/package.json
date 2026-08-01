@@ -7,6 +7,7 @@
   "dependencies": {
     "@siteyonetim/db": "*",
     "@siteyonetim/platform-audit": "*",
+    "exceljs": "^4.4.0",
     "bcryptjs": "^3.0.2"
   }
 }

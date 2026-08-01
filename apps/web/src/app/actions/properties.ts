@@ -4,7 +4,7 @@ import { PropertyKind } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { getPropertyService } from "@/lib/services";
+import { getPropertyService, getPropertyTenantService } from "@/lib/services";
 
 export type CreatePropertyState = {
   error?: string;
@@ -25,13 +25,21 @@ export async function createPropertyAction(
   const kind = String(formData.get("kind") ?? PropertyKind.APARTMAN) as PropertyKind;
 
   try {
-    await getPropertyService().create({
+    const created = await getPropertyService().create({
       organizationId: session.user.organizationId,
       name,
       address: address || null,
       kind,
       actorUserId: session.user.id,
     });
+
+    await getPropertyTenantService().provisionPropertyTenant({
+      organizationId: session.user.organizationId,
+      propertyId: created.id,
+      propertyName: created.name,
+      actorUserId: session.user.id,
+    });
+
     revalidatePath("/tr/admin/properties", "page");
     revalidatePath("/en/admin/properties", "page");
     return { success: true };

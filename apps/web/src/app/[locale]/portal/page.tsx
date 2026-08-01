@@ -1,22 +1,24 @@
-import { OccupancyRole } from "@siteyonetim/db";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
+import { getAdminLandingPathForOrganization } from "@/app/actions/admin-landing";
 import { auth } from "@/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getDuesService, getOccupancyService } from "@/lib/services";
+import { AppMarketingShell } from "@/components/app-marketing-shell";
+import { PortalChrome } from "@/components/portal-chrome";
+import { PortalDashboard } from "@/components/portal-dashboard";
+import { isUnitPortalSession } from "@/lib/auth-context";
+import {
+  getAnnouncementService,
+  getDocumentService,
+  getDuesService,
+  getOccupancyService,
+  getPropertyTenantService,
+  getReportingService,
+} from "@/lib/services";
 
 type Props = {
   params: Promise<{ locale: string }>;
 };
-
-function money(value: string, locale: string) {
-  return new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-US", {
-    style: "currency",
-    currency: "TRY",
-  }).format(Number(value));
-}
 
 export default async function PortalPage({ params }: Props) {
   const { locale } = await params;
@@ -27,98 +29,133 @@ export default async function PortalPage({ params }: Props) {
     redirect(`/${locale}/portal/login`);
   }
   if (session.user.sessionKind !== "PORTAL") {
-    redirect(`/${locale}/admin/properties`);
+    redirect(await getAdminLandingPathForOrganization(locale, session.user.organizationId));
   }
 
-  const t = await getTranslations("portal");
   const dues = getDuesService();
+  const reporting = getReportingService();
+  const tenantService = getPropertyTenantService();
+  const unitPortal = isUnitPortalSession(session);
+  const propertyId = session.user.propertyId;
+  const unitId = session.user.unitId;
+  const currentYear = new Date().getFullYear();
 
-  const [units, openDebt, statement] = await Promise.all([
-    getOccupancyService().listForPortalUser(session.user.id),
-    dues.getPortalOpenDebt(session.user.id),
-    dues.getPortalStatement(session.user.id),
-  ]);
+  const units =
+    unitPortal && propertyId && unitId
+      ? await getOccupancyService().listForPortalUnit(propertyId, unitId)
+      : await getOccupancyService().listForPortalUser(session.user.id);
+
+  const propertyIds = [...new Set(units.map((unit) => unit.propertyId))];
+  const propertyContextEntries = await Promise.all(
+    propertyIds.map(async (id) => {
+      const propertyUnits = units.filter((unit) => unit.propertyId === id);
+      return [
+        id,
+        {
+          propertyName: propertyUnits[0]?.propertyName ?? "",
+          unitIds: propertyUnits.map((unit) => unit.unitId),
+          settings: await tenantService.getPortalSettings(session.user.organizationId, id),
+        },
+      ] as const;
+    }),
+  );
+  const propertyContexts = new Map(propertyContextEntries);
+
+  const primarySettings =
+    unitPortal && propertyId ? propertyContexts.get(propertyId)?.settings ?? null : null;
+
+  const scopes = units.map((u) => ({
+    propertyId: u.propertyId,
+    unitId: u.unitId,
+    blockId: u.blockId,
+  }));
+
+  const incomeExpensePropertyIds = [...propertyContexts.entries()]
+    .filter(([, context]) => context.settings?.showIncomeExpenseReport === true)
+    .map(([id]) => id);
+
+  const memberDebtPropertyIds = [...propertyContexts.entries()]
+    .filter(([, context]) => context.settings?.showMemberDebtSummary === true)
+    .map(([id]) => id);
+
+  const [openDebt, openDebtLines, statement, announcements, documents, incomeExpenseReports, memberDebtSummaries] =
+    await Promise.all([
+      unitPortal && propertyId && unitId
+        ? dues.getPortalOpenDebtForUnit(propertyId, unitId)
+        : dues.getPortalOpenDebt(session.user.id),
+      unitPortal && propertyId && unitId
+        ? dues.getPortalOpenDebtLinesForUnit(propertyId, unitId)
+        : dues.getPortalOpenDebtLines(session.user.id),
+      unitPortal && propertyId && unitId
+        ? dues.getPortalStatementForUnit(propertyId, unitId)
+        : dues.getPortalStatement(session.user.id),
+      primarySettings?.showAnnouncements !== false
+        ? getAnnouncementService().listForPortal({
+            organizationId: session.user.organizationId,
+            userId: session.user.id,
+            scopes,
+            page: 1,
+            pageSize: 50,
+          })
+        : Promise.resolve({ items: [], total: 0, page: 1, pageSize: 50 }),
+      primarySettings?.showDocuments !== false
+        ? getDocumentService().listForPortal({
+            organizationId: session.user.organizationId,
+            scopes,
+            page: 1,
+            pageSize: 50,
+          })
+        : Promise.resolve({ items: [], total: 0, page: 1, pageSize: 50 }),
+      Promise.all(
+        incomeExpensePropertyIds.map((id) =>
+          reporting.getPortalIncomeExpenseSummary({
+            organizationId: session.user.organizationId,
+            propertyId: id,
+            locale,
+            year: currentYear,
+          }),
+        ),
+      ),
+      Promise.all(
+        memberDebtPropertyIds.map((id) => {
+          const context = propertyContexts.get(id);
+          return dues.getPortalMemberDebtSummary({
+            organizationId: session.user.organizationId,
+            propertyId: id,
+            excludeUnitIds: context?.unitIds ?? [],
+          });
+        }),
+      ),
+    ]);
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {t("welcome")}, {session.user.name}
-          </CardTitle>
-          <CardDescription>{t("subtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm">
-            {t("openDebt")}: <span className="font-semibold">{money(openDebt, locale)}</span>
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("unitsTitle")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {units.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("emptyUnits")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("property")}</TableHead>
-                  <TableHead>{t("unitCode")}</TableHead>
-                  <TableHead>{t("role")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {units.map((row) => (
-                  <TableRow key={row.occupancyId}>
-                    <TableCell>{row.propertyName}</TableCell>
-                    <TableCell className="font-medium">{row.unitCode}</TableCell>
-                    <TableCell>{row.role === OccupancyRole.OWNER ? t("roleOwner") : t("roleTenant")}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("statementTitle")}</CardTitle>
-          <CardDescription>{t("statementSubtitle")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {statement.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("statementEmpty")}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("statementDate")}</TableHead>
-                  <TableHead>{t("statementLabel")}</TableHead>
-                  <TableHead>{t("statementDebit")}</TableHead>
-                  <TableHead>{t("statementCredit")}</TableHead>
-                  <TableHead>{t("statementBalance")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {statement.map((row, index) => (
-                  <TableRow key={`${row.kind}-${index}`}>
-                    <TableCell>{row.date.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US")}</TableCell>
-                    <TableCell>{row.label}</TableCell>
-                    <TableCell>{row.debit !== "0" ? money(row.debit, locale) : "—"}</TableCell>
-                    <TableCell>{row.credit !== "0" ? money(row.credit, locale) : "—"}</TableCell>
-                    <TableCell>{money(row.balance, locale)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+    <AppMarketingShell>
+      <PortalChrome
+        locale={locale}
+        userName={session.user.name ?? ""}
+        organizationName={session.user.organizationName}
+      />
+      <PortalDashboard
+        locale={locale}
+        userName={session.user.name ?? ""}
+        openDebt={openDebt}
+        openDebtLines={openDebtLines}
+        units={units}
+        statement={statement}
+        announcements={announcements.items}
+        documents={documents.items}
+        incomeExpenseReports={incomeExpenseReports}
+        memberDebtSummaries={memberDebtSummaries}
+        primarySettings={
+          primarySettings
+            ? {
+                showStatement: primarySettings.showStatement,
+                showAnnouncements: primarySettings.showAnnouncements,
+                showDocuments: primarySettings.showDocuments,
+              }
+            : null
+        }
+      />
+    </AppMarketingShell>
   );
 }

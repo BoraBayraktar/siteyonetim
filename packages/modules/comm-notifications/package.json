@@ -1,0 +1,13 @@
+{
+  "name": "@siteyonetim/comm-notifications",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@siteyonetim/comm-announcements": "*",
+    "@siteyonetim/db": "*",
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/property-settings": "*"
+  }
+}

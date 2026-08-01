@@ -1,10 +1,12 @@
-import Link from "next/link";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import "@/bootstrap-monorepo-env";
+
+import { setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { auth, signOut } from "@/auth";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { AdminLayoutChrome } from "@/components/admin-layout-chrome";
+import { signOut } from "@/auth";
+import { getAdminSession, listAdminPropertiesNav } from "@/lib/cached-admin";
+import { auditorPortalPath, canManageOrgUsers, isAuditorRole } from "@/lib/auth-context";
 
 type Props = {
   children: React.ReactNode;
@@ -14,40 +16,31 @@ type Props = {
 export default async function AdminLayout({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const session = await auth();
+  const session = await getAdminSession();
   if (!session?.user || session.user.sessionKind !== "ADMIN") {
     redirect(`/${locale}/login`);
   }
-  const t = await getTranslations("nav");
-  const tAuth = await getTranslations("auth");
+  if (isAuditorRole(session.user.role)) {
+    redirect(auditorPortalPath(locale));
+  }
+
+  async function logoutAction() {
+    "use server";
+    await signOut({ redirectTo: `/${locale}` });
+  }
+
+  const propertiesNav = await listAdminPropertiesNav(session.user.organizationId);
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium">{session?.user?.organizationName}</p>
-            <p className="text-xs text-muted-foreground">{session?.user?.name}</p>
-          </div>
-          <nav className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href={`/${locale}/admin/properties`}>{t("properties")}</Link>
-            </Button>
-            <Separator orientation="vertical" className="hidden h-6 sm:block" />
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: `/${locale}` });
-              }}
-            >
-              <Button variant="outline" size="sm" type="submit">
-                {tAuth("logout")}
-              </Button>
-            </form>
-          </nav>
-        </div>
-      </header>
-      <div className="mx-auto max-w-6xl px-4 py-8">{children}</div>
-    </div>
+    <AdminLayoutChrome
+      locale={locale}
+      organizationName={session.user.organizationName}
+      userName={session.user.name ?? ""}
+      logoutAction={logoutAction}
+      propertiesNav={propertiesNav}
+      canManageOrgUsers={canManageOrgUsers(session)}
+    >
+      {children}
+    </AdminLayoutChrome>
   );
 }

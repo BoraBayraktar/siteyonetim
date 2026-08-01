@@ -90,6 +90,29 @@ export type ListLedgerInput = FinanceContext & {
   pageSize: number;
 };
 
+export type OperatingBudgetLineDto = {
+  categoryId: string;
+  categoryName: string;
+  categoryType: FinanceCategoryType;
+  plannedAmount: string;
+  actualAmount: string;
+};
+
+export type OperatingBudgetDto = {
+  id: string;
+  year: number;
+  notes: string | null;
+  lines: OperatingBudgetLineDto[];
+  totalPlanned: string;
+  totalActual: string;
+};
+
+export type SaveOperatingBudgetInput = FinanceContext & {
+  year: number;
+  notes?: string | null;
+  lines: Array<{ categoryId: string; plannedAmount: string }>;
+};
+
 export interface FinanceServiceContract {
   ensureOpenPeriod(ctx: FinanceContext, date?: Date): Promise<FinancePeriodDto>;
   listCategories(ctx: FinanceContext): Promise<FinanceCategoryDto[]>;
@@ -101,4 +124,6 @@ export interface FinanceServiceContract {
   listLedger(input: ListLedgerInput): Promise<PaginatedLedger>;
   createLedgerEntry(input: CreateLedgerEntryInput): Promise<LedgerEntryDto>;
   closePeriod(ctx: FinanceContext, periodId: string): Promise<FinancePeriodDto>;
+  getOperatingBudget(ctx: FinanceContext, year: number): Promise<OperatingBudgetDto | null>;
+  saveOperatingBudget(input: SaveOperatingBudgetInput): Promise<OperatingBudgetDto>;
 }

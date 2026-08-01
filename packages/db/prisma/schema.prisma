@@ -17,7 +17,37 @@ enum OrganizationRole {
   PROPERTY_MANAGER
   ACCOUNTANT
   BOARD_MEMBER
+  AUDITOR
   STAFF
+}
+
+enum PropertyIsolationMode {
+  SHARED_SCHEMA
+  DEDICATED_DATABASE
+}
+
+enum PropertyTenantStatus {
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  DECOMMISSIONED
+}
+
+enum PortalAuthMode {
+  EMAIL
+  UNIT_CREDENTIAL
+  BOTH
+}
+
+enum PropertyAccessRole {
+  PROPERTY_ADMIN
+  PROPERTY_MANAGER
+  PROPERTY_ACCOUNTANT
+  PROPERTY_AUDITOR
+  PROPERTY_BOARD_MEMBER
+  PROPERTY_STAFF
+  SECURITY
+  MAINTENANCE
 }
 
 enum PartyType {
@@ -65,6 +95,71 @@ enum PaymentChannel {
 enum DueCalculationMode {
   FIXED
   AREA_M2
+  SHARE_RATIO
+  ALLOCATED_BILL
+  METER_CONSUMPTION
+  METER_ALLOCATED_BILL
+}
+
+enum DueAccrualLineKind {
+  STANDARD
+  LATE_FEE
+}
+
+enum MeterKind {
+  HOT_WATER
+  COLD_WATER
+  HEATING
+  GAS
+}
+
+enum HeatingSystemType {
+  NONE
+  INDIVIDUAL_GAS
+  CENTRAL_GAS
+  CENTRAL_OTHER
+  DISTRICT_HEATING
+}
+
+enum HotWaterSystemType {
+  NONE
+  INDIVIDUAL
+  CENTRAL_INDIVIDUAL_METER
+  CENTRAL_SHARED
+}
+
+enum LateFeeRateKind {
+  CONTRACTUAL
+  LEGAL_TCMB
+}
+
+enum JobType {
+  LATE_FEE_MONTHLY
+  DUE_ACCRUAL_MONTHLY
+  ACCRUAL_DRAFT_REMINDER
+  REPORT_EXPORT
+}
+
+enum ReportExportStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum ReportExportFormat {
+  CSV
+  XLSX
+  PDF
+  ZIP
+}
+
+enum JobRunStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
 }
 
 enum DueAccrualStatus {
@@ -78,6 +173,42 @@ enum DueLineStatus {
   PAID
 }
 
+enum AnnouncementAudience {
+  PROPERTY_ALL
+  BLOCK
+  UNITS
+}
+
+enum AnnouncementBodyFormat {
+  PLAIN
+  HTML
+}
+
+enum OutboxChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum DocumentCategory {
+  CONTRACT
+  BOARD_MINUTES
+  INVOICE_COPY
+  OTHER
+}
+
+enum DocumentVisibility {
+  ADMIN_ONLY
+  PORTAL_SHARED
+  UNIT_SPECIFIC
+}
+
 model Organization {
   id        String   @id @default(cuid())
   name      String
@@ -88,6 +219,8 @@ model Organization {
   deleted         Boolean   @default(false)
   deletedDate     DateTime?
   deletedUserId   String?
+
+  requireTwoFactor Boolean @default(false)
 
   users      UserOrganization[]
   properties Property[]
@@ -101,6 +234,9 @@ model Organization {
   dueDefinitions   DueDefinition[]
   dueAccrualRuns   DueAccrualRun[]
   payments         Payment[]
+  announcements    Announcement[]
+  outboxMessages   OutboxMessage[]
+  documents        Document[]
 }
 
 model User {
@@ -115,9 +251,17 @@ model User {
   deletedDate   DateTime?
   deletedUserId String?
 
-  organizations UserOrganization[]
-  auditLogs     AuditLog[]
-  portalParty   Party?           @relation("PortalUser")
+  totpSecretEnc   String?
+  totpEnabledAt   DateTime?
+  totpBackupCodes Json?
+
+  organizations      UserOrganization[]
+  propertyAccess     UserPropertyAccess[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs          AuditLog[]
+  portalParty        Party?           @relation("PortalUser")
+  announcementReads  AnnouncementRead[]
+  uploadedDocuments  Document[]
 }
 
 model UserOrganization {
@@ -132,6 +276,24 @@ model UserOrganization {
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, deleted])
+  @@index([expiresAt])
 }
 
 model Property {
@@ -159,8 +321,146 @@ model Property {
   dueDefinitions    DueDefinition[]
   dueAccrualRuns    DueAccrualRun[]
   payments          Payment[]
+  announcements     Announcement[]
+  outboxMessages    OutboxMessage[]
+  documents         Document[]
+  utilityProfile    PropertyUtilityProfile?
+  whatsAppProfile   PropertyWhatsAppProfile?
+  unitMeters        UnitMeter[]
+  lateFeePolicy     DueLateFeePolicy?
+  reportExports     ReportExport[]
+  operatingBudgets  OperatingBudget[]
+  tenant            PropertyTenant?
+  userAccess        UserPropertyAccess[]
+  portalCredentials PortalUnitCredential[]
 
   @@index([organizationId, deleted])
+}
+
+model PropertyTenant {
+  id                   String                @id @default(cuid())
+  propertyId           String                @unique
+  organizationId       String
+  portalCode           String                @unique
+  isolationMode        PropertyIsolationMode @default(SHARED_SCHEMA)
+  neonProjectId        String?
+  neonBranchId         String?
+  databaseUrlSecretKey String?
+  portalAuthMode       PortalAuthMode        @default(BOTH)
+  status               PropertyTenantStatus  @default(ACTIVE)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property         Property               @relation(fields: [propertyId], references: [id])
+  portalSettings   PropertyPortalSettings?
+  unitCredentials  PortalUnitCredential[]
+
+  @@index([organizationId, deleted])
+  @@index([portalCode, deleted])
+}
+
+model PropertyPortalSettings {
+  id                      String   @id @default(cuid())
+  propertyTenantId        String   @unique
+  showIncomeExpenseReport Boolean  @default(false)
+  showMemberDebtSummary   Boolean  @default(false)
+  allowOnlinePayment      Boolean  @default(false)
+  showAnnouncements       Boolean  @default(true)
+  showDocuments           Boolean  @default(true)
+  showStatement           Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  propertyTenant PropertyTenant @relation(fields: [propertyTenantId], references: [id])
+}
+
+model UserPropertyAccess {
+  id             String             @id @default(cuid())
+  userId         String
+  organizationId String
+  propertyId     String
+  role           PropertyAccessRole
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  user     User     @relation(fields: [userId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@unique([userId, propertyId])
+  @@index([organizationId, propertyId, deleted])
+  @@index([userId, deleted])
+}
+
+model PortalUnitCredential {
+  id               String    @id @default(cuid())
+  propertyTenantId String
+  propertyId       String
+  unitId           String    @unique
+  passwordHash     String
+  active           Boolean   @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  propertyTenant PropertyTenant @relation(fields: [propertyTenantId], references: [id])
+  property       Property       @relation(fields: [propertyId], references: [id])
+  unit           Unit           @relation(fields: [unitId], references: [id])
+
+  @@index([propertyId, deleted])
+  @@index([propertyTenantId, deleted])
+}
+
+model OperatingBudget {
+  id             String   @id @default(cuid())
+  organizationId String
+  propertyId     String
+  year           Int
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property              @relation(fields: [propertyId], references: [id])
+  lines    OperatingBudgetLine[]
+
+  @@unique([propertyId, year])
+  @@index([organizationId, propertyId, deleted])
+}
+
+model OperatingBudgetLine {
+  id            String  @id @default(cuid())
+  budgetId      String
+  categoryId    String
+  plannedAmount Decimal @db.Decimal(14, 2)
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  budget   OperatingBudget @relation(fields: [budgetId], references: [id])
+  category FinanceCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([budgetId, categoryId])
+  @@index([budgetId, deleted])
 }
 
 model Block {
@@ -177,6 +477,7 @@ model Block {
 
   property Property @relation(fields: [propertyId], references: [id])
   units    Unit[]
+  announcements Announcement[]
 
   @@unique([propertyId, name])
   @@index([propertyId, deleted])
@@ -201,6 +502,10 @@ model Unit {
   block       Block?       @relation(fields: [blockId], references: [id])
   occupancies Occupancy[]
   dueAccrualLines DueAccrualLine[]
+  announcementTargets AnnouncementUnitTarget[]
+  documentTargets     DocumentUnitTarget[]
+  unitMeters            UnitMeter[]
+  portalCredential      PortalUnitCredential?
 
   @@unique([propertyId, code])
   @@index([propertyId, deleted])
@@ -212,9 +517,10 @@ model Party {
   organizationId String
   type           PartyType @default(PERSON)
   displayName    String
-  email          String?
-  phone          String?
-  portalUserId   String?   @unique
+  email                 String?
+  phone                 String?
+  communicationConsent  Boolean   @default(false)
+  portalUserId          String?   @unique
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -311,6 +617,7 @@ model FinanceCategory {
   organization Organization @relation(fields: [organizationId], references: [id])
   property     Property     @relation(fields: [propertyId], references: [id])
   ledgerEntries LedgerEntry[]
+  operatingBudgetLines OperatingBudgetLine[]
 
   @@unique([propertyId, name, type])
   @@index([propertyId, deleted])
@@ -428,6 +735,9 @@ model DueDefinition {
   calculationMode DueCalculationMode @default(FIXED)
   fixedAmount     Decimal?           @db.Decimal(14, 2)
   ratePerM2       Decimal?           @db.Decimal(14, 4)
+  meterKind       MeterKind?
+  isSystem        Boolean            @default(false)
+  autoAccrualMonthly Boolean         @default(false)
   active          Boolean            @default(true)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
@@ -439,6 +749,7 @@ model DueDefinition {
   organization Organization    @relation(fields: [organizationId], references: [id])
   property     Property        @relation(fields: [propertyId], references: [id])
   accrualRuns  DueAccrualRun[]
+  lateFeePolicies DueLateFeePolicy[]
 
   @@unique([propertyId, name])
   @@index([propertyId, deleted])
@@ -478,9 +789,11 @@ model DueAccrualLine {
   unitId           String
   partyId          String?
   financeAccountId String?
-  amount           Decimal       @db.Decimal(14, 2)
-  paidAmount       Decimal       @default(0) @db.Decimal(14, 2)
-  status           DueLineStatus @default(OPEN)
+  amount           Decimal              @db.Decimal(14, 2)
+  paidAmount       Decimal              @default(0) @db.Decimal(14, 2)
+  lineKind         DueAccrualLineKind   @default(STANDARD)
+  sourceLineId     String?
+  status           DueLineStatus        @default(OPEN)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -493,8 +806,10 @@ model DueAccrualLine {
   party          Party?              @relation(fields: [partyId], references: [id])
   financeAccount FinanceAccount?     @relation(fields: [financeAccountId], references: [id])
   allocations    PaymentAllocation[]
+  sourceLine     DueAccrualLine?     @relation("LateFeeSource", fields: [sourceLineId], references: [id])
+  lateFeeLines   DueAccrualLine[]    @relation("LateFeeSource")
 
-  @@unique([accrualRunId, unitId])
+  @@unique([accrualRunId, unitId, lineKind, sourceLineId])
   @@index([unitId, status])
   @@index([partyId])
 }
@@ -545,4 +860,303 @@ model PaymentAllocation {
 
   @@unique([paymentId, dueAccrualLineId])
   @@index([dueAccrualLineId])
+}
+
+model Announcement {
+  id             String               @id @default(cuid())
+  organizationId String
+  propertyId     String
+  title          String
+  body           String               @db.Text
+  bodyFormat     AnnouncementBodyFormat @default(PLAIN)
+  audience       AnnouncementAudience @default(PROPERTY_ALL)
+  blockId        String?
+  isPinned       Boolean              @default(false)
+  publishedAt    DateTime             @default(now())
+  publishStartAt DateTime
+  publishEndAt   DateTime
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization             @relation(fields: [organizationId], references: [id])
+  property     Property                 @relation(fields: [propertyId], references: [id])
+  block        Block?                   @relation(fields: [blockId], references: [id])
+  unitTargets  AnnouncementUnitTarget[]
+  reads        AnnouncementRead[]
+
+  @@index([organizationId, propertyId, deleted, publishedAt])
+  @@index([organizationId, propertyId, deleted, publishStartAt, publishEndAt])
+  @@index([blockId])
+}
+
+model AnnouncementUnitTarget {
+  id             String @id @default(cuid())
+  announcementId String
+  unitId         String
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  unit         Unit         @relation(fields: [unitId], references: [id])
+
+  @@unique([announcementId, unitId])
+  @@index([unitId])
+}
+
+model AnnouncementRead {
+  id             String   @id @default(cuid())
+  announcementId String
+  userId         String
+  readAt         DateTime @default(now())
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
+model OutboxMessage {
+  id             String        @id @default(cuid())
+  organizationId String
+  propertyId     String?
+  channel        OutboxChannel
+  status         OutboxStatus  @default(PENDING)
+  recipient      String
+  subject        String?
+  body           String        @db.Text
+  attempts       Int           @default(0)
+  maxAttempts    Int           @default(3)
+  lastError      String?
+  costMinor      Int?
+  sourceType     String?
+  sourceId       String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  sentAt         DateTime?
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property?    @relation(fields: [propertyId], references: [id])
+
+  @@index([organizationId, propertyId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model Document {
+  id               String             @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  title            String
+  category         DocumentCategory   @default(OTHER)
+  visibility       DocumentVisibility @default(ADMIN_ONLY)
+  fileName         String
+  mimeType         String
+  sizeBytes        Int
+  storageKey       String
+  uploadedByUserId String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization         @relation(fields: [organizationId], references: [id])
+  property     Property             @relation(fields: [propertyId], references: [id])
+  uploadedBy   User?                @relation(fields: [uploadedByUserId], references: [id])
+  unitTargets  DocumentUnitTarget[]
+
+  @@index([organizationId, propertyId, deleted, createdAt])
+  @@index([storageKey])
+}
+
+model DocumentUnitTarget {
+  id         String @id @default(cuid())
+  documentId String
+  unitId     String
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  unit     Unit     @relation(fields: [unitId], references: [id])
+
+  @@unique([documentId, unitId])
+  @@index([unitId])
+}
+
+model PropertyUtilityProfile {
+  id               String             @id @default(cuid())
+  organizationId   String
+  propertyId       String             @unique
+  heatingSystem    HeatingSystemType  @default(NONE)
+  hotWaterSystem   HotWaterSystemType @default(NONE)
+  notes            String?            @db.Text
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model DueLateFeePolicy {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  propertyId         String   @unique
+  rateKind           LateFeeRateKind @default(CONTRACTUAL)
+  monthlyRatePercent Decimal  @db.Decimal(8, 4)
+  graceDays          Int      @default(0)
+  dueDayOfMonth      Int      @default(1)
+  lateFeeDefinitionId String?
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property            Property       @relation(fields: [propertyId], references: [id])
+  lateFeeDefinition   DueDefinition? @relation(fields: [lateFeeDefinitionId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model PropertyWhatsAppProfile {
+  id               String   @id @default(cuid())
+  organizationId   String
+  propertyId       String   @unique
+  enabled          Boolean  @default(false)
+  phoneNumberId    String?
+  templateName     String   @default("siteyonetim_duyuru")
+  templateLanguage String   @default("tr")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model UnitMeter {
+  id           String    @id @default(cuid())
+  organizationId String
+  propertyId   String
+  unitId       String
+  kind         MeterKind
+  serialNumber String?
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property       @relation(fields: [propertyId], references: [id])
+  unit     Unit           @relation(fields: [unitId], references: [id])
+  readings MeterReading[]
+
+  @@unique([unitId, kind])
+  @@index([propertyId, deleted])
+}
+
+model MeterReading {
+  id           String   @id @default(cuid())
+  meterId      String
+  year         Int
+  month        Int
+  readingValue Decimal  @db.Decimal(14, 4)
+  readAt       DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  meter UnitMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
+
+  @@unique([meterId, year, month])
+  @@index([meterId, year, month])
+}
+
+/// TCMB yasal faiz — yıllık oran; gecikme uygulamasında aylık eşdeğer (yıllık/12) kullanılır.
+model LegalInterestRate {
+  id                String   @id @default(cuid())
+  year              Int
+  month             Int
+  annualRatePercent Decimal  @db.Decimal(8, 4)
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  @@unique([year, month])
+  @@index([deleted])
+}
+
+model JobRun {
+  id              String        @id @default(cuid())
+  jobType         JobType
+  idempotencyKey  String        @unique
+  organizationId  String?
+  propertyId      String?
+  year            Int?
+  month           Int?
+  status          JobRunStatus  @default(PENDING)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  resultJson      Json?
+  errorMessage    String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  @@index([jobType, status, createdAt])
+  @@index([organizationId, propertyId])
+}
+
+model ReportExport {
+  id                String             @id @default(cuid())
+  organizationId    String
+  propertyId        String
+  reportKind        String
+  format            ReportExportFormat @default(CSV)
+  year              Int
+  month             Int
+  blockId           String?
+  status            ReportExportStatus @default(PENDING)
+  storageKey        String?
+  errorMessage      String?            @db.Text
+  requestedByUserId String?
+  completedAt       DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([organizationId, propertyId, status, createdAt])
 }
