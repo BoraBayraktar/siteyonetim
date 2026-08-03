@@ -1,20 +1,37 @@
 import type { NextAuthConfig } from "next-auth";
+import { encode as encodeJwt, decode as decodeJwt } from "next-auth/jwt";
+import {
+  resolveSessionMaxAgeSeconds,
+  SESSION_MAX_AGE_REMEMBER_SECONDS,
+} from "@siteyonetim/platform-auth";
 
-const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
-const SESSION_MAX_AGE_REMEMBER_SECONDS = 30 * 24 * 60 * 60;
-
-function resolveSessionMaxAgeSeconds(rememberMe: boolean): number {
-  return rememberMe ? SESSION_MAX_AGE_REMEMBER_SECONDS : SESSION_MAX_AGE_SECONDS;
+function remainingSessionSeconds(token: { absoluteExp?: number; sessionMaxAge?: number } | null | undefined, fallback: number) {
+  if (typeof token?.absoluteExp === "number") {
+    return Math.max(0, token.absoluteExp - Math.floor(Date.now() / 1000));
+  }
+  if (typeof token?.sessionMaxAge === "number") {
+    return token.sessionMaxAge;
+  }
+  return fallback;
 }
 
 export const authConfig = {
   trustHost: true,
-  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_SECONDS },
+  // Cookie ceiling must cover the longest ("remember me") session. Shorter
+  // sessions are enforced via absoluteExp on the JWT (Auth.js encode ignores token.exp).
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_REMEMBER_SECONDS },
   pages: {
     signIn: "/tr/login",
   },
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   providers: [],
+  jwt: {
+    decode: decodeJwt,
+    async encode(params) {
+      const maxAge = remainingSessionSeconds(params.token, params.maxAge ?? SESSION_MAX_AGE_REMEMBER_SECONDS);
+      return encodeJwt({ ...params, maxAge });
+    },
+  },
   callbacks: {
     jwt({ token, user }) {
       if (user) {
@@ -31,9 +48,15 @@ export const authConfig = {
 
         const rememberMe = user.rememberMe === true;
         const maxAge = resolveSessionMaxAgeSeconds(rememberMe);
+        token.rememberMe = rememberMe;
         token.sessionMaxAge = maxAge;
-        token.exp = Math.floor(Date.now() / 1000) + maxAge;
+        token.absoluteExp = Math.floor(Date.now() / 1000) + maxAge;
       }
+
+      if (typeof token.absoluteExp === "number" && Math.floor(Date.now() / 1000) >= token.absoluteExp) {
+        return null;
+      }
+
       return token;
     },
     session({ session, token }) {
@@ -51,6 +74,9 @@ export const authConfig = {
         session.user.propertyId = token.propertyId as string | undefined;
         session.user.unitId = token.unitId as string | undefined;
         session.user.credentialId = token.credentialId as string | undefined;
+      }
+      if (typeof token.absoluteExp === "number") {
+        session.expires = new Date(token.absoluteExp * 1000).toISOString() as typeof session.expires;
       }
       return session;
     },
