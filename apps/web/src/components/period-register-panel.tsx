@@ -109,14 +109,12 @@ function RegisterCell({
   cell,
   selected,
   bulkMode,
-  onCollect,
   onToggleSelect,
 }: {
   locale: string;
   cell: PeriodRegisterCellDto;
   selected: boolean;
   bulkMode: boolean;
-  onCollect: () => void;
   onToggleSelect: () => void;
 }) {
   const t = useTranslations("periodRegister");
@@ -127,31 +125,8 @@ function RegisterCell({
 
   const selectable = Boolean(cell.lineId) && Number(cell.remaining) > 0;
 
-  function handleClick(event: MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    if (!selectable) {
-      return;
-    }
-    if (bulkMode) {
-      onToggleSelect();
-      return;
-    }
-    onCollect();
-  }
-
-  return (
-    <button
-      type="button"
-      disabled={!selectable}
-      onClick={handleClick}
-      className={cn(
-        "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-        cellTone(cell),
-        selectable && "cursor-pointer hover:ring-2 hover:ring-primary/30",
-        !selectable && "pointer-events-none cursor-default",
-        bulkMode && selected && "ring-2 ring-primary",
-      )}
-    >
+  const content = (
+    <>
       <div className="font-medium tabular-nums">
         {formatDebtMoney(cell.paidAmount, locale)} / {formatDebtMoney(cell.amount, locale)}
       </div>
@@ -164,7 +139,33 @@ function RegisterCell({
       {cell.lineKind === DueAccrualLineKind.LATE_FEE ? (
         <div className="text-[10px] uppercase tracking-wide opacity-70">{t("lateFeeBadge")}</div>
       ) : null}
-    </button>
+    </>
+  );
+
+  // Toplu seçimde hücre tıklaması seçimi değiştirir; normal modda satır tıklaması detayı açar.
+  if (bulkMode && selectable) {
+    return (
+      <button
+        type="button"
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onToggleSelect();
+        }}
+        className={cn(
+          "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors cursor-pointer hover:ring-2 hover:ring-primary/30",
+          cellTone(cell),
+          selected && "ring-2 ring-primary",
+        )}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={cn("w-full rounded-md px-2 py-1.5 text-left text-xs", cellTone(cell))}>
+      {content}
+    </div>
   );
 }
 
@@ -683,8 +684,16 @@ export function PeriodRegisterPanel({
                 registerPage.rows.map((row) => (
                   <TableRow
                     key={row.unitId}
+                    role="button"
+                    tabIndex={0}
                     className="cursor-pointer hover:bg-muted/40"
                     onClick={() => void openDetail(row.unitId)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        void openDetail(row.unitId);
+                      }
+                    }}
                   >
                     <TableCell className="sticky left-0 z-10 bg-card font-medium">
                       {debtUnitLabel(row)}
@@ -708,7 +717,6 @@ export function PeriodRegisterPanel({
                             selected={Boolean(
                               cell.lineId && selectedCells[cellSelectionKey(row.unitId, cell.lineId)],
                             )}
-                            onCollect={() => openCellPayment(row, column, cell)}
                             onToggleSelect={() => toggleCellSelection(row, column, cell)}
                           />
                         </TableCell>
