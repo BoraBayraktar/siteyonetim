@@ -805,6 +805,17 @@ export class DuesRepository {
         unit: { select: { id: true, code: true } },
         party: { select: { id: true, displayName: true } },
         accrualRun: { select: { year: true, month: true, dueDefinition: { select: { name: true } } } },
+        sourceLine: {
+          select: {
+            accrualRun: {
+              select: {
+                year: true,
+                month: true,
+                dueDefinition: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -1125,6 +1136,17 @@ export class DuesRepository {
             },
           },
           unit: { select: { code: true } },
+          sourceLine: {
+            select: {
+              accrualRun: {
+                select: {
+                  year: true,
+                  month: true,
+                  dueDefinition: { select: { name: true } },
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -1147,6 +1169,17 @@ export class DuesRepository {
                       year: true,
                       month: true,
                       dueDefinition: { select: { name: true } },
+                    },
+                  },
+                  sourceLine: {
+                    select: {
+                      accrualRun: {
+                        select: {
+                          year: true,
+                          month: true,
+                          dueDefinition: { select: { name: true } },
+                        },
+                      },
                     },
                   },
                 },
@@ -1338,6 +1371,17 @@ export class DuesRepository {
           },
         },
         unit: { select: { code: true } },
+        sourceLine: {
+          select: {
+            accrualRun: {
+              select: {
+                year: true,
+                month: true,
+                dueDefinition: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -1367,6 +1411,17 @@ export class DuesRepository {
                     year: true,
                     month: true,
                     dueDefinition: { select: { name: true } },
+                  },
+                },
+                sourceLine: {
+                  select: {
+                    accrualRun: {
+                      select: {
+                        year: true,
+                        month: true,
+                        dueDefinition: { select: { name: true } },
+                      },
+                    },
                   },
                 },
               },

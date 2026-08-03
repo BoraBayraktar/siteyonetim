@@ -88,6 +88,10 @@ export type DueAccrualLineDto = {
   month: number;
   lineKind: DueAccrualLineKind;
   dueDefinitionName: string;
+  /** LATE_FEE: overdue source accrual period / definition */
+  sourceYear?: number;
+  sourceMonth?: number;
+  sourceDueDefinitionName?: string;
 };
 
 export type DuePaymentTargetDto = {

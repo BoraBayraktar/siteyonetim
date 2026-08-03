@@ -80,6 +80,18 @@ function formatStatementDate(date: Date | string, locale: string) {
   return value.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US");
 }
 
+function formatOpenDebtLineLabel(line: UnitDebtDetailDto["openLines"][number]) {
+  if (
+    line.lineKind === DueAccrualLineKind.LATE_FEE &&
+    line.sourceDueDefinitionName &&
+    line.sourceMonth != null &&
+    line.sourceYear != null
+  ) {
+    return `${line.dueDefinitionName} (${line.sourceDueDefinitionName} ${line.sourceMonth}/${line.sourceYear})`;
+  }
+  return `${line.dueDefinitionName} ${line.month}/${line.year}`;
+}
+
 function resolveDetailParty(detail: UnitDebtDetailDto) {
   const partyId = detail.row.partyId ?? detail.openLines.find((line) => line.partyId)?.partyId ?? null;
   const partyName =
@@ -782,7 +794,7 @@ export function PeriodRegisterPanel({
                           className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 pr-2 text-sm"
                         >
                           <span className="min-w-0 break-words">
-                            {line.dueDefinitionName} {line.month}/{line.year}
+                            {formatOpenDebtLineLabel(line)}
                           </span>
                           <span className="shrink-0 font-medium tabular-nums">
                             {formatDebtMoney(line.remaining, locale)}

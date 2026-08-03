@@ -22,6 +22,9 @@ type OpenLineQueryRow = {
   month: number;
   lineKind: DueAccrualLineKind;
   dueDefinitionName: string;
+  sourceYear: number | null;
+  sourceMonth: number | null;
+  sourceDueDefinitionName: string | null;
   total_count: bigint;
 };
 
@@ -40,6 +43,16 @@ function mapOpenLine(row: Omit<OpenLineQueryRow, "total_count">): DueAccrualLine
     month: row.month,
     lineKind: row.lineKind,
     dueDefinitionName: row.dueDefinitionName,
+    ...(row.lineKind === DueAccrualLineKind.LATE_FEE &&
+    row.sourceDueDefinitionName &&
+    row.sourceYear != null &&
+    row.sourceMonth != null
+      ? {
+          sourceYear: row.sourceYear,
+          sourceMonth: row.sourceMonth,
+          sourceDueDefinitionName: row.sourceDueDefinitionName,
+        }
+      : {}),
   };
 }
 
@@ -85,6 +98,9 @@ export async function queryOpenLinesPaginated(
       ar.month,
       l."lineKind" AS "lineKind",
       dd.name AS "dueDefinitionName",
+      sar.year AS "sourceYear",
+      sar.month AS "sourceMonth",
+      sdd.name AS "sourceDueDefinitionName",
       COUNT(*) OVER() AS total_count
     FROM "DueAccrualLine" l
     INNER JOIN "DueAccrualRun" ar ON ar.id = l."accrualRunId"
@@ -92,6 +108,9 @@ export async function queryOpenLinesPaginated(
     INNER JOIN "Unit" u ON u.id = l."unitId" AND u.deleted = false
     LEFT JOIN "Block" b ON b.id = u."blockId" AND b.deleted = false
     LEFT JOIN "Party" p ON p.id = l."partyId" AND p.deleted = false
+    LEFT JOIN "DueAccrualLine" sl ON sl.id = l."sourceLineId" AND sl.deleted = false
+    LEFT JOIN "DueAccrualRun" sar ON sar.id = sl."accrualRunId"
+    LEFT JOIN "DueDefinition" sdd ON sdd.id = sar."dueDefinitionId"
     WHERE l.deleted = false
       AND l.status IN (${DueLineStatus.OPEN}::"DueLineStatus", ${DueLineStatus.PARTIAL}::"DueLineStatus")
       AND ar.deleted = false

@@ -258,6 +258,7 @@ function mapPortalOpenDebtLine(
 
 function mapOpenLine(r: Awaited<ReturnType<DuesRepository["listOpenLinesByUnit"]>>[number]): DueAccrualLineDto {
   const remaining = r.amount.sub(r.paidAmount);
+  const sourceRun = r.sourceLine?.accrualRun;
   return {
     id: r.id,
     unitId: r.unit.id,
@@ -272,15 +273,56 @@ function mapOpenLine(r: Awaited<ReturnType<DuesRepository["listOpenLinesByUnit"]
     month: r.accrualRun.month,
     lineKind: r.lineKind,
     dueDefinitionName: r.accrualRun.dueDefinition.name,
+    ...(r.lineKind === DueAccrualLineKind.LATE_FEE && sourceRun
+      ? {
+          sourceYear: sourceRun.year,
+          sourceMonth: sourceRun.month,
+          sourceDueDefinitionName: sourceRun.dueDefinition.name,
+        }
+      : {}),
   };
 }
 
+function formatAccrualChargeLabel(input: {
+  lineKind: DueAccrualLineKind;
+  dueDefinitionName: string;
+  year: number;
+  month: number;
+  sourceYear?: number | null;
+  sourceMonth?: number | null;
+  sourceDueDefinitionName?: string | null;
+}): string {
+  const period = `${input.month}/${input.year}`;
+  if (
+    input.lineKind === DueAccrualLineKind.LATE_FEE &&
+    input.sourceDueDefinitionName &&
+    input.sourceMonth != null &&
+    input.sourceYear != null
+  ) {
+    return `${input.dueDefinitionName} (${input.sourceDueDefinitionName} ${input.sourceMonth}/${input.sourceYear})`;
+  }
+  return `${input.dueDefinitionName} ${period}`;
+}
+
 function formatStatementAccrualLabel(line: {
+  lineKind: DueAccrualLineKind;
   unit: { code: string };
   accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+  sourceLine?: {
+    accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+  } | null;
 }): string {
-  const period = `${line.accrualRun.month}/${line.accrualRun.year}`;
-  return `${line.accrualRun.dueDefinition.name} ${period} — ${line.unit.code}`;
+  const sourceRun = line.sourceLine?.accrualRun;
+  const charge = formatAccrualChargeLabel({
+    lineKind: line.lineKind,
+    dueDefinitionName: line.accrualRun.dueDefinition.name,
+    year: line.accrualRun.year,
+    month: line.accrualRun.month,
+    sourceYear: sourceRun?.year,
+    sourceMonth: sourceRun?.month,
+    sourceDueDefinitionName: sourceRun?.dueDefinition.name,
+  });
+  return `${charge} — ${line.unit.code}`;
 }
 
 function formatStatementPaymentLabel(payment: {
@@ -289,7 +331,11 @@ function formatStatementPaymentLabel(payment: {
   cashbox?: { name: string } | null;
   allocations?: Array<{
     dueAccrualLine: {
+      lineKind: DueAccrualLineKind;
       accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+      sourceLine?: {
+        accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+      } | null;
     };
   }>;
 }): string {
@@ -299,8 +345,17 @@ function formatStatementPaymentLabel(payment: {
   const targets = [
     ...new Set(
       (payment.allocations ?? []).map((allocation) => {
-        const run = allocation.dueAccrualLine.accrualRun;
-        return `${run.dueDefinition.name} ${run.month}/${run.year}`;
+        const dueLine = allocation.dueAccrualLine;
+        const sourceRun = dueLine.sourceLine?.accrualRun;
+        return formatAccrualChargeLabel({
+          lineKind: dueLine.lineKind,
+          dueDefinitionName: dueLine.accrualRun.dueDefinition.name,
+          year: dueLine.accrualRun.year,
+          month: dueLine.accrualRun.month,
+          sourceYear: sourceRun?.year,
+          sourceMonth: sourceRun?.month,
+          sourceDueDefinitionName: sourceRun?.dueDefinition.name,
+        });
       }),
     ),
   ];
