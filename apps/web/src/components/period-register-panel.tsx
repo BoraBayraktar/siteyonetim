@@ -752,7 +752,7 @@ export function PeriodRegisterPanel({
       >
         <SheetContent
           side="right"
-          className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-xl"
+          className="flex h-full !w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-2xl"
         >
           <SheetHeader className="border-b px-4 py-4 text-left">
             <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
@@ -777,7 +777,10 @@ export function PeriodRegisterPanel({
                   ) : (
                     <ul className="space-y-2">
                       {detail.openLines.map((line) => (
-                        <li key={line.id} className="flex items-baseline justify-between gap-4 text-sm">
+                        <li
+                          key={line.id}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 pr-2 text-sm"
+                        >
                           <span className="min-w-0 shrink truncate">
                             {line.month}/{line.year}
                           </span>
@@ -793,7 +796,42 @@ export function PeriodRegisterPanel({
                 {detail.statement.length > 0 ? (
                   <div>
                     <h3 className="mb-2 text-sm font-medium">{tDebt("statementTitle")}</h3>
-                    <div className="overflow-x-auto rounded-md border">
+                    <div className="space-y-2 sm:hidden">
+                      {detail.statement.map((line, index) => (
+                        <div
+                          key={`${line.kind}-${index}-mobile`}
+                          className="rounded-lg border p-3 text-sm"
+                        >
+                          <div className="flex min-w-0 items-start justify-between gap-3">
+                            <span className="min-w-0 break-words font-medium">{line.label}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">
+                              {formatStatementDate(line.date, locale)}
+                            </span>
+                          </div>
+                          <dl className="mt-3 grid grid-cols-3 gap-2">
+                            <div className="min-w-0">
+                              <dt className="text-xs text-muted-foreground">{tPortal("statementDebit")}</dt>
+                              <dd className="mt-1 break-words tabular-nums">
+                                {line.debit !== "0" ? formatDebtMoney(line.debit, locale) : "—"}
+                              </dd>
+                            </div>
+                            <div className="min-w-0">
+                              <dt className="text-xs text-muted-foreground">{tPortal("statementCredit")}</dt>
+                              <dd className="mt-1 break-words tabular-nums">
+                                {line.credit !== "0" ? formatDebtMoney(line.credit, locale) : "—"}
+                              </dd>
+                            </div>
+                            <div className="min-w-0 text-right">
+                              <dt className="text-xs text-muted-foreground">{tPortal("statementBalance")}</dt>
+                              <dd className="mt-1 break-words tabular-nums">
+                                {formatDebtMoney(line.balance, locale)}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto rounded-md border sm:block">
                       <Table>
                         <TableHeader>
                           <TableRow>
