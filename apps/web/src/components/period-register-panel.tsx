@@ -13,7 +13,7 @@ import { DueAccrualLineKind } from "@siteyonetim/db";
 import { Download, Filter, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition, type MouseEvent } from "react";
 
 import { getUnitDebtDetailAction, recordDuePaymentAction, type DuesActionState } from "@/app/actions/dues";
 import { debtUnitLabel, formatDebtMoney } from "@/components/debt-status-table";
@@ -127,7 +127,8 @@ function RegisterCell({
 
   const selectable = Boolean(cell.lineId) && Number(cell.remaining) > 0;
 
-  function handleClick() {
+  function handleClick(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
     if (!selectable) {
       return;
     }
@@ -147,7 +148,7 @@ function RegisterCell({
         "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors",
         cellTone(cell),
         selectable && "cursor-pointer hover:ring-2 hover:ring-primary/30",
-        !selectable && "cursor-default",
+        !selectable && "pointer-events-none cursor-default",
         bulkMode && selected && "ring-2 ring-primary",
       )}
     >
@@ -665,15 +666,13 @@ export function PeriodRegisterPanel({
                 </TableRow>
               ) : (
                 registerPage.rows.map((row) => (
-                  <TableRow key={row.unitId}>
-                    <TableCell className="sticky left-0 z-10 bg-card">
-                      <button
-                        type="button"
-                        className="font-medium text-left hover:underline"
-                        onClick={() => void openDetail(row.unitId)}
-                      >
-                        {debtUnitLabel(row)}
-                      </button>
+                  <TableRow
+                    key={row.unitId}
+                    className="cursor-pointer hover:bg-muted/40"
+                    onClick={() => void openDetail(row.unitId)}
+                  >
+                    <TableCell className="sticky left-0 z-10 bg-card font-medium">
+                      {debtUnitLabel(row)}
                     </TableCell>
                     <TableCell className="sticky left-[120px] z-10 bg-card">{row.partyName ?? "—"}</TableCell>
                     {registerPage.columns.map((column) => {
