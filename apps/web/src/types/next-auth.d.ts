@@ -49,6 +49,9 @@ declare module "next-auth/jwt" {
     propertyId?: string;
     unitId?: string;
     credentialId?: string;
+    rememberMe?: boolean;
     sessionMaxAge?: number;
+    /** Unix seconds; absolute session end (remember-me aware). */
+    absoluteExp?: number;
   }
 }
