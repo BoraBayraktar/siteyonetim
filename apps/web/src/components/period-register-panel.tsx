@@ -13,7 +13,7 @@ import { DueAccrualLineKind } from "@siteyonetim/db";
 import { Download, Filter, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useActionState, useEffect, useMemo, useState, useTransition, type MouseEvent } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } from "react";
 
 import { getUnitDebtDetailAction, recordDuePaymentAction, type DuesActionState } from "@/app/actions/dues";
 import { debtUnitLabel, formatDebtMoney } from "@/components/debt-status-table";
@@ -22,10 +22,9 @@ import { ServerPagination } from "@/components/server-pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -272,6 +271,10 @@ export function PeriodRegisterPanel({
   const [detailUnitId, setDetailUnitId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<UnitDebtDetailDto | null>(null);
+  const detailOpenRef = useRef(detailOpen);
+  const detailUnitIdRef = useRef(detailUnitId);
+  detailOpenRef.current = detailOpen;
+  detailUnitIdRef.current = detailUnitId;
 
   const detailParty = useMemo(() => (detail ? resolveDetailParty(detail) : null), [detail]);
 
@@ -313,10 +316,11 @@ export function PeriodRegisterPanel({
     setSelectedCells({});
     setBulkMode(false);
     router.refresh();
-    if (detailOpen && detailUnitId) {
-      void refreshDetail(detailUnitId);
+    const openUnitId = detailOpenRef.current ? detailUnitIdRef.current : null;
+    if (openUnitId) {
+      void refreshDetail(openUnitId);
     }
-  }, [payState.success, router, detailOpen, detailUnitId]);
+  }, [payState.success, router]);
 
   useEffect(() => {
     if (!initialUnitId) {
@@ -382,6 +386,8 @@ export function PeriodRegisterPanel({
     try {
       const result = await getUnitDebtDetailAction(propertyId, unitId);
       setDetail(result);
+    } catch {
+      setDetail(null);
     } finally {
       setDetailLoading(false);
     }
@@ -638,8 +644,8 @@ export function PeriodRegisterPanel({
           </div>
         </div>
 
-        <ScrollArea className="w-full whitespace-nowrap rounded-xl border bg-card">
-          <Table>
+        <div className="w-full overflow-x-auto rounded-xl border bg-card">
+          <table className="w-full caption-bottom text-sm">
             <TableHeader>
               <TableRow>
                 <TableHead className="sticky left-0 z-10 min-w-[120px] bg-card">{t("columnUnit")}</TableHead>
@@ -667,21 +673,26 @@ export function PeriodRegisterPanel({
                 registerPage.rows.map((row) => (
                   <TableRow
                     key={row.unitId}
-                    role="button"
-                    tabIndex={0}
                     className="cursor-pointer hover:bg-muted/40"
-                    onClick={() => void openDetail(row.unitId)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        void openDetail(row.unitId);
-                      }
+                    onClick={() => {
+                      void openDetail(row.unitId);
                     }}
                   >
-                    <TableCell className="sticky left-0 z-10 bg-card font-medium">
-                      {debtUnitLabel(row)}
+                    <TableCell className="sticky left-0 z-10 bg-card">
+                      <button
+                        type="button"
+                        className="font-medium text-left hover:underline"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void openDetail(row.unitId);
+                        }}
+                      >
+                        {debtUnitLabel(row)}
+                      </button>
                     </TableCell>
-                    <TableCell className="sticky left-[120px] z-10 bg-card">{row.partyName ?? "—"}</TableCell>
+                    <TableCell className="sticky left-[120px] z-10 bg-card">
+                      {row.partyName ?? "—"}
+                    </TableCell>
                     {registerPage.columns.map((column) => {
                       const cell = row.cells[column.id];
                       if (!cell) {
@@ -708,14 +719,15 @@ export function PeriodRegisterPanel({
                     <TableCell className="font-medium tabular-nums">
                       {formatDebtMoney(row.periodRemaining, locale)}
                     </TableCell>
-                    <TableCell className="tabular-nums">{formatDebtMoney(row.totalOpenDebt, locale)}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {formatDebtMoney(row.totalOpenDebt, locale)}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
-          </Table>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+          </table>
+        </div>
 
         <ServerPagination
           page={registerPage.page}
@@ -738,7 +750,10 @@ export function PeriodRegisterPanel({
           }
         }}
       >
-        <SheetContent side="right" className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <SheetContent
+          side="right"
+          className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-xl"
+        >
           <SheetHeader className="border-b px-4 py-4 text-left">
             <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
           </SheetHeader>
