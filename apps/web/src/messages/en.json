@@ -12,7 +12,10 @@
     "delete": "Delete",
     "selectParty": "Select member",
     "searchParty": "Search members…",
-    "noPartyResults": "No member found."
+    "noPartyResults": "No member found.",
+    "close": "Close",
+    "enterFullscreen": "Full screen",
+    "exitFullscreen": "Exit full screen"
   },
   "auth": {
     "loginTitle": "Admin sign in",

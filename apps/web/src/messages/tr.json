@@ -12,7 +12,10 @@
     "delete": "Sil",
     "selectParty": "Üye seçin",
     "searchParty": "Üye ara…",
-    "noPartyResults": "Üye bulunamadı."
+    "noPartyResults": "Üye bulunamadı.",
+    "close": "Kapat",
+    "enterFullscreen": "Tam ekran",
+    "exitFullscreen": "Tam ekrandan çık"
   },
   "auth": {
     "loginTitle": "Yönetici girişi",

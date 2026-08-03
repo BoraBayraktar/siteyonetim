@@ -752,9 +752,9 @@ export function PeriodRegisterPanel({
       >
         <SheetContent
           side="right"
-          className="flex h-full !w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-2xl"
+          className="flex h-full !w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-4xl"
         >
-          <SheetHeader className="border-b px-4 py-4 text-left">
+          <SheetHeader className="border-b px-4 py-4 pr-20 text-left">
             <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
@@ -781,8 +781,8 @@ export function PeriodRegisterPanel({
                           key={line.id}
                           className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 pr-2 text-sm"
                         >
-                          <span className="min-w-0 shrink truncate">
-                            {line.month}/{line.year}
+                          <span className="min-w-0 break-words">
+                            {line.dueDefinitionName} {line.month}/{line.year}
                           </span>
                           <span className="shrink-0 font-medium tabular-nums">
                             {formatDebtMoney(line.remaining, locale)}
@@ -848,7 +848,9 @@ export function PeriodRegisterPanel({
                               <TableCell className="whitespace-nowrap">
                                 {formatStatementDate(line.date, locale)}
                               </TableCell>
-                              <TableCell className="max-w-[160px] truncate">{line.label}</TableCell>
+                              <TableCell className="min-w-[14rem] max-w-[28rem] whitespace-normal break-words">
+                                {line.label}
+                              </TableCell>
                               <TableCell className="whitespace-nowrap text-right tabular-nums">
                                 {line.debit !== "0" ? formatDebtMoney(line.debit, locale) : "—"}
                               </TableCell>

@@ -212,7 +212,7 @@ export function MeterReadingsDrawer({ locale, propertyId, meter, readings }: Pro
         }
       }}>
         <SheetContent side="right" className="flex h-full max-h-dvh w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
-          <SheetHeader className="shrink-0 border-b px-4 py-4 text-left">
+          <SheetHeader className="shrink-0 border-b px-4 py-4 pr-20 text-left">
             <SheetTitle>{t("readingsDrawerTitle", { unit: meter.unitCode, kind: t(`kindLabel.${meter.kind}`) })}</SheetTitle>
             <SheetDescription>{t("readingsDrawerHint")}</SheetDescription>
           </SheetHeader>

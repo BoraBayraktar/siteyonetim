@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { XIcon } from "lucide-react"
+import { Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
@@ -49,16 +50,29 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  enableFullscreen = true,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /** Desktop only: toggle drawer to full viewport width. Hidden on mobile. */
+  enableFullscreen?: boolean
 }) {
+  const t = useTranslations("common")
+  const [fullscreen, setFullscreen] = React.useState(false)
+  const canFullscreen =
+    enableFullscreen && (side === "right" || side === "left")
+
+  React.useEffect(() => {
+    if (!canFullscreen) setFullscreen(false)
+  }, [canFullscreen])
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-fullscreen={fullscreen ? "true" : "false"}
         className={cn(
           "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
           side === "right" &&
@@ -69,16 +83,38 @@ function SheetContent({
             "inset-x-0 top-0 h-auto border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
           side === "bottom" &&
             "inset-x-0 bottom-0 h-auto border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-          className
+          className,
+          fullscreen &&
+            (side === "right" || side === "left") &&
+            "sm:!inset-y-0 sm:!left-0 sm:!right-0 sm:!w-screen sm:!max-w-none",
         )}
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
-            <XIcon className="size-4" />
-            <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
+        {(showCloseButton || canFullscreen) && (
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
+            {canFullscreen ? (
+              <button
+                type="button"
+                className="hidden rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none sm:inline-flex"
+                aria-label={fullscreen ? t("exitFullscreen") : t("enterFullscreen")}
+                title={fullscreen ? t("exitFullscreen") : t("enterFullscreen")}
+                onClick={() => setFullscreen((value) => !value)}
+              >
+                {fullscreen ? (
+                  <Minimize2Icon className="size-4" />
+                ) : (
+                  <Maximize2Icon className="size-4" />
+                )}
+              </button>
+            ) : null}
+            {showCloseButton ? (
+              <SheetPrimitive.Close className="rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">
+                <XIcon className="size-4" />
+                <span className="sr-only">{t("close")}</span>
+              </SheetPrimitive.Close>
+            ) : null}
+          </div>
         )}
       </SheetPrimitive.Content>
     </SheetPortal>

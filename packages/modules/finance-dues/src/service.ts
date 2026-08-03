@@ -270,7 +270,44 @@ function mapOpenLine(r: Awaited<ReturnType<DuesRepository["listOpenLinesByUnit"]
     status: r.status,
     year: r.accrualRun.year,
     month: r.accrualRun.month,
+    lineKind: r.lineKind,
+    dueDefinitionName: r.accrualRun.dueDefinition.name,
   };
+}
+
+function formatStatementAccrualLabel(line: {
+  unit: { code: string };
+  accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+}): string {
+  const period = `${line.accrualRun.month}/${line.accrualRun.year}`;
+  return `${line.accrualRun.dueDefinition.name} ${period} — ${line.unit.code}`;
+}
+
+function formatStatementPaymentLabel(payment: {
+  description: string | null;
+  documentNo: string | null;
+  cashbox?: { name: string } | null;
+  allocations?: Array<{
+    dueAccrualLine: {
+      accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+    };
+  }>;
+}): string {
+  const base = payment.description?.trim() || "Tahsilat";
+  const doc = payment.documentNo?.trim();
+  const head = doc ? `${base} (${doc})` : base;
+  const targets = [
+    ...new Set(
+      (payment.allocations ?? []).map((allocation) => {
+        const run = allocation.dueAccrualLine.accrualRun;
+        return `${run.dueDefinition.name} ${run.month}/${run.year}`;
+      }),
+    ),
+  ];
+  const parts = [head];
+  if (payment.cashbox?.name) parts.push(payment.cashbox.name);
+  if (targets.length > 0) parts.push(targets.join(", "));
+  return parts.join(" — ");
 }
 
 function monthlyPercentFromAnnual(annual: Prisma.Decimal) {
@@ -1657,16 +1694,13 @@ export class DuesService implements DuesServiceContract {
     const events: Event[] = [];
 
     for (const line of lines) {
-      const isLate = line.lineKind === DueAccrualLineKind.LATE_FEE;
       events.push({
         date: line.createdAt,
         sort: 1,
         line: {
           kind: "ACCRUAL",
           date: line.createdAt,
-          label: isLate
-            ? `Gecikme ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`
-            : `Aidat ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`,
+          label: formatStatementAccrualLabel(line),
           debit: line.amount.toString(),
           credit: "0",
           balance: "0",
@@ -1686,7 +1720,7 @@ export class DuesService implements DuesServiceContract {
         line: {
           kind: "PAYMENT",
           date: payment.paymentDate,
-          label: payment.description ?? payment.documentNo ?? "Tahsilat",
+          label: formatStatementPaymentLabel(payment),
           debit: "0",
           credit: allocated.toString(),
           balance: "0",
@@ -1712,16 +1746,13 @@ export class DuesService implements DuesServiceContract {
     const events: Event[] = [];
 
     for (const line of lines) {
-      const isLate = line.lineKind === DueAccrualLineKind.LATE_FEE;
       events.push({
         date: line.createdAt,
         sort: 1,
         line: {
           kind: "ACCRUAL",
           date: line.createdAt,
-          label: isLate
-            ? `Gecikme ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`
-            : `Aidat ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`,
+          label: formatStatementAccrualLabel(line),
           debit: line.amount.toString(),
           credit: "0",
           balance: "0",
@@ -1735,7 +1766,7 @@ export class DuesService implements DuesServiceContract {
         line: {
           kind: "PAYMENT",
           date: p.paymentDate,
-          label: p.description ?? "Tahsilat",
+          label: formatStatementPaymentLabel(p),
           debit: "0",
           credit: p.amount.toString(),
           balance: "0",

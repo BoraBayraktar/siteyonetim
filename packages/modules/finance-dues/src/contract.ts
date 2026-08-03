@@ -86,6 +86,8 @@ export type DueAccrualLineDto = {
   status: DueLineStatus;
   year: number;
   month: number;
+  lineKind: DueAccrualLineKind;
+  dueDefinitionName: string;
 };
 
 export type DuePaymentTargetDto = {

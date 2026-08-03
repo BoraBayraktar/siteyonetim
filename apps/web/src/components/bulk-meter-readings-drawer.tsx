@@ -129,7 +129,7 @@ export function BulkMeterReadingsDrawer({ locale, propertyId, meters, readingsBy
         }}
       >
         <SheetContent side="right" className="flex h-full max-h-dvh w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-          <SheetHeader className="shrink-0 border-b px-4 py-4 text-left">
+          <SheetHeader className="shrink-0 border-b px-4 py-4 pr-20 text-left">
             <SheetTitle>{t("bulkReadingsTitle")}</SheetTitle>
             <SheetDescription>{t("bulkReadingsHint")}</SheetDescription>
           </SheetHeader>

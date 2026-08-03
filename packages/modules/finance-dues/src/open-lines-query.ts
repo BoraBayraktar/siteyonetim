@@ -1,4 +1,5 @@
 import {
+  DueAccrualLineKind,
   DueAccrualStatus,
   DueLineStatus,
   Prisma,
@@ -19,6 +20,8 @@ type OpenLineQueryRow = {
   status: DueLineStatus;
   year: number;
   month: number;
+  lineKind: DueAccrualLineKind;
+  dueDefinitionName: string;
   total_count: bigint;
 };
 
@@ -35,6 +38,8 @@ function mapOpenLine(row: Omit<OpenLineQueryRow, "total_count">): DueAccrualLine
     status: row.status,
     year: row.year,
     month: row.month,
+    lineKind: row.lineKind,
+    dueDefinitionName: row.dueDefinitionName,
   };
 }
 
@@ -78,9 +83,12 @@ export async function queryOpenLinesPaginated(
       l.status,
       ar.year,
       ar.month,
+      l."lineKind" AS "lineKind",
+      dd.name AS "dueDefinitionName",
       COUNT(*) OVER() AS total_count
     FROM "DueAccrualLine" l
     INNER JOIN "DueAccrualRun" ar ON ar.id = l."accrualRunId"
+    INNER JOIN "DueDefinition" dd ON dd.id = ar."dueDefinitionId"
     INNER JOIN "Unit" u ON u.id = l."unitId" AND u.deleted = false
     LEFT JOIN "Block" b ON b.id = u."blockId" AND b.deleted = false
     LEFT JOIN "Party" p ON p.id = l."partyId" AND p.deleted = false

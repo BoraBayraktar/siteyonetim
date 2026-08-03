@@ -252,7 +252,7 @@ export function DueDefinitionWizard({
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="border-b px-4 py-4 text-left">
+          <SheetHeader className="border-b px-4 py-4 pr-20 text-left">
             <SheetTitle>{title}</SheetTitle>
           </SheetHeader>
           <ScrollArea className="flex-1 px-4 py-4">

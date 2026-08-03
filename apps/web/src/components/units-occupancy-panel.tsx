@@ -206,8 +206,8 @@ function UnitDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
+      <SheetContent className="w-full sm:max-w-xl">
+        <SheetHeader className="pr-16">
           <SheetTitle>{detail ? t("unitDetailTitle", { code: detail.code }) : t("unitDetailLoading")}</SheetTitle>
         </SheetHeader>
         <ScrollArea className="mt-4 max-h-[calc(100vh-8rem)] pr-3">

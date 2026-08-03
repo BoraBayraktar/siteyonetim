@@ -577,7 +577,7 @@ export function AdminSidebar({ locale, propertiesNav, canManageOrgUsers = false 
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="flex w-[min(100vw,20rem)] flex-col gap-0 p-0 sm:max-w-xs">
+        <SheetContent side="left" enableFullscreen={false} className="flex w-[min(100vw,20rem)] flex-col gap-0 p-0 sm:max-w-xs">
           <SheetHeader className="border-b px-4 py-3 text-left">
             <SheetTitle>{t("admin")}</SheetTitle>
           </SheetHeader>

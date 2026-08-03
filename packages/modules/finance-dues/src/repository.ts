@@ -1116,7 +1116,16 @@ export class DuesRepository {
           },
           createdAt: { gte: since },
         },
-        include: { accrualRun: true, unit: { select: { code: true } } },
+        include: {
+          accrualRun: {
+            select: {
+              year: true,
+              month: true,
+              dueDefinition: { select: { name: true } },
+            },
+          },
+          unit: { select: { code: true } },
+        },
         orderBy: { createdAt: "asc" },
       }),
       prisma.payment.findMany({
@@ -1125,6 +1134,25 @@ export class DuesRepository {
           propertyId: ctx.propertyId,
           deleted: false,
           paymentDate: { gte: since },
+        },
+        include: {
+          cashbox: { select: { name: true } },
+          allocations: {
+            where: { deleted: false },
+            include: {
+              dueAccrualLine: {
+                include: {
+                  accrualRun: {
+                    select: {
+                      year: true,
+                      month: true,
+                      dueDefinition: { select: { name: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: { paymentDate: "asc" },
       }),
@@ -1302,7 +1330,13 @@ export class DuesRepository {
         },
       },
       include: {
-        accrualRun: { select: { year: true, month: true } },
+        accrualRun: {
+          select: {
+            year: true,
+            month: true,
+            dueDefinition: { select: { name: true } },
+          },
+        },
         unit: { select: { code: true } },
       },
       orderBy: { createdAt: "asc" },
@@ -1322,9 +1356,22 @@ export class DuesRepository {
         paymentDate: { gte: since },
       },
       include: {
+        cashbox: { select: { name: true } },
         allocations: {
           where: { deleted: false, dueAccrualLine: { unitId, deleted: false } },
-          include: { dueAccrualLine: true },
+          include: {
+            dueAccrualLine: {
+              include: {
+                accrualRun: {
+                  select: {
+                    year: true,
+                    month: true,
+                    dueDefinition: { select: { name: true } },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       orderBy: { paymentDate: "asc" },
