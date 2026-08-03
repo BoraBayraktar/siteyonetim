@@ -416,8 +416,8 @@ function OrgPartiesDrawer({
         {t("orgPartiesOpen")}
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="w-full sm:max-w-lg">
-          <SheetHeader>
+        <SheetContent className="w-full sm:max-w-xl">
+          <SheetHeader className="pr-16">
             <SheetTitle>{t("orgPartiesTitle")}</SheetTitle>
           </SheetHeader>
           <ScrollArea className="mt-4 max-h-[calc(100vh-8rem)] pr-3">
