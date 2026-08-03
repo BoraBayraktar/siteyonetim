@@ -402,23 +402,6 @@ export function PeriodRegisterPanel({
     setPaymentOpen(true);
   }
 
-  function openCellPayment(row: PeriodRegisterRowDto, column: PeriodRegisterColumnDto, cell: PeriodRegisterCellDto) {
-    if (!cell.lineId || !row.partyId || Number(cell.remaining) <= 0) {
-      return;
-    }
-    openPaymentTarget(
-      {
-        unitId: row.unitId,
-        unitCode: row.unitCode,
-        blockName: row.blockName,
-        partyId: row.partyId,
-        partyName: row.partyName,
-        allocations: [{ lineId: cell.lineId, remaining: cell.remaining, definitionName: column.name }],
-      },
-      cell.remaining,
-    );
-  }
-
   function toggleCellSelection(
     row: PeriodRegisterRowDto,
     column: PeriodRegisterColumnDto,
