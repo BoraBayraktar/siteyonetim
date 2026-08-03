@@ -1,15 +1,24 @@
+import "./bootstrap-monorepo-env";
+
 import type { NextAuthConfig } from "next-auth";
 import { encode as encodeJwt, decode as decodeJwt } from "next-auth/jwt";
-import {
-  resolveSessionMaxAgeSeconds,
-  SESSION_MAX_AGE_REMEMBER_SECONDS,
-} from "@siteyonetim/platform-auth";
 
-function remainingSessionSeconds(token: { absoluteExp?: number; sessionMaxAge?: number } | null | undefined, fallback: number) {
+/** Keep in sync with @siteyonetim/platform-auth session helpers (avoid barrel import here). */
+const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
+const SESSION_MAX_AGE_REMEMBER_SECONDS = 30 * 24 * 60 * 60;
+
+function resolveSessionMaxAgeSeconds(rememberMe: boolean): number {
+  return rememberMe ? SESSION_MAX_AGE_REMEMBER_SECONDS : SESSION_MAX_AGE_SECONDS;
+}
+
+function remainingSessionSeconds(
+  token: { absoluteExp?: number; sessionMaxAge?: number } | null | undefined,
+  fallback: number,
+) {
   if (typeof token?.absoluteExp === "number") {
     return Math.max(0, token.absoluteExp - Math.floor(Date.now() / 1000));
   }
-  if (typeof token?.sessionMaxAge === "number") {
+  if (typeof token?.sessionMaxAge === "number" && token.sessionMaxAge > 0) {
     return token.sessionMaxAge;
   }
   return fallback;
@@ -28,7 +37,12 @@ export const authConfig = {
   jwt: {
     decode: decodeJwt,
     async encode(params) {
-      const maxAge = remainingSessionSeconds(params.token, params.maxAge ?? SESSION_MAX_AGE_REMEMBER_SECONDS);
+      const remaining = remainingSessionSeconds(
+        params.token,
+        params.maxAge ?? SESSION_MAX_AGE_REMEMBER_SECONDS,
+      );
+      // jose/Auth.js need a positive TTL; expired sessions are cleared in the jwt callback.
+      const maxAge = Math.max(1, remaining);
       return encodeJwt({ ...params, maxAge });
     },
   },
