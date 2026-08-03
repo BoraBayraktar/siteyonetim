@@ -8,6 +8,7 @@ import { createAuditService } from "@siteyonetim/platform-audit";
 import type {
   EnqueueAccrualDraftReminderInput,
   EnqueueAnnouncementNotificationsInput,
+  EnqueueAuditorQuarterReminderInput,
   EnqueueReportExportReadyInput,
   ListOutboxInput,
   NotificationServiceContract,
@@ -25,6 +26,7 @@ import {
 } from "./providers";
 import {
   buildAccrualDraftReminderRows,
+  buildAuditorQuarterReminderRows,
   buildOutboxRowsForAnnouncement,
   buildReportExportReadyRows,
   NotificationRepository,
@@ -145,6 +147,51 @@ export class NotificationService implements NotificationServiceContract {
       entityType: "Property",
       entityId: input.propertyId,
       metadata: { year: input.year, month: input.month, enqueued, draftRunCount: input.draftRunCount },
+    });
+
+    return { enqueued };
+  }
+
+  async enqueueAuditorQuarterReminder(input: EnqueueAuditorQuarterReminderInput): Promise<{ enqueued: number }> {
+    const sourceId = `${input.assignmentId}:${input.year}:${input.period}`;
+    const already = await this.repository.hasAuditorQuarterReminderOutbox(input.organizationId, sourceId);
+    if (already) {
+      return { enqueued: 0 };
+    }
+
+    if (!input.auditorEmail.trim()) {
+      throw new Error("NOTIFICATION_NO_RECIPIENTS");
+    }
+
+    const rows = buildAuditorQuarterReminderRows({
+      organizationId: input.organizationId,
+      propertyId: input.propertyId,
+      propertyName: input.propertyName,
+      assignmentId: input.assignmentId,
+      auditorEmail: input.auditorEmail,
+      auditorName: input.auditorName,
+      year: input.year,
+      period: input.period,
+      reportStatus: input.reportStatus,
+      appBaseUrl: process.env.APP_URL ?? "",
+      locale: input.locale,
+    });
+
+    const enqueued = await this.repository.createMessages(rows);
+
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "notification.auditorQuarterReminder.enqueue",
+      entityType: "AuditorAssignment",
+      entityId: input.assignmentId,
+      metadata: {
+        propertyId: input.propertyId,
+        year: input.year,
+        period: input.period,
+        enqueued,
+        auditorUserId: input.auditorUserId,
+      },
     });
 
     return { enqueued };

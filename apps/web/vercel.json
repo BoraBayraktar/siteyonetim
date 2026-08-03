@@ -18,6 +18,14 @@
     {
       "path": "/api/cron/report-exports",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/auditor-quarter-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/bank-statement-sync",
+      "schedule": "0 10 * * *"
     }
   ]
 }

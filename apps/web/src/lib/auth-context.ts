@@ -57,6 +57,12 @@ export function canManageOrgUsers(session: Session | null | undefined): boolean 
   return session.user.role === OrganizationRole.ORG_ADMIN;
 }
 
+export function canManageAuditorAssignments(session: Session | null | undefined): boolean {
+  if (!isAdminSession(session)) return false;
+  const role = session.user.role;
+  return role === OrganizationRole.ORG_ADMIN || role === OrganizationRole.PROPERTY_MANAGER;
+}
+
 export function auditorPortalPath(locale: string): string {
   return `/${locale}/auditor`;
 }

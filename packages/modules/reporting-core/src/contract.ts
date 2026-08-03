@@ -9,12 +9,23 @@ export type ReportDocumentMeta = {
   subtitle?: string;
 };
 
+export type OfficialLetterheadMeta = ReportDocumentMeta & {
+  documentRef?: string;
+  legalNotice?: string;
+};
+
+export type OfficialSignatureBlock = {
+  role: string;
+  nameLine?: string;
+  dateLine?: string;
+};
+
 export type ReportTableDocument = {
   title: string;
   headers: string[];
   rows: string[][];
   footer?: string[];
-  meta?: ReportDocumentMeta;
+  meta?: OfficialLetterheadMeta;
 };
 
 export type AuditorReportSection = {
@@ -24,7 +35,7 @@ export type AuditorReportSection = {
 
 export type AuditorReportDocument = {
   title: string;
-  meta: ReportDocumentMeta;
+  meta: OfficialLetterheadMeta;
   sections: AuditorReportSection[];
   financialTable?: {
     headers: string[];
@@ -35,6 +46,9 @@ export type AuditorReportDocument = {
   opinionLines: string[];
   signatureHeading: string;
   signatureLines: string[];
+  signatureBlocks?: OfficialSignatureBlock[];
+  /** When true (default), sections render as numbered articles (Madde 1 / Article 1). */
+  numberedArticles?: boolean;
 };
 
 export type ZipArchiveEntry = {

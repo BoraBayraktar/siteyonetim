@@ -10,6 +10,28 @@ export type RunLateFeeMonthlyInput = RunMonthlyJobInput;
 export type RunDueAccrualMonthlyInput = RunMonthlyJobInput;
 export type RunAccrualDraftReminderInput = RunMonthlyJobInput;
 
+export type RunAuditorQuarterReminderInput = {
+  year: number;
+  period: "Q1" | "Q2" | "Q3" | "Q4";
+  actorUserId?: string | null;
+};
+
+export type AuditorQuarterReminderAssignmentResult = {
+  organizationId: string;
+  propertyId: string;
+  assignmentId: string;
+  status: "SUCCEEDED" | "FAILED" | "SKIPPED";
+  enqueued?: number;
+  error?: string;
+};
+
+export type RunAuditorQuarterReminderResult = {
+  year: number;
+  period: "Q1" | "Q2" | "Q3" | "Q4";
+  assignments: AuditorQuarterReminderAssignmentResult[];
+  outbox: { processed: number; sent: number; failed: number };
+};
+
 export type AccrualReminderPropertyResult = {
   organizationId: string;
   propertyId: string;
@@ -23,6 +45,23 @@ export type RunAccrualDraftReminderResult = {
   month: number;
   properties: AccrualReminderPropertyResult[];
   outbox: { processed: number; sent: number; failed: number };
+};
+
+export type RunBankStatementSyncInput = {
+  actorUserId?: string | null;
+};
+
+export type BankStatementSyncPropertyResult = {
+  organizationId: string;
+  propertyId: string;
+  status: "SUCCEEDED" | "FAILED" | "SKIPPED";
+  lineCount?: number;
+  matchedOnImport?: number;
+  error?: string;
+};
+
+export type RunBankStatementSyncResult = {
+  properties: BankStatementSyncPropertyResult[];
 };
 
 export type JobPropertyResult = {
@@ -69,4 +108,6 @@ export interface JobServiceContract {
   runLateFeeMonthly(input: RunLateFeeMonthlyInput): Promise<RunLateFeeMonthlyResult>;
   runDueAccrualMonthly(input: RunDueAccrualMonthlyInput): Promise<RunDueAccrualMonthlyResult>;
   runAccrualDraftReminders(input: RunAccrualDraftReminderInput): Promise<RunAccrualDraftReminderResult>;
+  runAuditorQuarterReminders(input: RunAuditorQuarterReminderInput): Promise<RunAuditorQuarterReminderResult>;
+  runBankStatementSync(input: RunBankStatementSyncInput): Promise<RunBankStatementSyncResult>;
 }

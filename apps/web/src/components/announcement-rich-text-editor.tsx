@@ -138,10 +138,7 @@ export function AnnouncementRichTextEditor({ propertyId, value, onChange, disabl
   );
 
   const uploadAndInsertImageRef = useRef(uploadAndInsertImage);
-
-  useEffect(() => {
-    uploadAndInsertImageRef.current = uploadAndInsertImage;
-  }, [uploadAndInsertImage]);
+  uploadAndInsertImageRef.current = uploadAndInsertImage;
 
   const editor = useEditor({
     immediatelyRender: false,

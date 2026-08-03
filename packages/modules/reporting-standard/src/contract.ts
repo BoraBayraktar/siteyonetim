@@ -1,4 +1,4 @@
-import type { ReportExportFormat } from "@siteyonetim/db";
+import type { ReportExportFormat, AuditorReportPeriod } from "@siteyonetim/db";
 
 export type StandardReportKind =
   | "DUE_ACCRUAL_SUMMARY"
@@ -46,6 +46,11 @@ export type ReportExportDto = {
 export type RequestReportExportInput = ReportFilter & {
   reportKind: StandardReportKind;
   format?: ReportExportFormat;
+};
+
+export type ExportAuditorReportInput = ReportFilter & {
+  auditorPeriod?: AuditorReportPeriod;
+  opinionOverride?: import("./auditor-report-builder").AuditorOpinionOverride;
 };
 
 export type DueAccrualSummaryRow = {
@@ -220,6 +225,9 @@ export interface StandardReportingContract {
     kind: StandardReportKind,
     filter: ReportFilter,
     format: ReportExportFormat,
+  ): Promise<{ buffer: Buffer; contentType: string; extension: string }>;
+  exportAuditorReportTemplate(
+    input: ExportAuditorReportInput,
   ): Promise<{ buffer: Buffer; contentType: string; extension: string }>;
   requestReportExport(input: RequestReportExportInput): Promise<ReportExportDto>;
   processReportExport(exportId: string): Promise<ReportExportDto>;

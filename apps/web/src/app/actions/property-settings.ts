@@ -8,6 +8,7 @@ import { getPropertySettingsService } from "@/lib/services";
 
 export type UtilityActionState = { error?: string; success?: boolean };
 export type WhatsAppActionState = { error?: string; success?: boolean };
+export type ReportLetterheadActionState = { error?: string; success?: boolean };
 
 export async function upsertUtilityProfileAction(
   locale: string,
@@ -67,6 +68,38 @@ export async function upsertWhatsAppProfileAction(
       if (error.message === "PROPERTY_NOT_FOUND" || error.message === "WHATSAPP_TEMPLATE_REQUIRED") {
         return { error: error.message };
       }
+    }
+    throw error;
+  }
+}
+
+export async function upsertReportLetterheadProfileAction(
+  locale: string,
+  propertyId: string,
+  _prev: ReportLetterheadActionState,
+  formData: FormData,
+): Promise<ReportLetterheadActionState> {
+  const session = await auth();
+  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
+    return { error: "UNAUTHORIZED" };
+  }
+
+  try {
+    await getPropertySettingsService().upsertReportLetterheadProfile({
+      organizationId: session.user.organizationId,
+      propertyId,
+      subtitleLine: String(formData.get("subtitleLine") ?? "") || null,
+      legalNoticeTr: String(formData.get("legalNoticeTr") ?? "") || null,
+      legalNoticeEn: String(formData.get("legalNoticeEn") ?? "") || null,
+      documentRefPrefixTr: String(formData.get("documentRefPrefixTr") ?? "") || null,
+      documentRefPrefixEn: String(formData.get("documentRefPrefixEn") ?? "") || null,
+      actorUserId: session.user.id,
+    });
+    revalidatePath(`/${locale}/admin/properties/${propertyId}/reports`, "page");
+    return { success: true };
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROPERTY_NOT_FOUND") {
+      return { error: error.message };
     }
     throw error;
   }

@@ -8,6 +8,8 @@
     "@siteyonetim/comm-notifications": "*",
     "@siteyonetim/db": "*",
     "@siteyonetim/finance-dues": "*",
-    "@siteyonetim/platform-audit": "*"
+    "@siteyonetim/finance-banking": "*",
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/reporting-auditor": "*"
   }
 }

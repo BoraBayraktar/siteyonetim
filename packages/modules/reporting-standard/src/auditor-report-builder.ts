@@ -1,6 +1,14 @@
 import type { AuditorReportDocument } from "@siteyonetim/reporting-core";
+import type { BoardMinutesSummaryDto } from "@siteyonetim/document-management";
+import type { AuditorDischargeRecommendation, AuditorReportPeriod } from "@siteyonetim/db";
 
 import type { AnnualIncomeExpenseReport, PropertyInfoDto, ReportFilter } from "./contract";
+
+export type AuditorOpinionOverride = {
+  findingsLines?: string[];
+  opinionLines: string[];
+  dischargeRecommendation?: AuditorDischargeRecommendation | null;
+};
 
 const TR = {
   title: "KAT MALIKLERI DENETIM KURULU RAPORU",
@@ -76,9 +84,17 @@ export function buildAuditorReportDocument(input: {
   filter: ReportFilter;
   property: PropertyInfoDto;
   annual: AnnualIncomeExpenseReport;
+  boardMinutes?: BoardMinutesSummaryDto;
+  opinionOverride?: AuditorOpinionOverride;
+  auditorPeriod?: AuditorReportPeriod;
 }): AuditorReportDocument {
   const t = labels(input.filter.locale);
-  const periodLabel = input.filter.locale === "en" ? `Year ${input.filter.year}` : `${input.filter.year} yili`;
+  const periodLabel =
+    input.auditorPeriod && input.auditorPeriod !== "ANNUAL"
+      ? `${input.filter.year} ${input.auditorPeriod}`
+      : input.filter.locale === "en"
+        ? `Year ${input.filter.year}`
+        : `${input.filter.year} yili`;
 
   const financialRows = input.annual.rows.map((row) => {
     const cols = [row.label, row.amount];
@@ -147,7 +163,9 @@ export function buildAuditorReportDocument(input: {
         : [input.filter.locale === "en" ? "Net" : "Net", input.annual.netResult],
     },
     opinionHeading: t.opinionHeading,
-    opinionLines: t.opinionLines,
+    opinionLines: input.opinionOverride?.opinionLines?.length
+      ? input.opinionOverride.opinionLines
+      : t.opinionLines,
     signatureHeading: t.signatureHeading,
     signatureLines: t.signatureLines,
   };

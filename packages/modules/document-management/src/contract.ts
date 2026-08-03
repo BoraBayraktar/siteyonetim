@@ -65,9 +65,27 @@ export type DocumentDownloadPayload = {
   data: Buffer;
 };
 
+export type BoardMinutesSummaryItemDto = {
+  title: string;
+  createdAt: Date;
+};
+
+export type BoardMinutesSummaryDto = {
+  count: number;
+  items: BoardMinutesSummaryItemDto[];
+};
+
+export type ListBoardMinutesSummaryInput = {
+  organizationId: string;
+  propertyId: string;
+  year: number;
+  limit?: number;
+};
+
 export interface DocumentServiceContract {
   create(input: CreateDocumentInput): Promise<DocumentDto>;
   listForAdmin(input: ListDocumentsAdminInput): Promise<PaginatedDocuments>;
   listForPortal(input: ListDocumentsPortalInput): Promise<PaginatedDocuments>;
   openDownload(input: OpenDocumentDownloadInput): Promise<DocumentDownloadPayload>;
+  listBoardMinutesSummary(input: ListBoardMinutesSummaryInput): Promise<BoardMinutesSummaryDto>;
 }

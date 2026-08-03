@@ -1,6 +1,12 @@
 import { prisma } from "@siteyonetim/db";
 
-import type { PropertyUtilityProfileDto, PropertyWhatsAppProfileDto, UpsertUtilityProfileInput } from "./contract";
+import type {
+  PropertyReportLetterheadProfileDto,
+  PropertyUtilityProfileDto,
+  PropertyWhatsAppProfileDto,
+  UpsertReportLetterheadProfileInput,
+  UpsertUtilityProfileInput,
+} from "./contract";
 
 const notDeleted = { deleted: false };
 
@@ -100,6 +106,65 @@ export class PropertySettingsRepository {
       phoneNumberId: row.phoneNumberId,
       templateName: row.templateName,
       templateLanguage: row.templateLanguage,
+    };
+  }
+
+  async getReportLetterheadProfile(
+    organizationId: string,
+    propertyId: string,
+  ): Promise<PropertyReportLetterheadProfileDto | null> {
+    const row = await prisma.propertyReportLetterheadProfile.findFirst({
+      where: { propertyId, organizationId, ...notDeleted },
+    });
+    if (!row) return null;
+    return {
+      propertyId: row.propertyId,
+      subtitleLine: row.subtitleLine,
+      legalNoticeTr: row.legalNoticeTr,
+      legalNoticeEn: row.legalNoticeEn,
+      documentRefPrefixTr: row.documentRefPrefixTr,
+      documentRefPrefixEn: row.documentRefPrefixEn,
+    };
+  }
+
+  async upsertReportLetterheadProfile(
+    input: UpsertReportLetterheadProfileInput,
+  ): Promise<PropertyReportLetterheadProfileDto> {
+    const trimOrNull = (value?: string | null) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : null;
+    };
+
+    const row = await prisma.propertyReportLetterheadProfile.upsert({
+      where: { propertyId: input.propertyId },
+      create: {
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        subtitleLine: trimOrNull(input.subtitleLine),
+        legalNoticeTr: trimOrNull(input.legalNoticeTr),
+        legalNoticeEn: trimOrNull(input.legalNoticeEn),
+        documentRefPrefixTr: trimOrNull(input.documentRefPrefixTr),
+        documentRefPrefixEn: trimOrNull(input.documentRefPrefixEn),
+      },
+      update: {
+        subtitleLine: trimOrNull(input.subtitleLine),
+        legalNoticeTr: trimOrNull(input.legalNoticeTr),
+        legalNoticeEn: trimOrNull(input.legalNoticeEn),
+        documentRefPrefixTr: trimOrNull(input.documentRefPrefixTr),
+        documentRefPrefixEn: trimOrNull(input.documentRefPrefixEn),
+        deleted: false,
+        deletedDate: null,
+        deletedUserId: null,
+      },
+    });
+
+    return {
+      propertyId: row.propertyId,
+      subtitleLine: row.subtitleLine,
+      legalNoticeTr: row.legalNoticeTr,
+      legalNoticeEn: row.legalNoticeEn,
+      documentRefPrefixTr: row.documentRefPrefixTr,
+      documentRefPrefixEn: row.documentRefPrefixEn,
     };
   }
 }

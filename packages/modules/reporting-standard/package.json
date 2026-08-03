@@ -7,8 +7,13 @@
   "dependencies": {
     "@siteyonetim/comm-notifications": "*",
     "@siteyonetim/db": "*",
+    "@siteyonetim/document-management": "*",
+    "@siteyonetim/finance-banking": "*",
+    "@siteyonetim/finance-dues": "*",
     "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/platform-cache": "*",
     "@siteyonetim/platform-files": "*",
+    "@siteyonetim/property-settings": "*",
     "@siteyonetim/reporting-core": "*"
   }
 }

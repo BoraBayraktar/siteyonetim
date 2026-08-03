@@ -34,10 +34,37 @@ export type UpsertWhatsAppProfileInput = {
   actorUserId?: string | null;
 };
 
+export type PropertyReportLetterheadProfileDto = {
+  propertyId: string;
+  subtitleLine: string | null;
+  legalNoticeTr: string | null;
+  legalNoticeEn: string | null;
+  documentRefPrefixTr: string | null;
+  documentRefPrefixEn: string | null;
+};
+
+export type UpsertReportLetterheadProfileInput = {
+  organizationId: string;
+  propertyId: string;
+  subtitleLine?: string | null;
+  legalNoticeTr?: string | null;
+  legalNoticeEn?: string | null;
+  documentRefPrefixTr?: string | null;
+  documentRefPrefixEn?: string | null;
+  actorUserId?: string | null;
+};
+
 export interface PropertySettingsServiceContract {
   getUtilityProfile(organizationId: string, propertyId: string): Promise<PropertyUtilityProfileDto | null>;
   upsertUtilityProfile(input: UpsertUtilityProfileInput): Promise<PropertyUtilityProfileDto>;
   getWhatsAppProfile(organizationId: string, propertyId: string): Promise<PropertyWhatsAppProfileDto | null>;
   upsertWhatsAppProfile(input: UpsertWhatsAppProfileInput): Promise<PropertyWhatsAppProfileDto>;
   resolveWhatsAppPhoneNumberId(organizationId: string, propertyId: string): Promise<string | null>;
+  getReportLetterheadProfile(
+    organizationId: string,
+    propertyId: string,
+  ): Promise<PropertyReportLetterheadProfileDto | null>;
+  upsertReportLetterheadProfile(
+    input: UpsertReportLetterheadProfileInput,
+  ): Promise<PropertyReportLetterheadProfileDto>;
 }

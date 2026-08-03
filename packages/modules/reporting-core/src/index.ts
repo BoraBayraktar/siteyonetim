@@ -1,6 +1,8 @@
 export type {
   AuditorReportDocument,
   AuditorReportSection,
+  OfficialLetterheadMeta,
+  OfficialSignatureBlock,
   ReportDocumentMeta,
   ReportTableDocument,
   RenderedReportFile,

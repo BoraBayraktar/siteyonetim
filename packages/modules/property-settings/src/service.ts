@@ -1,9 +1,11 @@
 import { createAuditService } from "@siteyonetim/platform-audit";
 
 import type {
+  PropertyReportLetterheadProfileDto,
   PropertySettingsServiceContract,
   PropertyUtilityProfileDto,
   PropertyWhatsAppProfileDto,
+  UpsertReportLetterheadProfileInput,
   UpsertUtilityProfileInput,
   UpsertWhatsAppProfileInput,
 } from "./contract";
@@ -77,6 +79,35 @@ export class PropertySettingsService implements PropertySettingsServiceContract 
       return envDefault;
     }
     return null;
+  }
+
+  async getReportLetterheadProfile(
+    organizationId: string,
+    propertyId: string,
+  ): Promise<PropertyReportLetterheadProfileDto | null> {
+    return this.repository.getReportLetterheadProfile(organizationId, propertyId);
+  }
+
+  async upsertReportLetterheadProfile(
+    input: UpsertReportLetterheadProfileInput,
+  ): Promise<PropertyReportLetterheadProfileDto> {
+    const ok = await this.repository.propertyExists(input.organizationId, input.propertyId);
+    if (!ok) throw new Error("PROPERTY_NOT_FOUND");
+
+    const saved = await this.repository.upsertReportLetterheadProfile(input);
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "property.reportLetterhead.upsert",
+      entityType: "PropertyReportLetterheadProfile",
+      entityId: input.propertyId,
+      metadata: {
+        hasSubtitle: Boolean(saved.subtitleLine),
+        hasLegalNoticeTr: Boolean(saved.legalNoticeTr),
+        hasLegalNoticeEn: Boolean(saved.legalNoticeEn),
+      },
+    });
+    return saved;
   }
 }
 

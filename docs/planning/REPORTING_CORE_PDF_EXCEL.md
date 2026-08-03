@@ -25,7 +25,22 @@ Modül: `@siteyonetim/reporting-core`
 - Anlık: `/api/reports/export?format=csv|xlsx|pdf`
 - Arka plan: rapor sekmesinde format seçimi + kuyruk + e-posta bildirimi (mevcut akış)
 
+## Cache (FAZ A–B §4)
+
+| Key pattern | TTL | Invalidation |
+|-------------|-----|--------------|
+| `report:annual:{orgId}:{propertyId}:{year}…` | 15 dk | `invalidatePropertyYearReports` |
+| `report:collection-rate:{…}` | 15 dk | aynı |
+
+Invalidation tetikleyicileri: `dues.payment.record`, `finance.ledger.create`, `finance.operatingBudget.save` (`platform-cache/report-cache.ts`).
+
 ## Sonraki
 
 - Parametreli rapor tanımları (FAZ 2)
-- PDF’de gerçek kolon hizalama / Türkçe font
+
+## Resmi çıktı düzeni (FAZ C4 — 2026-08-03)
+
+- `official-pdf-layout.ts` — paylaşılan antet, numaralı madde, imza bloğu, sayfa numarası
+- Denetçi PDF: `renderAuditorTemplatePdf` — Madde 1…N + yapılandırılmış imza blokları
+- Tablo PDF: `renderPdfBuffer` — antet + hizalı tablo + sayfa numarası
+- Noter/basılı süreç: [NOTARY_PRINT_GUIDE.md](./NOTARY_PRINT_GUIDE.md)

@@ -1,4 +1,5 @@
 import { Prisma, PropertyKind, ReportExportFormat, LedgerEntryType } from "@siteyonetim/db";
+import { createDocumentService } from "@siteyonetim/document-management";
 import type { NotificationServiceContract } from "@siteyonetim/comm-notifications";
 import { createNotificationService } from "@siteyonetim/comm-notifications";
 import type { ReportingCoreContract } from "@siteyonetim/reporting-core";
@@ -23,6 +24,7 @@ import type {
   PropertySetupStepId,
   ReportExportDto,
   ReportFilter,
+  ExportAuditorReportInput,
   RequestReportExportInput,
   StandardReportKind,
   StandardReportingContract,
@@ -470,6 +472,44 @@ export class StandardReportingService implements StandardReportingContract {
   async exportCsv(kind: StandardReportKind, filter: ReportFilter): Promise<string> {
     const rendered = await this.exportReportFile(kind, filter, ReportExportFormat.CSV);
     return rendered.buffer.toString("utf-8");
+  }
+
+  async exportAuditorReportTemplate(input: ExportAuditorReportInput) {
+    await this.assertFilter(input);
+    const [property, annual, boardMinutes] = await Promise.all([
+      this.propertyInfo(input.organizationId, input.propertyId),
+      this.annualIncomeExpense(input),
+      createDocumentService().listBoardMinutesSummary({
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        year: input.year,
+      }),
+    ]);
+
+    const document = buildAuditorReportDocument({
+      filter: input,
+      property,
+      annual,
+      boardMinutes,
+      opinionOverride: input.opinionOverride,
+      auditorPeriod: input.auditorPeriod,
+    });
+
+    const rendered = await this.reportingCore.renderAuditorTemplate(document);
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "reporting.exportFile",
+      entityType: "StandardReport",
+      metadata: {
+        kind: "AUDITOR_REPORT_TEMPLATE",
+        format: "PDF",
+        year: input.year,
+        auditorPeriod: input.auditorPeriod ?? null,
+        hasOpinionOverride: Boolean(input.opinionOverride),
+      },
+    });
+    return rendered;
   }
 
   async exportReportFile(

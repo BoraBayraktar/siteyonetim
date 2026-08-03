@@ -138,6 +138,8 @@ enum JobType {
   DUE_ACCRUAL_MONTHLY
   ACCRUAL_DRAFT_REMINDER
   REPORT_EXPORT
+  AUDITOR_QUARTER_REMINDER
+  BANK_STATEMENT_SYNC
 }
 
 enum ReportExportStatus {
@@ -200,6 +202,7 @@ enum DocumentCategory {
   CONTRACT
   BOARD_MINUTES
   INVOICE_COPY
+  AUDITOR_REPORT
   OTHER
 }
 
@@ -207,6 +210,62 @@ enum DocumentVisibility {
   ADMIN_ONLY
   PORTAL_SHARED
   UNIT_SPECIFIC
+}
+
+enum AuditorReportPeriod {
+  Q1
+  Q2
+  Q3
+  Q4
+  ANNUAL
+}
+
+enum AuditorReportStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum AuditorDischargeRecommendation {
+  RECOMMEND
+  NOT_RECOMMEND
+  CONDITIONAL
+}
+
+enum BankStatementMatchStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+enum BankStatementImportSource {
+  MANUAL_CSV
+  API_WEBHOOK
+  API_REST_POLL
+}
+
+enum BankSyncProviderKind {
+  WEBHOOK_PUSH
+  GENERIC_REST_POLL
+}
+
+enum GeneralAssemblyMeetingType {
+  ORDINARY
+  EXTRAORDINARY
+}
+
+enum AssemblyAttendanceMode {
+  IN_PERSON
+  PROXY
+  ABSENT
+}
+
+enum AssemblyDecisionOutcome {
+  APPROVED
+  REJECTED
+  POSTPONED
+  NOT_VOTED
 }
 
 model Organization {
@@ -237,6 +296,8 @@ model Organization {
   announcements    Announcement[]
   outboxMessages   OutboxMessage[]
   documents        Document[]
+  bankStatementImports BankStatementImport[]
+  generalAssemblyMeetings GeneralAssemblyMeeting[]
 }
 
 model User {
@@ -333,6 +394,12 @@ model Property {
   tenant            PropertyTenant?
   userAccess        UserPropertyAccess[]
   portalCredentials PortalUnitCredential[]
+  auditorAssignments AuditorAssignment[]
+  auditorReports    AuditorReport[]
+  bankStatementImports BankStatementImport[]
+  reportLetterheadProfile PropertyReportLetterheadProfile?
+  bankWebhookProfile PropertyBankWebhookProfile?
+  generalAssemblyMeetings GeneralAssemblyMeeting[]
 
   @@index([organizationId, deleted])
 }
@@ -506,6 +573,7 @@ model Unit {
   documentTargets     DocumentUnitTarget[]
   unitMeters            UnitMeter[]
   portalCredential      PortalUnitCredential?
+  assemblyAttendance    AssemblyAttendance[]
 
   @@unique([propertyId, code])
   @@index([propertyId, deleted])
@@ -669,6 +737,8 @@ model Cashbox {
   movements    CashboxMovement[]
   ledgerEntries LedgerEntry[]
   payments     Payment[]
+  bankStatementImports BankStatementImport[]
+  bankWebhookProfiles PropertyBankWebhookProfile[]
 
   @@unique([propertyId, name])
   @@index([propertyId, deleted])
@@ -690,6 +760,7 @@ model CashboxMovement {
 
   cashbox     Cashbox      @relation(fields: [cashboxId], references: [id])
   ledgerEntry LedgerEntry? @relation(fields: [ledgerEntryId], references: [id])
+  bankStatementMatches BankStatementLine[] @relation("CashboxMovementBankMatch")
 
   @@index([cashboxId, movementDate])
 }
@@ -839,6 +910,7 @@ model Payment {
   financeAccount FinanceAccount?     @relation(fields: [financeAccountId], references: [id])
   party          Party?              @relation(fields: [partyId], references: [id])
   allocations    PaymentAllocation[]
+  bankStatementMatches BankStatementLine[] @relation("PaymentBankMatch")
 
   @@index([propertyId, paymentDate])
   @@index([partyId])
@@ -1159,4 +1231,219 @@ model ReportExport {
   property Property @relation(fields: [propertyId], references: [id])
 
   @@index([organizationId, propertyId, status, createdAt])
+}
+
+model AuditorAssignment {
+  id               String             @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  year             Int
+  period           AuditorReportPeriod
+  auditorUserId    String
+  assignedByUserId String
+  assignedAt       DateTime           @default(now())
+  deleted          Boolean            @default(false)
+  deletedDate      DateTime?
+  deletedUserId    String?
+
+  property Property       @relation(fields: [propertyId], references: [id])
+  reports  AuditorReport[]
+
+  @@index([organizationId, propertyId, year, deleted])
+  @@index([auditorUserId, deleted])
+}
+
+model AuditorReport {
+  id                      String                          @id @default(cuid())
+  organizationId          String
+  propertyId              String
+  assignmentId            String
+  year                    Int
+  period                  AuditorReportPeriod
+  status                  AuditorReportStatus             @default(DRAFT)
+  opinionHtml             String?                         @db.Text
+  findingsHtml            String?                         @db.Text
+  dischargeRecommendation AuditorDischargeRecommendation?
+  finalizedPdfKey         String?
+  submittedAt             DateTime?
+  approvedAt              DateTime?
+  approvedByUserId        String?
+  createdAt               DateTime                        @default(now())
+  updatedAt               DateTime                        @updatedAt
+  deleted                 Boolean                         @default(false)
+  deletedDate             DateTime?
+  deletedUserId           String?
+
+  property  Property          @relation(fields: [propertyId], references: [id])
+  assignment AuditorAssignment @relation(fields: [assignmentId], references: [id])
+  linkedMeetings GeneralAssemblyMeeting[]
+
+  @@index([organizationId, propertyId, year, status, deleted])
+  @@index([assignmentId, deleted])
+}
+
+model BankStatementImport {
+  id               String                    @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  cashboxId        String
+  fileName         String
+  source           BankStatementImportSource @default(MANUAL_CSV)
+  year             Int
+  month            Int
+  lineCount        Int                       @default(0)
+  matchedCount     Int                       @default(0)
+  importedByUserId String?
+  importedAt       DateTime                  @default(now())
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  deleted          Boolean                   @default(false)
+  deletedDate      DateTime?
+  deletedUserId    String?
+
+  organization Organization       @relation(fields: [organizationId], references: [id])
+  property     Property           @relation(fields: [propertyId], references: [id])
+  cashbox      Cashbox              @relation(fields: [cashboxId], references: [id])
+  lines        BankStatementLine[]
+
+  @@index([propertyId, year, month, deleted])
+  @@index([cashboxId, deleted])
+}
+
+model BankStatementLine {
+  id                       String                   @id @default(cuid())
+  importId                 String
+  lineDate                 DateTime
+  amount                   Decimal                  @db.Decimal(14, 2)
+  description              String?
+  reference                String?
+  matchStatus              BankStatementMatchStatus @default(UNMATCHED)
+  matchedPaymentId         String?
+  matchedCashboxMovementId String?
+  matchedAt                DateTime?
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  deleted                  Boolean                  @default(false)
+  deletedDate              DateTime?
+  deletedUserId            String?
+
+  import                 BankStatementImport @relation(fields: [importId], references: [id])
+  matchedPayment         Payment?            @relation("PaymentBankMatch", fields: [matchedPaymentId], references: [id])
+  matchedCashboxMovement CashboxMovement?    @relation("CashboxMovementBankMatch", fields: [matchedCashboxMovementId], references: [id])
+
+  @@index([importId, matchStatus, deleted])
+  @@index([lineDate, deleted])
+  @@index([matchedPaymentId])
+  @@index([matchedCashboxMovementId])
+}
+
+model PropertyReportLetterheadProfile {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  propertyId          String   @unique
+  subtitleLine        String?
+  legalNoticeTr       String?  @db.Text
+  legalNoticeEn       String?  @db.Text
+  documentRefPrefixTr String?
+  documentRefPrefixEn String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deleted             Boolean  @default(false)
+  deletedDate         DateTime?
+  deletedUserId       String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model PropertyBankWebhookProfile {
+  id                  String               @id @default(cuid())
+  organizationId      String
+  propertyId          String               @unique
+  enabled             Boolean              @default(false)
+  providerKind        BankSyncProviderKind @default(WEBHOOK_PUSH)
+  cashboxId           String?
+  webhookSecretHash   String?
+  pollUrl             String?
+  restPollBearerToken String?
+  lastReceivedAt      DateTime?
+  lastPollAt          DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deleted             Boolean              @default(false)
+  deletedDate         DateTime?
+  deletedUserId       String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+  cashbox  Cashbox? @relation(fields: [cashboxId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model GeneralAssemblyMeeting {
+  id             String                     @id @default(cuid())
+  organizationId String
+  propertyId     String
+  meetingType    GeneralAssemblyMeetingType
+  meetingDate    DateTime
+  location       String?
+  agendaSummary  String?                    @db.Text
+  noticeSentAt   DateTime?
+  noticeMethod   String?
+  linkedReportId String?                    @unique
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  deleted        Boolean                    @default(false)
+  deletedDate    DateTime?
+  deletedUserId  String?
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  property     Property          @relation(fields: [propertyId], references: [id])
+  linkedReport AuditorReport?    @relation(fields: [linkedReportId], references: [id])
+  decisions    AssemblyDecision[]
+  attendances  AssemblyAttendance[]
+
+  @@index([propertyId, meetingDate, deleted])
+  @@index([organizationId, deleted])
+}
+
+model AssemblyDecision {
+  id            String                  @id @default(cuid())
+  meetingId     String
+  subject       String
+  outcome       AssemblyDecisionOutcome @default(NOT_VOTED)
+  voteFor       Int?
+  voteAgainst   Int?
+  voteAbstain   Int?
+  sortOrder     Int                     @default(0)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  deleted       Boolean                 @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  meeting GeneralAssemblyMeeting @relation(fields: [meetingId], references: [id])
+
+  @@index([meetingId, sortOrder, deleted])
+}
+
+model AssemblyAttendance {
+  id            String                 @id @default(cuid())
+  meetingId     String
+  unitId        String
+  mode          AssemblyAttendanceMode @default(ABSENT)
+  proxyHolder   String?
+  notes         String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  deleted       Boolean                @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  meeting GeneralAssemblyMeeting @relation(fields: [meetingId], references: [id])
+  unit    Unit                   @relation(fields: [unitId], references: [id])
+
+  @@unique([meetingId, unitId])
+  @@index([meetingId, deleted])
 }

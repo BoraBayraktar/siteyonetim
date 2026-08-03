@@ -75,10 +75,26 @@ export type EnqueueReportExportReadyInput = {
   actorUserId?: string | null;
 };
 
+export type EnqueueAuditorQuarterReminderInput = {
+  organizationId: string;
+  propertyId: string;
+  propertyName: string;
+  assignmentId: string;
+  auditorUserId: string;
+  auditorEmail: string;
+  auditorName: string;
+  year: number;
+  period: string;
+  reportStatus: string | null;
+  actorUserId?: string | null;
+  locale?: string;
+};
+
 export interface NotificationServiceContract {
   listOutbox(input: ListOutboxInput): Promise<PaginatedOutbox>;
   enqueueAnnouncementNotifications(input: EnqueueAnnouncementNotificationsInput): Promise<{ enqueued: number }>;
   enqueueAccrualDraftReminder(input: EnqueueAccrualDraftReminderInput): Promise<{ enqueued: number }>;
+  enqueueAuditorQuarterReminder(input: EnqueueAuditorQuarterReminderInput): Promise<{ enqueued: number }>;
   enqueueReportExportReady(input: EnqueueReportExportReadyInput): Promise<{ enqueued: number }>;
   processPending(input: ProcessOutboxInput): Promise<ProcessOutboxResult>;
 }
