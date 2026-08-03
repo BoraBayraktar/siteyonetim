@@ -268,6 +268,7 @@ export function PeriodRegisterPanel({
   const selectedTotal = useMemo(() => sumRemaining(selectedCellList), [selectedCellList]);
 
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailUnitId, setDetailUnitId] = useState<string | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState<UnitDebtDetailDto | null>(null);
 
@@ -311,7 +312,10 @@ export function PeriodRegisterPanel({
     setSelectedCells({});
     setBulkMode(false);
     router.refresh();
-  }, [payState.success, router]);
+    if (detailOpen && detailUnitId) {
+      void refreshDetail(detailUnitId);
+    }
+  }, [payState.success, router, detailOpen, detailUnitId]);
 
   useEffect(() => {
     if (!initialUnitId) {
@@ -367,16 +371,27 @@ export function PeriodRegisterPanel({
     return () => window.clearTimeout(timer);
   }, [q, filters.q]);
 
-  async function openDetail(unitId: string) {
+  async function loadDetail(unitId: string, clearExisting: boolean) {
+    setDetailUnitId(unitId);
     setDetailOpen(true);
     setDetailLoading(true);
-    setDetail(null);
+    if (clearExisting) {
+      setDetail(null);
+    }
     try {
       const result = await getUnitDebtDetailAction(propertyId, unitId);
       setDetail(result);
     } finally {
       setDetailLoading(false);
     }
+  }
+
+  async function openDetail(unitId: string) {
+    await loadDetail(unitId, true);
+  }
+
+  async function refreshDetail(unitId: string) {
+    await loadDetail(unitId, false);
   }
 
   function openPaymentTarget(target: PaymentTarget, amount: string) {
@@ -722,12 +737,21 @@ export function PeriodRegisterPanel({
         />
       </div>
 
-      <Sheet open={detailOpen} onOpenChange={setDetailOpen}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+      <Sheet
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) {
+            setDetailUnitId(null);
+            setDetail(null);
+          }
+        }}
+      >
+        <SheetContent side="right" className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
           <SheetHeader className="border-b px-4 py-4 text-left">
             <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
           </SheetHeader>
-          <ScrollArea className="flex-1 px-4 py-4">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
             {detailLoading ? (
               <p className="text-sm text-muted-foreground">{tDebt("detailLoading")}</p>
             ) : detail ? (
@@ -735,7 +759,7 @@ export function PeriodRegisterPanel({
                 <div className="space-y-1">
                   <p className="text-lg font-semibold">{debtUnitLabel(detail.row)}</p>
                   <p className="text-sm text-muted-foreground">{detailParty?.partyName ?? "—"}</p>
-                  <p className="text-2xl font-semibold tracking-tight">
+                  <p className="text-2xl font-semibold tracking-tight tabular-nums">
                     {formatDebtMoney(detail.row.totalDebt, locale)}
                   </p>
                 </div>
@@ -747,11 +771,13 @@ export function PeriodRegisterPanel({
                   ) : (
                     <ul className="space-y-2">
                       {detail.openLines.map((line) => (
-                        <li key={line.id} className="flex items-center justify-between gap-3 text-sm">
-                          <span>
+                        <li key={line.id} className="flex items-baseline justify-between gap-4 text-sm">
+                          <span className="min-w-0 shrink truncate">
                             {line.month}/{line.year}
                           </span>
-                          <span className="font-medium tabular-nums">{formatDebtMoney(line.remaining, locale)}</span>
+                          <span className="shrink-0 font-medium tabular-nums">
+                            {formatDebtMoney(line.remaining, locale)}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -767,23 +793,27 @@ export function PeriodRegisterPanel({
                           <TableRow>
                             <TableHead>{tPortal("statementDate")}</TableHead>
                             <TableHead>{tPortal("statementLabel")}</TableHead>
-                            <TableHead>{tPortal("statementDebit")}</TableHead>
-                            <TableHead>{tPortal("statementCredit")}</TableHead>
-                            <TableHead>{tPortal("statementBalance")}</TableHead>
+                            <TableHead className="text-right">{tPortal("statementDebit")}</TableHead>
+                            <TableHead className="text-right">{tPortal("statementCredit")}</TableHead>
+                            <TableHead className="text-right">{tPortal("statementBalance")}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {detail.statement.map((line, index) => (
                             <TableRow key={`${line.kind}-${index}`}>
-                              <TableCell>{formatStatementDate(line.date, locale)}</TableCell>
-                              <TableCell className="max-w-[180px] truncate">{line.label}</TableCell>
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {formatStatementDate(line.date, locale)}
+                              </TableCell>
+                              <TableCell className="max-w-[160px] truncate">{line.label}</TableCell>
+                              <TableCell className="whitespace-nowrap text-right tabular-nums">
                                 {line.debit !== "0" ? formatDebtMoney(line.debit, locale) : "—"}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="whitespace-nowrap text-right tabular-nums">
                                 {line.credit !== "0" ? formatDebtMoney(line.credit, locale) : "—"}
                               </TableCell>
-                              <TableCell>{formatDebtMoney(line.balance, locale)}</TableCell>
+                              <TableCell className="whitespace-nowrap text-right tabular-nums">
+                                {formatDebtMoney(line.balance, locale)}
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -811,7 +841,7 @@ export function PeriodRegisterPanel({
             ) : (
               <p className="text-sm text-muted-foreground">{tDebt("detailNotFound")}</p>
             )}
-          </ScrollArea>
+          </div>
         </SheetContent>
       </Sheet>
 
