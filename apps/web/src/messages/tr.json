@@ -81,6 +81,7 @@
       "TOTP_ALREADY_ENABLED": "İki adımlı doğrulama zaten etkin.",
       "TOTP_NOT_ENABLED": "İki adımlı doğrulama etkin değil.",
       "INVALID_CREDENTIALS": "E-posta veya şifre hatalı.",
+      "SESSION_ESTABLISH_FAILED": "Doğrulama başarılı oldu ancak oturum açılamadı. Lütfen tekrar deneyin.",
       "INVALID_TOTP_ENROLLMENT": "Kurulum oturumu geçersiz. Lütfen yeniden başlayın.",
       "UNAUTHORIZED": "Bu işlem için yetkiniz yok."
     },

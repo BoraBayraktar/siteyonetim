@@ -81,6 +81,7 @@
       "TOTP_ALREADY_ENABLED": "Two-factor authentication is already enabled.",
       "TOTP_NOT_ENABLED": "Two-factor authentication is not enabled.",
       "INVALID_CREDENTIALS": "Invalid email or password.",
+      "SESSION_ESTABLISH_FAILED": "Verification succeeded but the session could not be created. Please try again.",
       "INVALID_TOTP_ENROLLMENT": "Setup session is invalid. Please start again.",
       "UNAUTHORIZED": "You are not authorized for this action."
     },
