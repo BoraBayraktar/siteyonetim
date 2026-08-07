@@ -1,10 +1,10 @@
 "use client";
 
-import { DueCalculationMode, MeterKind } from "@siteyonetim/db";
+import { DueCalculationMode, MeterKind, SupplierLateFeeAllocationMode } from "@siteyonetim/db";
 import type { DueDefinitionDto } from "@siteyonetim/finance-dues";
 import { Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useActionState, useEffect, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   createDueDefinitionAction,
@@ -19,20 +19,26 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
-  CALCULATION_MODES,
+  AIDAT_CALCULATION_MODES,
   DEFAULT_METER_KIND,
   definitionSummary,
+  isSupplierLateFeeDefinition,
   modeDescription,
   modeLabel,
   needsMeterKind,
 } from "@/lib/dues-definition-form";
+import { SUPPLIER_LATE_FEE_ALLOCATION_MODES } from "@/lib/supplier-late-fee";
 import { cn } from "@/lib/utils";
+
+export type DueDefinitionWizardVariant = "aidat" | "supplier";
 
 type WizardProps = {
   mode: "insert" | "edit";
   locale: string;
   propertyId: string;
   definition?: DueDefinitionDto;
+  /** Insert: which flow to open. Edit: inferred from definition when omitted. */
+  variant?: DueDefinitionWizardVariant;
   triggerLabel?: string;
 };
 
@@ -49,11 +55,21 @@ function StepIndicator({ step, t }: { step: number; t: ReturnType<typeof useTran
   );
 }
 
+function SupplierNotAidatBanner({ t }: { t: ReturnType<typeof useTranslations<"dues">> }) {
+  return (
+    <div className="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-sm text-blue-900 dark:text-blue-200">
+      <p className="font-medium">{t("wizard.supplierNotAidatTitle")}</p>
+      <p className="mt-1 text-xs">{t("wizard.supplierNotAidatDesc")}</p>
+    </div>
+  );
+}
+
 export function DueDefinitionWizard({
   mode,
   locale,
   propertyId,
   definition,
+  variant,
   triggerLabel,
 }: WizardProps) {
   const t = useTranslations("dues");
@@ -67,6 +83,14 @@ export function DueDefinitionWizard({
     {} as DuesActionState,
   );
 
+  const effectiveVariant: DueDefinitionWizardVariant = useMemo(() => {
+    if (variant) return variant;
+    if (definition && isSupplierLateFeeDefinition(definition.calculationMode)) return "supplier";
+    return "aidat";
+  }, [variant, definition]);
+
+  const isSupplierWizard = effectiveVariant === "supplier";
+
   const [name, setName] = useState(definition?.name ?? "");
   const [calculationMode, setCalculationMode] = useState<DueCalculationMode>(
     definition?.calculationMode ?? DueCalculationMode.FIXED,
@@ -75,6 +99,10 @@ export function DueDefinitionWizard({
   const [ratePerM2, setRatePerM2] = useState(definition?.ratePerM2 ?? "");
   const [meterKind, setMeterKind] = useState<MeterKind>(definition?.meterKind ?? DEFAULT_METER_KIND);
   const [autoAccrualMonthly, setAutoAccrualMonthly] = useState(definition?.autoAccrualMonthly ?? false);
+  const [supplierLateFeeAllocationMode, setSupplierLateFeeAllocationMode] =
+    useState<SupplierLateFeeAllocationMode>(
+      definition?.supplierLateFeeAllocationMode ?? SupplierLateFeeAllocationMode.DELINQUENT_BY_DEBT_RATIO,
+    );
 
   useEffect(() => {
     if (state.success) {
@@ -86,22 +114,49 @@ export function DueDefinitionWizard({
   useEffect(() => {
     if (!open) return;
     setName(definition?.name ?? "");
-    setCalculationMode(definition?.calculationMode ?? DueCalculationMode.FIXED);
     setFixedAmount(definition?.fixedAmount ?? "");
     setRatePerM2(definition?.ratePerM2 ?? "");
     setMeterKind(definition?.meterKind ?? DEFAULT_METER_KIND);
-    setAutoAccrualMonthly(definition?.autoAccrualMonthly ?? false);
+    setSupplierLateFeeAllocationMode(
+      definition?.supplierLateFeeAllocationMode ?? SupplierLateFeeAllocationMode.DELINQUENT_BY_DEBT_RATIO,
+    );
+    if (isSupplierWizard) {
+      setCalculationMode(DueCalculationMode.SUPPLIER_LATE_FEE_BILL);
+      setAutoAccrualMonthly(false);
+    } else {
+      setCalculationMode(definition?.calculationMode ?? DueCalculationMode.FIXED);
+      setAutoAccrualMonthly(definition?.autoAccrualMonthly ?? false);
+    }
     setStep(1);
-  }, [open, definition]);
+  }, [open, definition, isSupplierWizard]);
 
-  const label = triggerLabel ?? (mode === "edit" ? tCommon("edit") : t("addDefinition"));
-  const title = mode === "edit" ? t("editDefinition") : t("addDefinition");
+  const defaultTriggerLabel = isSupplierWizard
+    ? mode === "edit"
+      ? tCommon("edit")
+      : t("addSupplierLateFeeDefinition")
+    : mode === "edit"
+      ? tCommon("edit")
+      : t("addDefinition");
 
-  const reviewDefinition: Pick<DueDefinitionDto, "calculationMode" | "fixedAmount" | "ratePerM2" | "meterKind"> = {
+  const label = triggerLabel ?? defaultTriggerLabel;
+  const title = isSupplierWizard
+    ? mode === "edit"
+      ? t("editSupplierLateFeeDefinition")
+      : t("addSupplierLateFeeDefinition")
+    : mode === "edit"
+      ? t("editDefinition")
+      : t("addDefinition");
+
+  const reviewDefinition: Pick<
+    DueDefinitionDto,
+    "calculationMode" | "fixedAmount" | "ratePerM2" | "meterKind" | "supplierLateFeeAllocationMode"
+  > = {
     calculationMode,
     fixedAmount: fixedAmount || null,
     ratePerM2: ratePerM2 || null,
     meterKind: needsMeterKind(calculationMode) ? meterKind : null,
+    supplierLateFeeAllocationMode:
+      calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? supplierLateFeeAllocationMode : null,
   };
 
   function canGoNext(): boolean {
@@ -115,6 +170,9 @@ export function DueDefinitionWizard({
       if (calculationMode === DueCalculationMode.AREA_M2 || calculationMode === DueCalculationMode.METER_CONSUMPTION) {
         return ratePerM2.trim().length > 0;
       }
+      if (calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL) {
+        return Boolean(supplierLateFeeAllocationMode);
+      }
       return true;
     }
     return true;
@@ -126,40 +184,57 @@ export function DueDefinitionWizard({
     stepContent = (
       <div className="grid gap-4">
         <StepIndicator step={1} t={t} />
+        {isSupplierWizard ? <SupplierNotAidatBanner t={t} /> : null}
         <div className="grid gap-2">
           <Label htmlFor="wizard-def-name">{t("definitionName")}</Label>
           <Input
             id="wizard-def-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder={isSupplierWizard ? t("wizard.supplierNamePlaceholder") : undefined}
             required
           />
         </div>
-        <div className="grid gap-2">
-          <Label>{t("wizard.chooseMode")}</Label>
-          <div className="grid gap-2">
-            {CALCULATION_MODES.map((modeOption) => (
-              <button
-                key={modeOption}
-                type="button"
-                onClick={() => setCalculationMode(modeOption)}
-                className={cn(
-                  "rounded-lg border p-3 text-left transition-colors hover:bg-accent",
-                  calculationMode === modeOption && "border-primary bg-accent",
-                )}
-              >
-                <p className="text-sm font-medium">{modeLabel(modeOption, t)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{modeDescription(modeOption, t)}</p>
-              </button>
-            ))}
+        {isSupplierWizard ? (
+          <div className="rounded-lg border p-3">
+            <p className="text-sm font-medium">{modeLabel(DueCalculationMode.SUPPLIER_LATE_FEE_BILL, t)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {modeDescription(DueCalculationMode.SUPPLIER_LATE_FEE_BILL, t)}
+            </p>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="grid gap-2">
+              <Label>{t("wizard.chooseMode")}</Label>
+              <div className="grid gap-2">
+                {AIDAT_CALCULATION_MODES.map((modeOption) => (
+                  <button
+                    key={modeOption}
+                    type="button"
+                    onClick={() => setCalculationMode(modeOption)}
+                    className={cn(
+                      "rounded-lg border p-3 text-left transition-colors hover:bg-accent",
+                      calculationMode === modeOption && "border-primary bg-accent",
+                    )}
+                  >
+                    <p className="text-sm font-medium">{modeLabel(modeOption, t)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{modeDescription(modeOption, t)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="rounded-md border border-muted bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              {t("wizard.aidatLateFeeHint")}
+            </p>
+          </>
+        )}
       </div>
     );
   } else if (step === 2) {
     stepContent = (
       <div className="grid gap-4">
         <StepIndicator step={2} t={t} />
+        {isSupplierWizard ? <SupplierNotAidatBanner t={t} /> : null}
         <p className="text-sm text-muted-foreground">
           {modeLabel(calculationMode, t)} — {modeDescription(calculationMode, t)}
         </p>
@@ -205,6 +280,27 @@ export function DueDefinitionWizard({
             </Select>
           </div>
         ) : null}
+        {calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? (
+          <div className="grid gap-2">
+            <Label>{t("supplierLateFeeDefaultAllocationMode")}</Label>
+            <Select
+              value={supplierLateFeeAllocationMode}
+              onValueChange={(value) => setSupplierLateFeeAllocationMode(value as SupplierLateFeeAllocationMode)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPLIER_LATE_FEE_ALLOCATION_MODES.map((modeOption) => (
+                  <SelectItem key={modeOption} value={modeOption}>
+                    {t(`supplierLateFeeAllocationMode.${modeOption}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("supplierLateFeeDefaultAllocationModeHint")}</p>
+          </div>
+        ) : null}
         {calculationMode === DueCalculationMode.ALLOCATED_BILL ||
         calculationMode === DueCalculationMode.METER_ALLOCATED_BILL ? (
           <p className="text-sm text-muted-foreground">
@@ -223,17 +319,23 @@ export function DueDefinitionWizard({
           <p className="font-medium">{name}</p>
           <p className="mt-1 text-muted-foreground">{definitionSummary(reviewDefinition, t)}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="wizard-auto-accrual"
-            checked={autoAccrualMonthly}
-            onCheckedChange={(value) => setAutoAccrualMonthly(value === true)}
-          />
-          <Label htmlFor="wizard-auto-accrual" className="font-normal">
-            {t("autoAccrualMonthly")}
-          </Label>
-        </div>
-        <p className="text-xs text-muted-foreground">{t("autoAccrualMonthlyHint")}</p>
+        {isSupplierWizard ? (
+          <p className="text-xs text-muted-foreground">{t("wizard.supplierNoAutoAccrualHint")}</p>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="wizard-auto-accrual"
+                checked={autoAccrualMonthly}
+                onCheckedChange={(value) => setAutoAccrualMonthly(value === true)}
+              />
+              <Label htmlFor="wizard-auto-accrual" className="font-normal">
+                {t("autoAccrualMonthly")}
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("autoAccrualMonthlyHint")}</p>
+          </>
+        )}
       </div>
     );
   }
@@ -242,7 +344,7 @@ export function DueDefinitionWizard({
     <>
       <Button
         type="button"
-        variant={mode === "edit" ? "outline" : "default"}
+        variant={mode === "edit" ? "outline" : isSupplierWizard ? "outline" : "default"}
         size="sm"
         className="shrink-0 gap-1.5"
         onClick={() => setOpen(true)}
@@ -265,11 +367,24 @@ export function DueDefinitionWizard({
                 <input type="hidden" name="name" value={name} />
                 <input type="hidden" name="fixedAmount" value={fixedAmount} />
                 <input type="hidden" name="ratePerM2" value={ratePerM2} />
-                <input type="hidden" name="autoAccrualMonthly" value={autoAccrualMonthly ? "on" : ""} />
+                <input
+                  type="hidden"
+                  name="supplierLateFeeAllocationMode"
+                  value={
+                    calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL
+                      ? supplierLateFeeAllocationMode
+                      : ""
+                  }
+                />
+                <input
+                  type="hidden"
+                  name="autoAccrualMonthly"
+                  value={!isSupplierWizard && autoAccrualMonthly ? "on" : ""}
+                />
                 {stepContent}
                 <DuesError code={state.error} t={t} />
                 <Button type="submit" disabled={pending} className="w-full sm:w-auto">
-                  {mode === "edit" ? t("saveDefinition") : t("addDefinition")}
+                  {mode === "edit" ? t("saveDefinition") : isSupplierWizard ? t("addSupplierLateFeeDefinition") : t("addDefinition")}
                 </Button>
               </form>
             )}

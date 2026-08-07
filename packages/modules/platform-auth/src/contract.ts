@@ -10,6 +10,7 @@ export type AuthUserDto = {
   organizationId: string;
   organizationName: string;
   role?: OrganizationRole;
+  isSuperAdmin?: boolean;
 };
 
 export type ValidateCredentialsInput = {
@@ -60,6 +61,7 @@ export type ConsumeLoginChallengeInput = {
 export type AuthSessionUserDto = AuthUserDto & {
   rememberMe: boolean;
   setupBackupCodes?: string[];
+  isSuperAdmin?: boolean;
 };
 
 export type CompleteLoginChallengeResult = {

@@ -5,6 +5,8 @@ import {
   FinanceCategoryType,
   FinancePeriodStatus,
   LedgerEntryType,
+  StaffEmploymentStatus,
+  StaffMovementType,
 } from "@siteyonetim/db";
 import type {
   CashboxDto,
@@ -14,6 +16,12 @@ import type {
   LedgerEntryDto,
 } from "@siteyonetim/finance-core";
 import type { PartyDto } from "@siteyonetim/property-parties";
+import type {
+  PaginatedStaffProfiles,
+  PaginatedStaffStatement,
+  StaffProfileDto,
+} from "@siteyonetim/property-staff-finance";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useActionState, useState, useTransition } from "react";
 
@@ -25,6 +33,12 @@ import {
   createLedgerEntryAction,
   type FinanceActionState,
 } from "@/app/actions/finance";
+import {
+  createStaffProfileAction,
+  recordStaffMovementAction,
+  updateStaffProfileAction,
+  type StaffFinanceActionState,
+} from "@/app/actions/staff-finance";
 import { FormDrawer } from "@/components/form-drawer";
 import { PartyCombobox } from "@/components/party-combobox";
 import { ServerPagination } from "@/components/server-pagination";
@@ -37,6 +51,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { FinancePanelTab } from "@/lib/finance-tab";
 
 const initial: FinanceActionState = {};
+const staffInitial: StaffFinanceActionState = {};
+const NO_CASHBOX = "__none__";
 
 type Props = {
   locale: string;
@@ -47,6 +63,9 @@ type Props = {
   cashboxes: CashboxDto[];
   ledger: { items: LedgerEntryDto[]; total: number; page: number; pageSize: number };
   parties: PartyDto[];
+  staffProfiles: PaginatedStaffProfiles;
+  staffStatement: PaginatedStaffStatement;
+  selectedStaffProfileId?: string | null;
   activePanel?: FinancePanelTab;
   showPeriodCard?: boolean;
   duesTab?: string;
@@ -366,6 +385,7 @@ function AccountsPanel({
                 <SelectContent>
                   <SelectItem value={FinanceAccountKind.PARTY}>{t("kindParty")}</SelectItem>
                   <SelectItem value={FinanceAccountKind.SUPPLIER}>{t("kindSupplier")}</SelectItem>
+                  <SelectItem value={FinanceAccountKind.STAFF}>{t("kindStaff")}</SelectItem>
                   <SelectItem value={FinanceAccountKind.GENERAL}>{t("kindGeneral")}</SelectItem>
                 </SelectContent>
               </Select>
@@ -409,6 +429,375 @@ function AccountsPanel({
             </TableBody>
           </Table>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function movementLabel(type: StaffMovementType, t: ReturnType<typeof useTranslations>) {
+  switch (type) {
+    case StaffMovementType.SALARY_ACCRUAL:
+      return t("staffMovementSalary");
+    case StaffMovementType.ADVANCE:
+      return t("staffMovementAdvance");
+    case StaffMovementType.PAYMENT:
+      return t("staffMovementPayment");
+    case StaffMovementType.ADVANCE_OFFSET:
+      return t("staffMovementAdvanceOffset");
+    case StaffMovementType.DEDUCTION:
+      return t("staffMovementDeduction");
+    case StaffMovementType.BONUS:
+      return t("staffMovementBonus");
+    default:
+      return t("staffMovementAdjustment");
+  }
+}
+
+function StaffMovementForm({
+  locale,
+  propertyId,
+  profile,
+  categories,
+  cashboxes,
+  t,
+}: {
+  locale: string;
+  propertyId: string;
+  profile: StaffProfileDto;
+  categories: FinanceCategoryDto[];
+  cashboxes: CashboxDto[];
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [state, action, pending] = useActionState(
+    recordStaffMovementAction.bind(null, locale, propertyId, profile.id),
+    staffInitial,
+  );
+  const [movementType, setMovementType] = useState<StaffMovementType>(StaffMovementType.SALARY_ACCRUAL);
+  const [categoryId, setCategoryId] = useState("");
+  const [cashboxId, setCashboxId] = useState(NO_CASHBOX);
+  const expenseMovements: StaffMovementType[] = [
+    StaffMovementType.SALARY_ACCRUAL,
+    StaffMovementType.ADVANCE,
+    StaffMovementType.PAYMENT,
+    StaffMovementType.BONUS,
+    StaffMovementType.MANUAL_ADJUSTMENT,
+  ];
+  const categoryType = expenseMovements.includes(movementType)
+    ? FinanceCategoryType.EXPENSE
+    : FinanceCategoryType.INCOME;
+
+  return (
+    <FormDrawer triggerLabel={t("addStaffMovement")} title={profile.partyName} success={state.success}>
+      <form action={action} className="grid gap-3">
+        <input type="hidden" name="movementType" value={movementType} />
+        <input type="hidden" name="categoryId" value={categoryId} />
+        <input type="hidden" name="cashboxId" value={cashboxId === NO_CASHBOX ? "" : cashboxId} />
+        <div className="grid gap-2">
+          <Label>{t("staffMovementType")}</Label>
+          <Select value={movementType} onValueChange={(v) => setMovementType(v as StaffMovementType)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.values(StaffMovementType).map((type) => (
+                <SelectItem key={type} value={type}>
+                  {movementLabel(type, t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>{t("category")}</Label>
+          <Select value={categoryId} onValueChange={setCategoryId}>
+            <SelectTrigger>
+              <SelectValue placeholder={t("noneSelected")} />
+            </SelectTrigger>
+            <SelectContent>
+              {categories
+                .filter((c) => c.type === categoryType)
+                .map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={`staff-amount-${profile.id}`}>{t("amount")}</Label>
+          <Input id={`staff-amount-${profile.id}`} name="amount" required />
+        </div>
+        <div className="grid gap-2">
+          <Label>{t("cashbox")}</Label>
+          <Select value={cashboxId} onValueChange={setCashboxId}>
+            <SelectTrigger>
+              <SelectValue placeholder={t("optional")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_CASHBOX}>{t("noneSelected")}</SelectItem>
+              {cashboxes.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={`staff-document-${profile.id}`}>{t("documentNo")}</Label>
+          <Input id={`staff-document-${profile.id}`} name="documentNo" />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={`staff-description-${profile.id}`}>{t("description")}</Label>
+          <Input id={`staff-description-${profile.id}`} name="description" />
+        </div>
+        <FinanceError code={state.error} t={t} />
+        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+          {t("addStaffMovement")}
+        </Button>
+      </form>
+    </FormDrawer>
+  );
+}
+
+function StaffProfileEditForm({
+  locale,
+  propertyId,
+  profile,
+  t,
+}: {
+  locale: string;
+  propertyId: string;
+  profile: StaffProfileDto;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [state, action, pending] = useActionState(
+    updateStaffProfileAction.bind(null, locale, propertyId, profile.id),
+    staffInitial,
+  );
+  const [status, setStatus] = useState<StaffEmploymentStatus>(profile.status);
+
+  return (
+    <FormDrawer triggerLabel={t("editStaffProfile")} title={profile.partyName} success={state.success}>
+      <form action={action} className="grid gap-3">
+        <input type="hidden" name="status" value={status} />
+        <div className="grid gap-2">
+          <Label htmlFor={`edit-staff-no-${profile.id}`}>{t("staffNo")}</Label>
+          <Input id={`edit-staff-no-${profile.id}`} name="staffNo" defaultValue={profile.staffNo ?? ""} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={`edit-staff-title-${profile.id}`}>{t("staffTitle")}</Label>
+          <Input id={`edit-staff-title-${profile.id}`} name="title" defaultValue={profile.title ?? ""} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={`edit-staff-department-${profile.id}`}>{t("staffDepartment")}</Label>
+          <Input id={`edit-staff-department-${profile.id}`} name="department" defaultValue={profile.department ?? ""} />
+        </div>
+        <div className="grid gap-2">
+          <Label>{t("staffStatus")}</Label>
+          <Select value={status} onValueChange={(v) => setStatus(v as StaffEmploymentStatus)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={StaffEmploymentStatus.ACTIVE}>{t("staffStatusActive")}</SelectItem>
+              <SelectItem value={StaffEmploymentStatus.PASSIVE}>{t("staffStatusPassive")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <FinanceError code={state.error} t={t} />
+        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+          {t("saveStaffProfile")}
+        </Button>
+      </form>
+    </FormDrawer>
+  );
+}
+
+function StaffAccountsPanel({
+  locale,
+  propertyId,
+  categories,
+  cashboxes,
+  parties,
+  staffProfiles,
+  staffStatement,
+  selectedStaffProfileId,
+  t,
+}: {
+  locale: string;
+  propertyId: string;
+  categories: FinanceCategoryDto[];
+  cashboxes: CashboxDto[];
+  parties: PartyDto[];
+  staffProfiles: PaginatedStaffProfiles;
+  staffStatement: PaginatedStaffStatement;
+  selectedStaffProfileId?: string | null;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [state, action, pending] = useActionState(
+    createStaffProfileAction.bind(null, locale, propertyId),
+    staffInitial,
+  );
+  const [partyId, setPartyId] = useState("");
+  const selected = staffProfiles.items.find((p) => p.id === selectedStaffProfileId) ?? staffProfiles.items[0] ?? null;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle>{t("tabStaffAccounts")}</CardTitle>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/api/properties/${propertyId}/staff-finance/export?locale=${locale}`}>
+              {t("exportStaffBalances")}
+            </Link>
+          </Button>
+          <FormDrawer triggerLabel={t("addStaffProfile")} title={t("addStaffProfile")} success={state.success}>
+            <form action={action} className="grid gap-3">
+              <input type="hidden" name="partyId" value={partyId} />
+              <div className="grid gap-2">
+                <Label>{t("linkParty")}</Label>
+                <PartyCombobox
+                  parties={parties.map((p) => ({ id: p.id, displayName: p.displayName }))}
+                  value={partyId}
+                  onValueChange={setPartyId}
+                  placeholder={t("noneSelected")}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="staff-no">{t("staffNo")}</Label>
+                <Input id="staff-no" name="staffNo" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="staff-title">{t("staffTitle")}</Label>
+                <Input id="staff-title" name="title" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="staff-department">{t("staffDepartment")}</Label>
+                <Input id="staff-department" name="department" />
+              </div>
+              <FinanceError code={state.error} t={t} />
+              <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+                {t("addStaffProfile")}
+              </Button>
+            </form>
+          </FormDrawer>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {staffProfiles.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("staffEmpty")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("staff")}</TableHead>
+                  <TableHead>{t("staffStatus")}</TableHead>
+                  <TableHead>{t("accountCode")}</TableHead>
+                  <TableHead>{t("balance")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staffProfiles.items.map((profile) => (
+                  <TableRow key={profile.id}>
+                    <TableCell>
+                      <Link href={`/${locale}/admin/properties/${propertyId}/dues?tab=staffAccounts&staffProfileId=${profile.id}`}>
+                        {profile.partyName}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">{profile.title ?? profile.department ?? ""}</p>
+                    </TableCell>
+                    <TableCell>
+                      {profile.status === StaffEmploymentStatus.ACTIVE
+                        ? t("staffStatusActive")
+                        : t("staffStatusPassive")}
+                    </TableCell>
+                    <TableCell>{profile.financeAccountCode}</TableCell>
+                    <TableCell>{money(profile.balance, locale)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <StaffProfileEditForm locale={locale} propertyId={propertyId} profile={profile} t={t} />
+                        <StaffMovementForm
+                          locale={locale}
+                          propertyId={propertyId}
+                          profile={profile}
+                          categories={categories}
+                          cashboxes={cashboxes}
+                          t={t}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <ServerPagination
+          page={staffProfiles.page}
+          pageSize={staffProfiles.pageSize}
+          total={staffProfiles.total}
+          basePath={`/admin/properties/${propertyId}/dues`}
+          locale={locale}
+          extraSearchParams={{
+            tab: "staffAccounts",
+            staffProfileId: selected?.id,
+            staffPage: staffStatement.page > 1 ? String(staffStatement.page) : undefined,
+          }}
+        />
+        {selected ? (
+          <div className="space-y-2">
+            <h3 className="text-base font-medium">
+              {t("staffStatement")}: {selected.partyName}
+            </h3>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/api/properties/${propertyId}/staff-finance/export?locale=${locale}&staffProfileId=${selected.id}`}>
+                {t("exportStaffStatement")}
+              </Link>
+            </Button>
+            {staffStatement.items.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("staffStatementEmpty")}</p>
+            ) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("staffMovementType")}</TableHead>
+                      <TableHead>{t("amount")}</TableHead>
+                      <TableHead>{t("period")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {staffStatement.items.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell>{movementLabel(row.movementType, t)}</TableCell>
+                        <TableCell>{money(row.amount, locale)}</TableCell>
+                        <TableCell>
+                          {row.periodMonth}/{row.periodYear}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <ServerPagination
+                  page={staffStatement.page}
+                  pageSize={staffStatement.pageSize}
+                  total={staffStatement.total}
+                  basePath={`/admin/properties/${propertyId}/dues`}
+                  locale={locale}
+                  extraSearchParams={{
+                    tab: "staffAccounts",
+                    staffProfileId: selected.id,
+                    page: String(staffProfiles.page),
+                  }}
+                  pageParam="staffPage"
+                />
+              </>
+            )}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -487,6 +876,9 @@ function FinancePanelContent({
   cashboxes,
   ledger,
   parties,
+  staffProfiles,
+  staffStatement,
+  selectedStaffProfileId,
   duesTab,
   t,
 }: {
@@ -499,6 +891,9 @@ function FinancePanelContent({
   cashboxes: CashboxDto[];
   ledger: Props["ledger"];
   parties: PartyDto[];
+  staffProfiles: PaginatedStaffProfiles;
+  staffStatement: PaginatedStaffStatement;
+  selectedStaffProfileId?: string | null;
   duesTab: string;
   t: ReturnType<typeof useTranslations>;
 }) {
@@ -529,6 +924,20 @@ function FinancePanelContent({
           t={t}
         />
       );
+    case "staffAccounts":
+      return (
+        <StaffAccountsPanel
+          locale={locale}
+          propertyId={propertyId}
+          categories={categories}
+          cashboxes={cashboxes}
+          parties={parties}
+          staffProfiles={staffProfiles}
+          staffStatement={staffStatement}
+          selectedStaffProfileId={selectedStaffProfileId}
+          t={t}
+        />
+      );
     case "categories":
       return (
         <CategoriesPanel locale={locale} propertyId={propertyId} categories={categories} t={t} />
@@ -547,6 +956,9 @@ export function FinanceTabs({
   cashboxes,
   ledger,
   parties,
+  staffProfiles,
+  staffStatement,
+  selectedStaffProfileId,
   activePanel = "ledger",
   showPeriodCard = true,
   duesTab = "expenses",
@@ -561,6 +973,9 @@ export function FinanceTabs({
     cashboxes,
     ledger,
     parties,
+    staffProfiles,
+    staffStatement,
+    selectedStaffProfileId,
     duesTab,
     t,
   };

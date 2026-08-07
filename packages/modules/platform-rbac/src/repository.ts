@@ -9,6 +9,21 @@ function isOrgWideRole(role: OrganizationRole | null | undefined): boolean {
 }
 
 export class PropertyRbacRepository {
+  async isSuperAdminUser(userId: string): Promise<boolean> {
+    const user = await prisma.user.findFirst({
+      where: { id: userId, deleted: false },
+      select: { isSuperAdmin: true },
+    });
+    return user?.isSuperAdmin === true;
+  }
+
+  async propertyExists(propertyId: string): Promise<boolean> {
+    const count = await prisma.property.count({
+      where: { id: propertyId, ...notDeleted, organization: { deleted: false } },
+    });
+    return count > 0;
+  }
+
   async listPropertyAccessForUser(input: ResolvePropertyAccessInput): Promise<PropertyAccessEntryDto[]> {
     const rows = await prisma.userPropertyAccess.findMany({
       where: {

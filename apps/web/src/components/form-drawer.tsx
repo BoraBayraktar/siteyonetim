@@ -71,9 +71,9 @@ export function FormDrawer({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
-          className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-lg"
+          className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-xl"
         >
-          <SheetHeader className="border-b px-4 py-4 text-left">
+          <SheetHeader className="border-b px-4 py-4 pr-20 text-left">
             <SheetTitle>{title}</SheetTitle>
             {description ? <SheetDescription>{description}</SheetDescription> : null}
           </SheetHeader>

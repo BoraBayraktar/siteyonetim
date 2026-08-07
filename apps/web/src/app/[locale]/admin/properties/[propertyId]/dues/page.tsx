@@ -29,6 +29,8 @@ type Props = {
     accrualUnitId?: string;
     accrualDefinitionId?: string;
     section?: string;
+    staffProfileId?: string;
+    staffPage?: string;
   }>;
 };
 
@@ -90,6 +92,8 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
     page,
     registerFilters,
     accrualPeriod,
+    staffProfileId: sp.staffProfileId ?? null,
+    staffStatementPage: Math.max(1, Number(sp.staffPage ?? "1") || 1),
   });
 
   const t = await getTranslations("dues");
@@ -111,11 +115,13 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
           ? tFinance("tabLedger")
           : financePanel === "cashboxes"
             ? tFinance("tabCashboxes")
-            : financePanel === "accounts"
-              ? tFinance("tabAccounts")
-              : financePanel === "categories"
-                ? tFinance("tabCategories")
-                : t("unifiedTitle");
+              : financePanel === "accounts"
+                ? tFinance("tabAccounts")
+                : financePanel === "staffAccounts"
+                  ? tFinance("tabStaffAccounts")
+                  : financePanel === "categories"
+                    ? tFinance("tabCategories")
+                    : t("unifiedTitle");
   const pageSubtitle =
     activeTab === "register"
       ? tRegister("subtitle")
@@ -138,7 +144,7 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
       </div>
 
       <DuesTabs
-        key={`${sp.tab ?? "register"}-${sp.unitId ?? ""}-${registerFilters.year}-${registerFilters.month}-${sp.accrualYear ?? ""}-${sp.accrualMonth ?? ""}-${sp.accrualUnitId ?? ""}-${sp.accrualDefinitionId ?? ""}-${sp.runId ?? ""}`}
+        key={`${sp.tab ?? "register"}-${sp.unitId ?? ""}-${registerFilters.year}-${registerFilters.month}-${sp.accrualYear ?? ""}-${sp.accrualMonth ?? ""}-${sp.accrualUnitId ?? ""}-${sp.accrualDefinitionId ?? ""}-${sp.runId ?? ""}-${sp.staffProfileId ?? ""}-${sp.staffPage ?? ""}`}
         locale={locale}
         propertyId={propertyId}
         definitions={duesData.definitions}
@@ -159,7 +165,10 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
         accounts={duesData.accounts}
         ledger={duesData.ledger}
         orgParties={duesData.orgParties}
+        staffProfiles={duesData.staffProfiles}
+        staffStatement={duesData.staffStatement}
         initialTab={sp.tab}
+        initialStaffProfileId={sp.staffProfileId ?? null}
         initialUnitId={sp.unitId ?? null}
         initialRunId={sp.runId ?? null}
         accrualFilters={accrualFilters}

@@ -19,7 +19,7 @@ export class OrgUsersRepository {
     const memberships = await prisma.userOrganization.findMany({
       where: {
         organizationId,
-        user: notDeleted,
+        user: { ...notDeleted, isSuperAdmin: false },
       },
       include: {
         user: {
@@ -72,7 +72,7 @@ export class OrgUsersRepository {
       where: { organizationId, userId },
       include: {
         user: {
-          select: { id: true, email: true, name: true, deleted: true },
+          select: { id: true, email: true, name: true, deleted: true, isSuperAdmin: true },
         },
       },
     });

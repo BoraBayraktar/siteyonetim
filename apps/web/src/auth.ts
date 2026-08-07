@@ -15,7 +15,17 @@ async function enrichAdminSession(user: {
   organizationId: string;
   organizationName: string;
   role: string | null;
+  isSuperAdmin?: boolean;
 }) {
+  if (user.isSuperAdmin) {
+    return {
+      ...user,
+      orgWideAccess: true,
+      propertyAccess: [] as { propertyId: string; role: string }[],
+      role: user.role ?? "ORG_ADMIN",
+    };
+  }
+
   const rbac = getPropertyRbacService();
   const scope = await rbac.resolveAccessiblePropertyIds({
     userId: user.id,
@@ -69,9 +79,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         if (user.sessionKind === "ADMIN") {
-          const totpStatus = await getAuthService().getTotpStatus(user.id, user.organizationId);
-          if (totpStatus.enabled || totpStatus.organizationRequiresTwoFactor) {
-            return null;
+          if (!user.isSuperAdmin) {
+            const totpStatus = await getAuthService().getTotpStatus(user.id, user.organizationId);
+            if (totpStatus.enabled || totpStatus.organizationRequiresTwoFactor) {
+              return null;
+            }
           }
 
           return {
@@ -83,8 +95,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               organizationId: user.organizationId,
               organizationName: user.organizationName,
               role: user.role ?? null,
+              isSuperAdmin: user.isSuperAdmin,
             })),
             rememberMe,
+            isSuperAdmin: user.isSuperAdmin,
           };
         }
 
@@ -127,8 +141,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             organizationId: user.organizationId,
             organizationName: user.organizationName,
             role: user.role ?? null,
+            isSuperAdmin: user.isSuperAdmin,
           })),
           rememberMe: user.rememberMe,
+          isSuperAdmin: user.isSuperAdmin,
         };
       },
     }),

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
-import { OrganizationRole, prisma } from "../src/index";
+import { parseSuperAdminSeedConfig } from "@siteyonetim/platform-auth";
+import { OrganizationRole, prisma, type Prisma } from "../src/index";
 
 const DEMO_SLUG = "demo-yonetim";
 const DEMO_EMAIL = "admin@demo.local";
@@ -7,10 +8,42 @@ const DEMO_PASSWORD = "Demo123!";
 const DEMO_AUDITOR_EMAIL = "denetci@demo.local";
 const DEMO_AUDITOR_PASSWORD = "Demo123!";
 
+async function seedSuperAdmin(tx: Prisma.TransactionClient) {
+  const config = parseSuperAdminSeedConfig();
+  if (!config) {
+    console.info(
+      "[seed] Super admin skipped: set SUPER_ADMIN_PASSWORD in .env (see DEVELOPMENT_RULES.md §33).",
+    );
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(config.password, 12);
+  await tx.user.upsert({
+    where: { email: config.email },
+    create: {
+      email: config.email,
+      name: config.name,
+      passwordHash,
+      isSuperAdmin: true,
+    },
+    update: {
+      name: config.name,
+      passwordHash,
+      isSuperAdmin: true,
+      deleted: false,
+      deletedDate: null,
+      deletedUserId: null,
+    },
+  });
+  console.info(`[seed] Super admin ready: ${config.email}`);
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
   await prisma.$transaction(async (tx) => {
+    await seedSuperAdmin(tx);
+
     const org = await tx.organization.upsert({
       where: { slug: DEMO_SLUG },
       create: {

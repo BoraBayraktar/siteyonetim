@@ -1,11 +1,15 @@
 import { createBlockService, createPropertyService, createUnitService } from "@siteyonetim/property-core";
 import { createOccupancyService } from "@siteyonetim/property-occupancy";
 import { createPartyService } from "@siteyonetim/property-parties";
+import { createStaffFinanceService } from "@siteyonetim/property-staff-finance";
 import { createAnnouncementService, createAnnouncementImageService } from "@siteyonetim/comm-announcements";
 import { createNotificationService } from "@siteyonetim/comm-notifications";
 import { createDocumentService } from "@siteyonetim/document-management";
 import { createPropertySettingsService } from "@siteyonetim/property-settings";
+import { createGovernanceService } from "@siteyonetim/property-governance";
 import { createMeterService } from "@siteyonetim/property-meters";
+import { createAuditorReportService } from "@siteyonetim/reporting-auditor";
+import { createBankingService } from "@siteyonetim/finance-banking";
 import { createStandardReportingService } from "@siteyonetim/reporting-standard";
 import { createDuesService } from "@siteyonetim/finance-dues";
 import { createFinanceService } from "@siteyonetim/finance-core";
@@ -39,6 +43,10 @@ export function getUnitService() {
 
 export function getPartyService() {
   return createPartyService();
+}
+
+export function getStaffFinanceService() {
+  return createStaffFinanceService();
 }
 
 export function getOccupancyService() {
@@ -79,4 +87,16 @@ export function getMeterService() {
 
 export function getReportingService() {
   return createStandardReportingService();
+}
+
+export function getAuditorReportService() {
+  return createAuditorReportService();
+}
+
+export function getBankingService() {
+  return createBankingService();
+}
+
+export function getGovernanceService() {
+  return createGovernanceService();
 }

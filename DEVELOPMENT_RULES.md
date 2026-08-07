@@ -121,6 +121,16 @@ Tüm yeni geliştirmeler, refactor’lar, kod incelemeleri ve mimari kararlar bu
 
 - **Merkezi audit** kullan; her anlamlı işlem loglansın.
 
+## 33) Platform süper yöneticisi
+
+- `User.isSuperAdmin = true` olan hesap **platform süper yöneticisidir**; organizasyon rolü / property RBAC / menü kısıtlarından bağımsızdır.
+- Süper admin **Kullanıcılar & roller** listesinde görünmez; org üyeliği (`UserOrganization`) taşımaz; UI veya org-user servisi üzerinden rolü değiştirilemez / silinemez.
+- E-posta: `SUPER_ADMIN_EMAIL` ortam değişkeni (boşsa varsayılan `bora.bayraktar@hotmail.com`). Kimlik eşlemesi `getSuperAdminEmail()` ile yapılır.
+- Hesap yalnızca **`SUPER_ADMIN_PASSWORD` ortam değişkeni set iken** `npm run db:seed` ile oluşturulur/güncellenir; değişken yoksa seed süper admin adımını atlar.
+- Süper admin oturumunda `isSuperAdmin` JWT claim’i set edilir; tüm admin property erişim kontrolleri ve org-wide yetki kontrolleri bypass edilir.
+- Süper admin için 2FA zorunluluğu ve self-service şifre sıfırlama **devre dışıdır** (platform erişim kaybını önlemek için).
+- **Güvenlik:** `SUPER_ADMIN_PASSWORD` (ve production değerleri) repoya, seed kaynak koduna veya DEVELOPMENT_RULES’a **asla** düz metin yazılmaz. Yerel: kök `.env` (gitignore). Production: Vercel/env secret veya güvenli ops kanalı.
+
 ---
 
 ## Uygulama notu

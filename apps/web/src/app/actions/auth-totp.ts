@@ -1,5 +1,6 @@
 "use server";
 
+import { LoginChallengeFailedError } from "@siteyonetim/platform-auth";
 import { getAuthService } from "@/lib/services";
 
 import type { AdminLoginBeginResult } from "@siteyonetim/platform-auth";
@@ -38,7 +39,7 @@ export async function completeLoginChallengeAction(input: {
   useBackupCode?: boolean;
 }): Promise<
   | { ok: true; bootstrapId: string; backupCodes: string[] }
-  | { ok: false; error: string }
+  | { ok: false; error: string; nextChallengeId?: string }
 > {
   try {
     const result = await getAuthService().completeLoginChallenge(input);
@@ -47,6 +48,9 @@ export async function completeLoginChallengeAction(input: {
     }
     return { ok: true, bootstrapId: result.bootstrapId, backupCodes: result.backupCodes };
   } catch (error) {
+    if (error instanceof LoginChallengeFailedError) {
+      return { ok: false, error: error.message, nextChallengeId: error.nextChallengeId };
+    }
     if (error instanceof Error) {
       return { ok: false, error: error.message };
     }

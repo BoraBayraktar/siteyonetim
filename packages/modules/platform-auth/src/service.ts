@@ -15,6 +15,7 @@ import type {
 } from "./contract";
 import { AuthRepository } from "./repository";
 import { createPasswordResetService, PasswordResetService } from "./password-reset.service";
+import { isSuperAdminUser } from "./super-admin";
 import { createTotpService, TotpService } from "./totp.service";
 
 export class AuthService implements AuthServiceContract {
@@ -33,6 +34,9 @@ export class AuthService implements AuthServiceContract {
     if (!valid) {
       return null;
     }
+    if (isSuperAdminUser(user)) {
+      return this.repository.toSuperAdminDto(user);
+    }
     return this.repository.toDto(user);
   }
 
@@ -40,6 +44,9 @@ export class AuthService implements AuthServiceContract {
     const user = await this.repository.findById(userId);
     if (!user) {
       return null;
+    }
+    if (isSuperAdminUser(user)) {
+      return this.repository.toSuperAdminDto(user);
     }
     return this.repository.toDto(user);
   }

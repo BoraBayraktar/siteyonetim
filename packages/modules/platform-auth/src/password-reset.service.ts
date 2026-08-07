@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import bcrypt from "bcryptjs";
+import { prisma } from "@siteyonetim/db";
 import { createAuditService } from "@siteyonetim/platform-audit";
 import { createEmailProvider, isRealEmailProviderConfigured } from "@siteyonetim/comm-notifications";
 
 import type { PasswordResetResult, RequestPasswordResetInput, ResetPasswordInput } from "./contract";
 import { PASSWORD_RESET_TTL_MS } from "./session";
+import { isSuperAdminUser } from "./super-admin";
 import { PasswordResetRepository } from "./password-reset.repository";
 
 function hashToken(token: string): string {
@@ -57,6 +59,14 @@ export class PasswordResetService {
 
     const user = await this.repository.findAdminUserByEmail(email);
     if (!user) {
+      return { ok: true };
+    }
+
+    const dbUser = await prisma.user.findFirst({
+      where: { id: user.id, deleted: false },
+      select: { isSuperAdmin: true, email: true },
+    });
+    if (isSuperAdminUser(dbUser)) {
       return { ok: true };
     }
 

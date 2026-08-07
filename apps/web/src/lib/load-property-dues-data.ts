@@ -11,6 +11,10 @@ import type {
 import type { BlockDto, UnitDto } from "@siteyonetim/property-core";
 import type { MeterReadingDto, UnitMeterDto } from "@siteyonetim/property-meters";
 import type { PartyDto } from "@siteyonetim/property-parties";
+import type {
+  PaginatedStaffProfiles,
+  PaginatedStaffStatement,
+} from "@siteyonetim/property-staff-finance";
 
 import type { DuesTab } from "@/lib/dues-tab";
 import { isFinanceDuesTab } from "@/lib/finance-tab";
@@ -20,6 +24,7 @@ import {
   getFinanceService,
   getMeterService,
   getPartyService,
+  getStaffFinanceService,
   getUnitService,
 } from "@/lib/services";
 
@@ -50,10 +55,20 @@ export type PropertyDuesPageData = {
   accounts: FinanceAccountDto[];
   ledger: { items: LedgerEntryDto[]; total: number; page: number; pageSize: number };
   orgParties: PartyDto[];
+  staffProfiles: PaginatedStaffProfiles;
+  staffStatement: PaginatedStaffStatement;
   accrualUnits: UnitDto[];
 };
 
 function emptyLedger(page: number): PropertyDuesPageData["ledger"] {
+  return { items: [], total: 0, page, pageSize: PAGE_SIZE };
+}
+
+function emptyStaffProfiles(page: number): PaginatedStaffProfiles {
+  return { items: [], total: 0, page, pageSize: PAGE_SIZE };
+}
+
+function emptyStaffStatement(page: number): PaginatedStaffStatement {
   return { items: [], total: 0, page, pageSize: PAGE_SIZE };
 }
 
@@ -105,21 +120,26 @@ export async function loadPropertyDuesPageData(input: {
     month: number;
   };
   accrualPeriod: { year: number; month: number };
+  staffProfileId?: string | null;
+  staffStatementPage?: number;
 }): Promise<PropertyDuesPageData> {
-  const { ctx, activeTab, page, registerFilters, accrualPeriod } = input;
+  const { ctx, activeTab, page, registerFilters, accrualPeriod, staffProfileId, staffStatementPage = 1 } =
+    input;
   const dues = getDuesService();
   const finance = getFinanceService();
   const period = await finance.ensureOpenPeriod(ctx);
 
   const needsFinance = isFinanceDuesTab(activeTab);
   const needsAccrual = activeTab === "accrual";
+  const needsRegister = activeTab === "register";
+  const needsAccrualRuns = needsAccrual || needsRegister;
   const needsDefinitions = activeTab === "definitions" || needsAccrual;
   const needsAccrualUnits = needsAccrual;
-  const needsRegister = activeTab === "register";
   const needsLateFee = activeTab === "lateFee";
   const needsMeters = activeTab === "meters";
   const needsCashboxes = needsRegister || needsFinance;
   const needsBlocks = needsRegister;
+  const needsStaffFinance = activeTab === "staffAccounts";
 
   const [
     definitions,
@@ -132,10 +152,11 @@ export async function loadPropertyDuesPageData(input: {
     lateFeePolicy,
     meterBundle,
     financeBundle,
+    staffBundle,
     accrualUnitsPage,
   ] = await Promise.all([
     needsDefinitions ? dues.listDefinitions(ctx) : Promise.resolve([]),
-    needsAccrual ? dues.listAccrualRuns(ctx) : Promise.resolve([]),
+    needsAccrualRuns ? dues.listAccrualRuns(ctx) : Promise.resolve([]),
     needsAccrual ? dues.listAccrualRunLinesByProperty(ctx) : Promise.resolve({}),
     needsAccrual ? dues.listAccrualRunCorrections(ctx) : Promise.resolve({}),
     needsRegister
@@ -178,6 +199,27 @@ export async function loadPropertyDuesPageData(input: {
           orgParties: orgPartiesPage.items,
         }))
       : Promise.resolve(null),
+    needsStaffFinance
+      ? getStaffFinanceService()
+          .listStaffProfiles({
+            ...ctx,
+            page,
+            pageSize: PAGE_SIZE,
+            status: "ALL",
+          })
+          .then(async (staffProfiles) => {
+            const statementProfileId = staffProfileId ?? staffProfiles.items[0]?.id ?? null;
+            const staffStatement = statementProfileId
+              ? await getStaffFinanceService().listStatement({
+                  ...ctx,
+                  staffProfileId: statementProfileId,
+                  page: staffStatementPage,
+                  pageSize: PAGE_SIZE,
+                })
+              : emptyStaffStatement(staffStatementPage);
+            return { staffProfiles, staffStatement };
+          })
+      : Promise.resolve(null),
     needsAccrualUnits
       ? getUnitService().list({ ...ctx, page: 1, pageSize: 500 })
       : Promise.resolve(null),
@@ -212,6 +254,8 @@ export async function loadPropertyDuesPageData(input: {
     accounts: financeBundle?.accounts ?? [],
     ledger: financeBundle?.ledger ?? emptyLedger(page),
     orgParties: financeBundle?.orgParties ?? [],
+    staffProfiles: staffBundle?.staffProfiles ?? emptyStaffProfiles(page),
+    staffStatement: staffBundle?.staffStatement ?? emptyStaffStatement(1),
     accrualUnits: accrualUnitsPage?.items ?? [],
   };
 }

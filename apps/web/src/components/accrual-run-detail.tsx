@@ -2,6 +2,8 @@
 
 import { DueAccrualStatus, DueCalculationMode } from "@siteyonetim/db";
 import type { AccrualRunCorrectionDto, DueAccrualRunDto, DueAccrualRunLineDto } from "@siteyonetim/finance-dues";
+import { needsConsumptionRecalculate } from "@siteyonetim/finance-dues/accrual-context";
+import { groupMissingUnitsByPrimaryReason } from "@siteyonetim/finance-dues/accrual-missing-units";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -56,21 +58,11 @@ function formatAccrualConsumption(line: DueAccrualRunLineDto, t: ReturnType<type
   return t("consumptionNone");
 }
 
-function needsConsumptionRecalculate(run: DueAccrualRunDto, lines: DueAccrualRunLineDto[]): boolean {
-  if (run.calculationMode !== DueCalculationMode.METER_ALLOCATED_BILL) return false;
-  const rows = lines.filter((line) => line.meterConsumption != null && Number(line.meterConsumption) > 0);
-  if (rows.length < 2) return false;
-  const totalConsumption = rows.reduce((sum, line) => sum + Number(line.meterConsumption), 0);
-  if (totalConsumption <= 0) return false;
-  const billTotal = Number(run.totalAmount);
-  return rows.some((line) => {
-    const expected = (billTotal * Number(line.meterConsumption)) / totalConsumption;
-    return Math.abs(expected - Number(line.amount)) > 0.05;
-  });
-}
-
 function sumLineConsumptions(lines: DueAccrualRunLineDto[]): string | null {
-  const total = lines.reduce((sum, line) => sum + (line.meterConsumption ? Number(line.meterConsumption) : 0), 0);
+  const total = lines.reduce(
+    (sum, line) => sum + (line.meterConsumption != null ? Number(line.meterConsumption) : 0),
+    0,
+  );
   if (total <= 0) return null;
   return String(total);
 }
@@ -405,6 +397,66 @@ function RecalculateAccrualDrawer({
   );
 }
 
+function formatAccrualPeriod(month: number, year: number): string {
+  return `${month}/${year}`;
+}
+
+function AccrualMissingUnitsAlert({
+  correction,
+  run,
+  locale,
+  propertyId,
+  t,
+}: {
+  correction: AccrualRunCorrectionDto;
+  run: DueAccrualRunDto;
+  locale: string;
+  propertyId: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const period = formatAccrualPeriod(run.month, run.year);
+  const groups = groupMissingUnitsByPrimaryReason(correction.missingUnits);
+  const hasMeterIssue = groups.some((group) =>
+    ["NO_METER", "NO_METER_READING", "MISSING_PREVIOUS_METER_INDEX"].includes(group.reason),
+  );
+  const hasOccupancyIssue = groups.some((group) => group.reason === "NO_OCCUPANCY");
+  const base = `/${locale}/admin/properties/${propertyId}`;
+
+  return (
+    <div className="rounded-md border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+      <p className="font-medium">
+        {t("postedAccrualIncompleteHint", { count: correction.missingUnitCount })}
+      </p>
+      {run.status === DueAccrualStatus.DRAFT ? (
+        <p className="mt-1 text-amber-700/90 dark:text-amber-400/90">{t("draftAccrualIncompleteActionHint")}</p>
+      ) : null}
+      <ul className="mt-2 space-y-1.5">
+        {groups.map((group) => (
+          <li key={group.reason}>
+            <span className="font-medium">
+              {t(`missingUnitReasons.${group.reason}`, { period })}
+            </span>
+            {": "}
+            <span>{group.unitCodes.join(", ")}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {hasMeterIssue ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${base}/dues?tab=meters`}>{t("missingUnitActions.openMeters")}</Link>
+          </Button>
+        ) : null}
+        {hasOccupancyIssue ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`${base}?tab=units`}>{t("missingUnitActions.assignParties")}</Link>
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function AccrualRunDetail({
   locale,
   propertyId,
@@ -459,7 +511,13 @@ export function AccrualRunDetail({
           </p>
           <p className="text-xs text-muted-foreground">
             {definitionSummary(
-              { calculationMode: run.calculationMode, fixedAmount: null, ratePerM2: null, meterKind: run.meterKind },
+              {
+                calculationMode: run.calculationMode,
+                fixedAmount: null,
+                ratePerM2: null,
+                meterKind: run.meterKind,
+                supplierLateFeeAllocationMode: run.supplierLateFeeAllocationMode,
+              },
               t,
             )}
           </p>
@@ -473,6 +531,16 @@ export function AccrualRunDetail({
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+          {consumptionAmountMismatch ? (
+            <RecalculateAccrualDrawer
+              locale={locale}
+              propertyId={propertyId}
+              run={run}
+              lines={lines}
+              defaultTotalBill={run.totalAmount}
+              t={t}
+            />
+          ) : null}
           {run.status === DueAccrualStatus.DRAFT ? (
             <PostAccrualDialog
               locale={locale}
@@ -482,16 +550,7 @@ export function AccrualRunDetail({
               unitsWithoutOccupancy={unitsWithoutOccupancy}
               t={t}
             />
-          ) : consumptionAmountMismatch ? (
-            <RecalculateAccrualDrawer
-              locale={locale}
-              propertyId={propertyId}
-              run={run}
-              lines={lines}
-              defaultTotalBill={run.totalAmount}
-              t={t}
-            />
-          ) : (
+          ) : run.status === DueAccrualStatus.POSTED ? (
             <div className="flex flex-col items-stretch gap-2 sm:items-end">
               {correction?.canSupplement ? (
                 <SupplementPostedAccrualDialog
@@ -511,13 +570,32 @@ export function AccrualRunDetail({
                 </Link>
               </Button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {correction?.missingUnitCount ? (
+      {run.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL && run.supplierLateFeeAllocationMode ? (
+        <div className="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-sm text-blue-900 dark:text-blue-200">
+          <p className="font-medium">{t("supplierLateFeeRunTitle")}</p>
+          <p>
+            {t(`supplierLateFeeAllocationMode.${run.supplierLateFeeAllocationMode}`)}
+            {run.supplierReference ? ` · ${run.supplierReference}` : ""}
+          </p>
+        </div>
+      ) : null}
+
+      {correction?.missingUnits.length ? (
+        <AccrualMissingUnitsAlert
+          correction={correction}
+          run={run}
+          locale={locale}
+          propertyId={propertyId}
+          t={t}
+        />
+      ) : correction?.missingUnitCount ? (
         <p className="text-sm text-amber-700 dark:text-amber-400">
           {t("postedAccrualIncompleteHint", { count: correction.missingUnitCount })}
+          {run.status === DueAccrualStatus.DRAFT ? ` ${t("draftAccrualIncompleteActionHint")}` : ""}
         </p>
       ) : null}
       {correction && !correction.canVoid && correction.hasPayments ? (

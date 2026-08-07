@@ -1,5 +1,6 @@
 import { ReportExportFormat } from "@siteyonetim/db";
 import type { StandardReportKind } from "@siteyonetim/reporting-standard";
+import { parseReportQuarter, reportQuarterToMonthRange } from "@siteyonetim/reporting-standard";
 import { isAnnualReportKind } from "@/lib/report-kinds";
 import { auth } from "@/auth";
 import { canAccessReports } from "@/lib/auth-context";
@@ -11,6 +12,7 @@ const KINDS: StandardReportKind[] = [
   "EXPENSE_BREAKDOWN",
   "CASHBOX_SUMMARY",
   "DEBT_AGING",
+  "BANK_RECONCILIATION",
   "ANNUAL_INCOME_EXPENSE",
   "AUDITOR_REPORT_TEMPLATE",
   "AUDIT_PACKAGE",
@@ -57,6 +59,7 @@ export async function GET(request: Request) {
   const month = Number(url.searchParams.get("month") ?? now.getMonth() + 1);
   const blockId = url.searchParams.get("blockId") || null;
   const locale = url.searchParams.get("locale") ?? "tr";
+  const quarterMonths = reportQuarterToMonthRange(parseReportQuarter(url.searchParams.get("quarter")));
 
   if (!isAnnualReportKind(kind) && month !== 0 && (month < 1 || month > 12)) {
     return Response.json({ error: "INVALID_MONTH" }, { status: 400 });
@@ -70,6 +73,7 @@ export async function GET(request: Request) {
     blockId,
     actorUserId: session!.user!.id,
     locale,
+    ...quarterMonths,
   };
 
   try {

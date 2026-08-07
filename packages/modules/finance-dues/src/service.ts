@@ -6,6 +6,7 @@ import {
   FinancePeriodStatus,
   LateFeeRateKind,
   Prisma,
+  SupplierLateFeeAllocationMode,
 } from "@siteyonetim/db";
 import { createAuditService } from "@siteyonetim/platform-audit";
 import type { MeterServiceContract } from "@siteyonetim/property-meters";
@@ -13,9 +14,11 @@ import { createMeterService } from "@siteyonetim/property-meters";
 import { createReportingCoreService } from "@siteyonetim/reporting-core";
 
 import type {
+  AccrualBillInput,
   AccrualContextPreload,
   AccrualContextWarningsDto,
   AccrualContextWarningDto,
+  AccrualMissingUnitDto,
   AccrualRunCorrectionDto,
   ApplyLateFeesInput,
   CreateDueDefinitionInput,
@@ -53,6 +56,7 @@ import type {
   LateFeePolicyTargetDto,
 } from "./contract";
 import { DuesRepository } from "./repository";
+import { analyzeMissingAccrualUnits } from "./accrual-missing-units";
 import {
   countMissingPreviousIndex,
   hasMeterRunMismatch,
@@ -61,6 +65,7 @@ import {
 } from "./accrual-context";
 import { supportsSupplementAppend } from "./accrual-run-guards";
 import { sortByUnitCode } from "./unit-sort";
+import { allocateSupplierLateFee } from "./supplier-late-fee-allocation";
 import {
   buildPeriodRegisterDocument,
   PERIOD_REGISTER_EXPORT_PAGE_SIZE,
@@ -73,6 +78,7 @@ function mapDefinition(d: {
   fixedAmount: Prisma.Decimal | null;
   ratePerM2: Prisma.Decimal | null;
   meterKind: import("@siteyonetim/db").MeterKind | null;
+  supplierLateFeeAllocationMode: SupplierLateFeeAllocationMode | null;
   active: boolean;
   autoAccrualMonthly: boolean;
 }): DueDefinitionDto {
@@ -83,6 +89,7 @@ function mapDefinition(d: {
     fixedAmount: d.fixedAmount?.toString() ?? null,
     ratePerM2: d.ratePerM2?.toString() ?? null,
     meterKind: d.meterKind,
+    supplierLateFeeAllocationMode: d.supplierLateFeeAllocationMode,
     autoAccrualMonthly: d.autoAccrualMonthly,
     active: d.active,
   };
@@ -95,6 +102,8 @@ function mapRun(r: {
   month: number;
   status: import("@siteyonetim/db").DueAccrualStatus;
   totalAmount: Prisma.Decimal;
+  supplierLateFeeAllocationMode: SupplierLateFeeAllocationMode | null;
+  supplierReference: string | null;
   dueDefinition: {
     name: string;
     calculationMode: DueCalculationMode;
@@ -108,6 +117,8 @@ function mapRun(r: {
     dueDefinitionName: r.dueDefinition.name,
     calculationMode: r.dueDefinition.calculationMode,
     meterKind: r.dueDefinition.meterKind,
+    supplierLateFeeAllocationMode: r.supplierLateFeeAllocationMode,
+    supplierReference: r.supplierReference,
     year: r.year,
     month: r.month,
     status: r.status,
@@ -253,11 +264,18 @@ function mapPortalOpenDebtLine(
           sourceDueDefinitionName: sourceRun.dueDefinition.name,
         }
       : {}),
+    ...(row.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE
+      ? {
+          supplierLateFeeAllocationMode: row.accrualRun.supplierLateFeeAllocationMode,
+          supplierReference: row.accrualRun.supplierReference,
+        }
+      : {}),
   };
 }
 
 function mapOpenLine(r: Awaited<ReturnType<DuesRepository["listOpenLinesByUnit"]>>[number]): DueAccrualLineDto {
   const remaining = r.amount.sub(r.paidAmount);
+  const sourceRun = r.sourceLine?.accrualRun;
   return {
     id: r.id,
     unitId: r.unit.id,
@@ -270,7 +288,104 @@ function mapOpenLine(r: Awaited<ReturnType<DuesRepository["listOpenLinesByUnit"]
     status: r.status,
     year: r.accrualRun.year,
     month: r.accrualRun.month,
+    lineKind: r.lineKind,
+    dueDefinitionName: r.accrualRun.dueDefinition.name,
+    ...(r.lineKind === DueAccrualLineKind.LATE_FEE && sourceRun
+      ? {
+          sourceYear: sourceRun.year,
+          sourceMonth: sourceRun.month,
+          sourceDueDefinitionName: sourceRun.dueDefinition.name,
+        }
+      : {}),
+    ...(r.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE
+      ? {
+          supplierLateFeeAllocationMode: r.accrualRun.supplierLateFeeAllocationMode,
+          supplierReference: r.accrualRun.supplierReference,
+        }
+      : {}),
   };
+}
+
+function formatAccrualChargeLabel(input: {
+  lineKind: DueAccrualLineKind;
+  dueDefinitionName: string;
+  year: number;
+  month: number;
+  sourceYear?: number | null;
+  sourceMonth?: number | null;
+  sourceDueDefinitionName?: string | null;
+}): string {
+  const period = `${input.month}/${input.year}`;
+  if (
+    input.lineKind === DueAccrualLineKind.LATE_FEE &&
+    input.sourceDueDefinitionName &&
+    input.sourceMonth != null &&
+    input.sourceYear != null
+  ) {
+    return `${input.dueDefinitionName} (${input.sourceDueDefinitionName} ${input.sourceMonth}/${input.sourceYear})`;
+  }
+  return `${input.dueDefinitionName} ${period}`;
+}
+
+function formatStatementAccrualLabel(line: {
+  lineKind: DueAccrualLineKind;
+  unit: { code: string };
+  accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+  sourceLine?: {
+    accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+  } | null;
+}): string {
+  const sourceRun = line.sourceLine?.accrualRun;
+  const charge = formatAccrualChargeLabel({
+    lineKind: line.lineKind,
+    dueDefinitionName: line.accrualRun.dueDefinition.name,
+    year: line.accrualRun.year,
+    month: line.accrualRun.month,
+    sourceYear: sourceRun?.year,
+    sourceMonth: sourceRun?.month,
+    sourceDueDefinitionName: sourceRun?.dueDefinition.name,
+  });
+  return `${charge} — ${line.unit.code}`;
+}
+
+function formatStatementPaymentLabel(payment: {
+  description: string | null;
+  documentNo: string | null;
+  cashbox?: { name: string } | null;
+  allocations?: Array<{
+    dueAccrualLine: {
+      lineKind: DueAccrualLineKind;
+      accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+      sourceLine?: {
+        accrualRun: { year: number; month: number; dueDefinition: { name: string } };
+      } | null;
+    };
+  }>;
+}): string {
+  const base = payment.description?.trim() || "Tahsilat";
+  const doc = payment.documentNo?.trim();
+  const head = doc ? `${base} (${doc})` : base;
+  const targets = [
+    ...new Set(
+      (payment.allocations ?? []).map((allocation) => {
+        const dueLine = allocation.dueAccrualLine;
+        const sourceRun = dueLine.sourceLine?.accrualRun;
+        return formatAccrualChargeLabel({
+          lineKind: dueLine.lineKind,
+          dueDefinitionName: dueLine.accrualRun.dueDefinition.name,
+          year: dueLine.accrualRun.year,
+          month: dueLine.accrualRun.month,
+          sourceYear: sourceRun?.year,
+          sourceMonth: sourceRun?.month,
+          sourceDueDefinitionName: sourceRun?.dueDefinition.name,
+        });
+      }),
+    ),
+  ];
+  const parts = [head];
+  if (payment.cashbox?.name) parts.push(payment.cashbox.name);
+  if (targets.length > 0) parts.push(targets.join(", "));
+  return parts.join(" — ");
 }
 
 function monthlyPercentFromAnnual(annual: Prisma.Decimal) {
@@ -309,6 +424,7 @@ type AccrualLineData = {
   partyId: string | null;
   financeAccountId: string | null;
   amount: Prisma.Decimal;
+  lineKind?: DueAccrualLineKind;
 };
 
 type UnitRow = {
@@ -351,14 +467,21 @@ function splitByMeterConsumption(
   consumptions: { unitId: string; consumption: string }[],
   total: Prisma.Decimal,
 ) {
+  const sorted = [...consumptions].sort((a, b) => a.unitId.localeCompare(b.unitId));
+  const map = new Map<string, Prisma.Decimal>();
   const sum = consumptions.reduce(
     (acc, row) => acc.add(new Prisma.Decimal(row.consumption)),
     new Prisma.Decimal(0),
   );
-  if (sum.lte(0)) return new Map<string, Prisma.Decimal>();
 
-  const positive = consumptions.filter((row) => new Prisma.Decimal(row.consumption).gt(0));
-  const map = new Map<string, Prisma.Decimal>();
+  if (sum.lte(0)) {
+    for (const row of sorted) {
+      map.set(row.unitId, new Prisma.Decimal(0));
+    }
+    return map;
+  }
+
+  const positive = sorted.filter((row) => new Prisma.Decimal(row.consumption).gt(0));
   let allocated = new Prisma.Decimal(0);
 
   for (let i = 0; i < positive.length; i += 1) {
@@ -368,9 +491,14 @@ function splitByMeterConsumption(
     const amount = isLast
       ? total.sub(allocated)
       : total.mul(consumption).div(sum).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-    if (amount.lte(0)) continue;
-    map.set(row.unitId, amount);
-    allocated = allocated.add(amount);
+    map.set(row.unitId, amount.lt(0) ? new Prisma.Decimal(0) : amount);
+    allocated = allocated.add(map.get(row.unitId)!);
+  }
+
+  for (const row of sorted) {
+    if (!map.has(row.unitId)) {
+      map.set(row.unitId, new Prisma.Decimal(0));
+    }
   }
 
   return map;
@@ -396,12 +524,21 @@ function assertBillConsumptionMatches(
   }
 }
 
+function accrualModeNeedsBillInput(mode: DueCalculationMode): boolean {
+  return (
+    mode === DueCalculationMode.ALLOCATED_BILL ||
+    mode === DueCalculationMode.METER_ALLOCATED_BILL ||
+    mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL
+  );
+}
+
 function validateDefinitionInput(input: {
   name: string;
   calculationMode: DueCalculationMode;
   fixedAmount?: string | null;
   ratePerM2?: string | null;
   meterKind?: import("@siteyonetim/db").MeterKind | null;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
 }) {
   const name = input.name.trim();
   if (!name) throw new Error("DEFINITION_NAME_REQUIRED");
@@ -422,6 +559,9 @@ function validateDefinitionInput(input: {
   }
   if (mode === DueCalculationMode.METER_ALLOCATED_BILL) {
     if (!input.meterKind) throw new Error("METER_KIND_REQUIRED");
+  }
+  if (mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL) {
+    if (!input.supplierLateFeeAllocationMode) throw new Error("SUPPLIER_LATE_FEE_MODE_REQUIRED");
   }
 
   return { name, mode };
@@ -454,8 +594,11 @@ export class DuesService implements DuesServiceContract {
       throw new Error("DEFINITION_NAME_DUPLICATE");
     }
 
+    const autoAccrualMonthly =
+      mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? false : (input.autoAccrualMonthly ?? false);
+
     try {
-      const created = await this.repository.createDefinition({ ...input, name });
+      const created = await this.repository.createDefinition({ ...input, name, autoAccrualMonthly });
       await this.audit.record({
         organizationId: input.organizationId,
         userId: input.actorUserId,
@@ -477,13 +620,28 @@ export class DuesService implements DuesServiceContract {
     await this.assertCtx(input);
     const { name, mode } = validateDefinitionInput(input);
 
+    const existing = await this.repository.getDefinition(input, input.definitionId);
+    if (!existing) throw new Error("DEFINITION_NOT_FOUND");
+
+    if (existing.calculationMode !== mode) {
+      const involvesSupplier =
+        existing.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ||
+        mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL;
+      if (involvesSupplier) {
+        throw new Error("CALCULATION_MODE_CHANGE_NOT_ALLOWED");
+      }
+    }
+
     const duplicate = await this.repository.findDefinitionByName(input.propertyId, name);
     if (duplicate && duplicate.id !== input.definitionId) {
       throw new Error("DEFINITION_NAME_DUPLICATE");
     }
 
+    const autoAccrualMonthly =
+      mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? false : (input.autoAccrualMonthly ?? false);
+
     try {
-      const updated = await this.repository.updateDefinition({ ...input, name });
+      const updated = await this.repository.updateDefinition({ ...input, name, autoAccrualMonthly });
       if (!updated) throw new Error("DEFINITION_NOT_FOUND");
       await this.audit.record({
         organizationId: input.organizationId,
@@ -511,6 +669,11 @@ export class DuesService implements DuesServiceContract {
     autoAccrualMonthly: boolean,
   ): Promise<DueDefinitionDto> {
     await this.assertCtx(ctx);
+    const existing = await this.repository.getDefinition(ctx, definitionId);
+    if (!existing) throw new Error("DEFINITION_NOT_FOUND");
+    if (existing.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL) {
+      throw new Error("SUPPLIER_LATE_FEE_AUTO_ACCRUAL_NOT_ALLOWED");
+    }
     const updated = await this.repository.setDefinitionAutoAccrual(ctx, definitionId, autoAccrualMonthly);
     if (!updated) throw new Error("DEFINITION_NOT_FOUND");
     await this.audit.record({
@@ -615,7 +778,7 @@ export class DuesService implements DuesServiceContract {
     definition: NonNullable<Awaited<ReturnType<DuesRepository["getDefinition"]>>>,
     year: number,
     month: number,
-    bill?: { totalBillAmount?: string | null; totalBillConsumptionM3?: string | null },
+    bill?: AccrualBillInput,
     preload?: AccrualLinePreload,
   ): Promise<AccrualLineData[]> {
     const units = preload?.units ?? (await this.repository.getUnitsWithArea(ctx));
@@ -642,7 +805,6 @@ export class DuesService implements DuesServiceContract {
       });
       for (const row of consumptions) {
         const amount = new Prisma.Decimal(row.consumption).mul(rate);
-        if (amount.lte(0)) continue;
         const link = partyMap.get(row.unitId);
         lineData.push({
           unitId: row.unitId,
@@ -676,6 +838,30 @@ export class DuesService implements DuesServiceContract {
       }
       const amounts = splitByMeterConsumption(consumptions, total);
       for (const [unitId, amount] of amounts) {
+        const link = partyMap.get(unitId);
+        lineData.push({
+          unitId,
+          partyId: link?.partyId ?? null,
+          financeAccountId: link?.accountId ?? null,
+          amount,
+        });
+      }
+    } else if (definition.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL) {
+      const allocationMode =
+        bill?.supplierLateFeeAllocationMode ?? definition.supplierLateFeeAllocationMode;
+      if (!allocationMode) throw new Error("SUPPLIER_LATE_FEE_MODE_REQUIRED");
+      const totalRaw = bill?.totalBillAmount?.replace(",", ".") ?? "";
+      if (!totalRaw) throw new Error("TOTAL_BILL_REQUIRED");
+      const total = new Prisma.Decimal(totalRaw);
+      if (total.lte(0)) throw new Error("AMOUNT_INVALID");
+
+      const policy = await this.repository.getLateFeePolicy(ctx);
+      const dueDay = policy?.dueDayOfMonth ?? 1;
+      const graceDays = policy?.graceDays ?? 0;
+      const delinquentDebts = await this.repository.listDelinquentUnitDebts(ctx, dueDay, graceDays);
+      const amounts = allocateSupplierLateFee(allocationMode, total, unitRows, delinquentDebts);
+
+      for (const [unitId, amount] of amounts) {
         if (amount.lte(0)) continue;
         const link = partyMap.get(unitId);
         lineData.push({
@@ -683,6 +869,7 @@ export class DuesService implements DuesServiceContract {
           partyId: link?.partyId ?? null,
           financeAccountId: link?.accountId ?? null,
           amount,
+          lineKind: DueAccrualLineKind.SUPPLIER_LATE_FEE,
         });
       }
     } else if (definition.calculationMode === DueCalculationMode.ALLOCATED_BILL) {
@@ -738,6 +925,58 @@ export class DuesService implements DuesServiceContract {
     return lineData;
   }
 
+  private async resolveBillInputFromAccrualRun(
+    ctx: DuesContext,
+    run: {
+      year: number;
+      month: number;
+      totalAmount: Prisma.Decimal;
+      totalBillAmount: Prisma.Decimal | null;
+      totalBillConsumptionM3: Prisma.Decimal | null;
+      supplierLateFeeAllocationMode: SupplierLateFeeAllocationMode | null;
+      dueDefinition: {
+        calculationMode: DueCalculationMode;
+        meterKind: import("@siteyonetim/db").MeterKind | null;
+      };
+    },
+  ): Promise<AccrualBillInput | undefined> {
+    if (!accrualModeNeedsBillInput(run.dueDefinition.calculationMode)) {
+      return undefined;
+    }
+
+    const totalBillAmount =
+      run.totalBillAmount?.toString() ??
+      (run.totalAmount.gt(0) ? run.totalAmount.toString() : null);
+    if (!totalBillAmount) {
+      return undefined;
+    }
+
+    const bill: AccrualBillInput = {
+      totalBillAmount,
+      supplierLateFeeAllocationMode: run.supplierLateFeeAllocationMode,
+    };
+
+    if (
+      run.dueDefinition.calculationMode === DueCalculationMode.METER_ALLOCATED_BILL &&
+      run.dueDefinition.meterKind
+    ) {
+      if (run.totalBillConsumptionM3) {
+        bill.totalBillConsumptionM3 = run.totalBillConsumptionM3.toString();
+      } else {
+        const consumptions = await this.meters.getConsumptionByUnit({
+          organizationId: ctx.organizationId,
+          propertyId: ctx.propertyId,
+          kind: run.dueDefinition.meterKind,
+          year: run.year,
+          month: run.month,
+        });
+        bill.totalBillConsumptionM3 = sumConsumptions(consumptions).toString();
+      }
+    }
+
+    return bill;
+  }
+
   private async computeMissingAccrualLines(
     ctx: DuesContext,
     definition: NonNullable<Awaited<ReturnType<DuesRepository["getDefinition"]>>>,
@@ -745,8 +984,9 @@ export class DuesService implements DuesServiceContract {
     month: number,
     existingUnitIds: Set<string>,
     preload?: AccrualLinePreload,
+    bill?: AccrualBillInput,
   ): Promise<AccrualLineData[]> {
-    const lineData = await this.buildAccrualLineData(ctx, definition, year, month, undefined, preload);
+    const lineData = await this.buildAccrualLineData(ctx, definition, year, month, bill, preload);
     return lineData.filter((line) => !existingUnitIds.has(line.unitId));
   }
 
@@ -766,12 +1006,26 @@ export class DuesService implements DuesServiceContract {
       {
         totalBillAmount: input.totalBillAmount,
         totalBillConsumptionM3: input.totalBillConsumptionM3,
+        supplierLateFeeAllocationMode:
+          input.supplierLateFeeAllocationMode ?? definition.supplierLateFeeAllocationMode,
       },
     );
 
     if (lineData.length === 0) throw new Error("NO_ACCRUAL_LINES");
 
-    const run = await this.repository.replaceDraftRun(input, period.id, lineData);
+    const allocationMode =
+      input.supplierLateFeeAllocationMode ?? definition.supplierLateFeeAllocationMode;
+    const run = await this.repository.replaceDraftRun(
+      input,
+      period.id,
+      lineData,
+      definition.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL
+        ? {
+            supplierLateFeeAllocationMode: allocationMode,
+            supplierReference: input.supplierReference ?? null,
+          }
+        : undefined,
+    );
     await this.audit.record({
       organizationId: input.organizationId,
       userId: input.actorUserId,
@@ -785,6 +1039,46 @@ export class DuesService implements DuesServiceContract {
 
   async recalculateAccrual(input: RecalculateAccrualInput) {
     await this.assertCtx(input);
+
+    const draft = await this.repository.getDraftRun(input, input.runId);
+    if (draft) {
+      if (draft.financePeriod.status !== FinancePeriodStatus.OPEN) throw new Error("PERIOD_CLOSED");
+      const definition = draft.dueDefinition;
+      if (definition.calculationMode !== DueCalculationMode.METER_ALLOCATED_BILL) {
+        throw new Error("RECALCULATE_METER_BILL_ONLY");
+      }
+
+      const lineData = await this.buildAccrualLineData(input, definition, draft.year, draft.month, {
+        totalBillAmount: input.totalBillAmount,
+        totalBillConsumptionM3: input.totalBillConsumptionM3,
+      });
+      if (lineData.length === 0) throw new Error("NO_ACCRUAL_LINES");
+
+      const run = await this.repository.replaceDraftRun(
+        {
+          organizationId: input.organizationId,
+          propertyId: input.propertyId,
+          dueDefinitionId: draft.dueDefinitionId,
+          year: draft.year,
+          month: draft.month,
+          totalBillAmount: input.totalBillAmount,
+          totalBillConsumptionM3: input.totalBillConsumptionM3,
+          actorUserId: input.actorUserId,
+        },
+        draft.financePeriodId,
+        lineData,
+      );
+      await this.audit.record({
+        organizationId: input.organizationId,
+        userId: input.actorUserId,
+        action: "dues.accrual.recalculate",
+        entityType: "DueAccrualRun",
+        entityId: run.id,
+        metadata: { year: draft.year, month: draft.month, total: run.totalAmount.toString(), status: "DRAFT" },
+      });
+      return mapRun(run);
+    }
+
     const existing = await this.repository.assertRecalculateAllowed(input, input.runId);
     if (existing.financePeriod.status !== FinancePeriodStatus.OPEN) throw new Error("PERIOD_CLOSED");
 
@@ -824,12 +1118,15 @@ export class DuesService implements DuesServiceContract {
     if (draft.financePeriod.status !== FinancePeriodStatus.OPEN) throw new Error("PERIOD_CLOSED");
 
     const existingUnitIds = new Set(draft.lines.map((line) => line.unitId));
+    const bill = await this.resolveBillInputFromAccrualRun(ctx, draft);
     const missingLines = await this.computeMissingAccrualLines(
       ctx,
       draft.dueDefinition,
       draft.year,
       draft.month,
       existingUnitIds,
+      undefined,
+      bill,
     );
     if (missingLines.length > 0) throw new Error("ACCRUAL_INCOMPLETE");
 
@@ -876,6 +1173,7 @@ export class DuesService implements DuesServiceContract {
     const existingUnitIds = new Set(existing.lines.map((line) => line.unitId));
     const units = await this.repository.getUnitsWithArea(ctx);
     const partyMap = await this.repository.resolvePartyAccountsForUnits(ctx, units);
+    const bill = await this.resolveBillInputFromAccrualRun(ctx, existing);
     const missingLines = await this.computeMissingAccrualLines(
       ctx,
       existing.dueDefinition,
@@ -883,6 +1181,7 @@ export class DuesService implements DuesServiceContract {
       existing.month,
       existingUnitIds,
       { units, partyMap },
+      bill,
     );
     if (missingLines.length === 0) throw new Error("NO_MISSING_UNITS");
 
@@ -903,6 +1202,84 @@ export class DuesService implements DuesServiceContract {
     return mapRun(run);
   }
 
+  private async resolveMissingAccrualUnits(
+    ctx: DuesContext,
+    run: { year: number; month: number },
+    definition: NonNullable<Awaited<ReturnType<DuesRepository["getDefinition"]>>>,
+    accruedUnitIds: Set<string>,
+    preload: AccrualLinePreload,
+    meterCache: Map<
+      string,
+      {
+        periods: Awaited<ReturnType<MeterServiceContract["getMeterPeriodByUnit"]>>;
+        activeMeterUnitIds: Set<string>;
+      }
+    >,
+  ): Promise<AccrualMissingUnitDto[]> {
+    const units = preload.units ?? [];
+    if (units.length === 0 || accruedUnitIds.size >= units.length) {
+      return [];
+    }
+
+    let lineDataUnitIds: Set<string> | undefined;
+    try {
+      const lineData = await this.buildAccrualLineData(ctx, definition, run.year, run.month, undefined, preload);
+      lineDataUnitIds = new Set(lineData.map((line) => line.unitId));
+    } catch {
+      lineDataUnitIds = undefined;
+    }
+
+    let meterPeriods: Awaited<ReturnType<MeterServiceContract["getMeterPeriodByUnit"]>> | undefined;
+    let activeMeterUnitIds: Set<string> | undefined;
+
+    if (isMeterDefinitionMode(definition.calculationMode) && definition.meterKind) {
+      const cacheKey = `${definition.meterKind}-${run.year}-${run.month}`;
+      let cached = meterCache.get(cacheKey);
+      if (!cached) {
+        const [periods, meters] = await Promise.all([
+          this.meters.getMeterPeriodByUnit({
+            organizationId: ctx.organizationId,
+            propertyId: ctx.propertyId,
+            kind: definition.meterKind,
+            year: run.year,
+            month: run.month,
+          }),
+          this.meters.listMeters({
+            organizationId: ctx.organizationId,
+            propertyId: ctx.propertyId,
+          }),
+        ]);
+        const activeForKind = meters.filter(
+          (meter) => meter.kind === definition.meterKind && meter.active,
+        );
+        cached = {
+          periods,
+          activeMeterUnitIds: new Set(activeForKind.map((meter) => meter.unitId)),
+        };
+        meterCache.set(cacheKey, cached);
+      }
+      meterPeriods = cached.periods;
+      activeMeterUnitIds = cached.activeMeterUnitIds;
+    }
+
+    return analyzeMissingAccrualUnits({
+      units: units.map((unit) => ({
+        id: unit.id,
+        code: unit.code,
+        areaM2: unit.areaM2,
+        shareRatio: unit.shareRatio,
+      })),
+      accruedUnitIds,
+      calculationMode: definition.calculationMode,
+      year: run.year,
+      month: run.month,
+      partyMap: preload.partyMap ?? new Map(),
+      lineDataUnitIds,
+      meterPeriods,
+      activeMeterUnitIds,
+    });
+  }
+
   async listAccrualRunCorrections(ctx: DuesContext): Promise<Record<string, AccrualRunCorrectionDto>> {
     await this.assertCtx(ctx);
     const [units, runs, facts, definitions] = await Promise.all([
@@ -916,6 +1293,13 @@ export class DuesService implements DuesServiceContract {
     const totalUnitCount = units.length;
     const partyMap = await this.repository.resolvePartyAccountsForUnits(ctx, units);
     const preload: AccrualLinePreload = { units, partyMap };
+    const meterCache = new Map<
+      string,
+      {
+        periods: Awaited<ReturnType<MeterServiceContract["getMeterPeriodByUnit"]>>;
+        activeMeterUnitIds: Set<string>;
+      }
+    >();
     const result: Record<string, AccrualRunCorrectionDto> = {};
 
     for (const run of runs) {
@@ -923,7 +1307,7 @@ export class DuesService implements DuesServiceContract {
       if (!fact) continue;
 
       const accruedUnitCount = fact.accruedUnitIds.size;
-      let missingUnitCount = 0;
+      let missingUnits: AccrualMissingUnitDto[] = [];
 
       if (
         (run.status === DueAccrualStatus.POSTED || run.status === DueAccrualStatus.DRAFT) &&
@@ -931,16 +1315,26 @@ export class DuesService implements DuesServiceContract {
       ) {
         const definition = defById.get(run.dueDefinitionId);
         if (definition) {
-          try {
-            const lineData = await this.buildAccrualLineData(ctx, definition, run.year, run.month, undefined, preload);
-            missingUnitCount = lineData.filter((line) => !fact.accruedUnitIds.has(line.unitId)).length;
-          } catch {
-            missingUnitCount = Math.max(0, totalUnitCount - accruedUnitCount);
-          }
+          missingUnits = await this.resolveMissingAccrualUnits(
+            ctx,
+            run,
+            definition,
+            fact.accruedUnitIds,
+            preload,
+            meterCache,
+          );
         } else {
-          missingUnitCount = Math.max(0, totalUnitCount - accruedUnitCount);
+          missingUnits = units
+            .filter((unit) => !fact.accruedUnitIds.has(unit.id))
+            .map((unit) => ({
+              unitId: unit.id,
+              unitCode: unit.code,
+              reasons: ["PENDING_IN_RUN" as const],
+            }));
         }
       }
+
+      const missingUnitCount = missingUnits.length;
 
       const isPosted = run.status === DueAccrualStatus.POSTED;
       const isDraft = run.status === DueAccrualStatus.DRAFT;
@@ -970,6 +1364,7 @@ export class DuesService implements DuesServiceContract {
         hasPayments: fact.hasPayments,
         hasLateFees: fact.hasLateFees,
         missingUnitCount,
+        missingUnits,
         accruedUnitCount,
         totalUnitCount,
         supplementBlockedReason,
@@ -1143,17 +1538,21 @@ export class DuesService implements DuesServiceContract {
     const policy = await this.repository.getLateFeePolicy(input);
     const dueDay = policy?.dueDayOfMonth ?? 1;
 
-    const [definitions, { units, lines, total }] = await Promise.all([
+    const [definitions, { units, lines, total }, periodDefinitionIds] = await Promise.all([
       this.listDefinitions(input),
       this.repository.listPeriodRegisterPaginated({ ...input, dueDay }),
+      this.repository.listPeriodRegisterDefinitionIdsForPeriod(input),
     ]);
 
+    const periodDefinitionIdSet = new Set(periodDefinitionIds);
+
     const activeColumns = definitions
-      .filter((definition) => definition.active)
+      .filter((definition) => periodDefinitionIdSet.has(definition.id))
       .map((definition) => ({
         id: definition.id,
         name: definition.name,
         calculationMode: definition.calculationMode,
+        supplierLateFeeAllocationMode: definition.supplierLateFeeAllocationMode,
       }));
 
     const linesByUnit = new Map<string, typeof lines>();
@@ -1179,6 +1578,8 @@ export class DuesService implements DuesServiceContract {
             remaining: "0",
             status: "NONE",
             lineKind: null,
+            supplierLateFeeAllocationMode: null,
+            supplierReference: null,
             lastDocumentNo: null,
             isOverdue: false,
           };
@@ -1193,6 +1594,12 @@ export class DuesService implements DuesServiceContract {
           matching.find((line) => line.lineKind === DueAccrualLineKind.STANDARD) ??
           matching[0]!;
         const hasLateFee = matching.some((line) => line.lineKind === DueAccrualLineKind.LATE_FEE);
+        const hasSupplierLateFee = matching.some(
+          (line) => line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE,
+        );
+        const supplierMeta = matching.find(
+          (line) => line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE,
+        );
         const status =
           remaining <= 0 && amount > 0
             ? DueLineStatus.PAID
@@ -1210,7 +1617,13 @@ export class DuesService implements DuesServiceContract {
           paidAmount: paidAmount.toFixed(2),
           remaining: Math.max(0, remaining).toFixed(2),
           status,
-          lineKind: hasLateFee ? DueAccrualLineKind.LATE_FEE : primary.lineKind,
+          lineKind: hasLateFee
+            ? DueAccrualLineKind.LATE_FEE
+            : hasSupplierLateFee
+              ? DueAccrualLineKind.SUPPLIER_LATE_FEE
+              : primary.lineKind,
+          supplierLateFeeAllocationMode: supplierMeta?.supplierLateFeeAllocationMode ?? null,
+          supplierReference: supplierMeta?.supplierReference ?? null,
           lastDocumentNo:
             matching
               .map((line) => line.lastDocumentNo)
@@ -1255,7 +1668,13 @@ export class DuesService implements DuesServiceContract {
       pageSize: PERIOD_REGISTER_EXPORT_PAGE_SIZE,
     });
     const periodLabel = `${input.month}/${input.year}`;
-    const document = buildPeriodRegisterDocument(page, periodLabel);
+    const letterhead = await this.repository.getExportLetterheadMeta(input.organizationId, input.propertyId);
+    const document = buildPeriodRegisterDocument(page, periodLabel, {
+      locale: input.locale,
+      propertyName: letterhead?.propertyName,
+      organizationName: letterhead?.organizationName,
+      address: letterhead?.address,
+    });
     const reportingCore = createReportingCoreService();
     const rendered = await reportingCore.render(input.format, document);
 
@@ -1657,16 +2076,13 @@ export class DuesService implements DuesServiceContract {
     const events: Event[] = [];
 
     for (const line of lines) {
-      const isLate = line.lineKind === DueAccrualLineKind.LATE_FEE;
       events.push({
         date: line.createdAt,
         sort: 1,
         line: {
           kind: "ACCRUAL",
           date: line.createdAt,
-          label: isLate
-            ? `Gecikme ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`
-            : `Aidat ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`,
+          label: formatStatementAccrualLabel(line),
           debit: line.amount.toString(),
           credit: "0",
           balance: "0",
@@ -1686,7 +2102,7 @@ export class DuesService implements DuesServiceContract {
         line: {
           kind: "PAYMENT",
           date: payment.paymentDate,
-          label: payment.description ?? payment.documentNo ?? "Tahsilat",
+          label: formatStatementPaymentLabel(payment),
           debit: "0",
           credit: allocated.toString(),
           balance: "0",
@@ -1712,16 +2128,13 @@ export class DuesService implements DuesServiceContract {
     const events: Event[] = [];
 
     for (const line of lines) {
-      const isLate = line.lineKind === DueAccrualLineKind.LATE_FEE;
       events.push({
         date: line.createdAt,
         sort: 1,
         line: {
           kind: "ACCRUAL",
           date: line.createdAt,
-          label: isLate
-            ? `Gecikme ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`
-            : `Aidat ${line.accrualRun.month}/${line.accrualRun.year} — ${line.unit.code}`,
+          label: formatStatementAccrualLabel(line),
           debit: line.amount.toString(),
           credit: "0",
           balance: "0",
@@ -1735,7 +2148,7 @@ export class DuesService implements DuesServiceContract {
         line: {
           kind: "PAYMENT",
           date: p.paymentDate,
-          label: p.description ?? "Tahsilat",
+          label: formatStatementPaymentLabel(p),
           debit: "0",
           credit: p.amount.toString(),
           balance: "0",

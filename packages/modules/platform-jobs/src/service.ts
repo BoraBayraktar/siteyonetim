@@ -4,14 +4,19 @@ import { createNotificationService } from "@siteyonetim/comm-notifications";
 import type { DuesServiceContract } from "@siteyonetim/finance-dues";
 import { createDuesService } from "@siteyonetim/finance-dues";
 import { createAuditService } from "@siteyonetim/platform-audit";
+import type { AuditorReportServiceContract } from "@siteyonetim/reporting-auditor";
+import { createAuditorReportService } from "@siteyonetim/reporting-auditor";
 
 import type {
   AccrualReminderPropertyResult,
+  AuditorQuarterReminderAssignmentResult,
   DueAccrualJobPropertyResult,
   JobServiceContract,
   LateFeeJobPropertyResult,
   RunAccrualDraftReminderInput,
   RunAccrualDraftReminderResult,
+  RunAuditorQuarterReminderInput,
+  RunAuditorQuarterReminderResult,
   RunDueAccrualMonthlyInput,
   RunDueAccrualMonthlyResult,
   RunLateFeeMonthlyInput,
@@ -24,14 +29,17 @@ export class JobService implements JobServiceContract {
   private readonly repository = new JobRepository();
   private readonly dues: DuesServiceContract;
   private readonly notifications: NotificationServiceContract;
+  private readonly auditorReports: AuditorReportServiceContract;
   private readonly audit = createAuditService();
 
   constructor(
     dues: DuesServiceContract = createDuesService(),
     notifications: NotificationServiceContract = createNotificationService(),
+    auditorReports: AuditorReportServiceContract = createAuditorReportService(),
   ) {
     this.dues = dues;
     this.notifications = notifications;
+    this.auditorReports = auditorReports;
   }
 
   async runLateFeeMonthly(input: RunLateFeeMonthlyInput): Promise<RunLateFeeMonthlyResult> {
@@ -214,6 +222,110 @@ export class JobService implements JobServiceContract {
     };
   }
 
+  async runAuditorQuarterReminders(
+    input: RunAuditorQuarterReminderInput,
+  ): Promise<RunAuditorQuarterReminderResult> {
+    const targets = await this.auditorReports.listQuarterReminderTargets(input.year, input.period);
+    const assignments: AuditorQuarterReminderAssignmentResult[] = [];
+
+    for (const target of targets) {
+      const idempotencyKey = `AUDITOR_QUARTER_REMINDER:${target.assignmentId}:${input.year}:${input.period}`;
+      const existing = await this.repository.findByIdempotencyKey(idempotencyKey);
+      if (existing?.status === JobRunStatus.SUCCEEDED) {
+        assignments.push({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          assignmentId: target.assignmentId,
+          status: "SKIPPED",
+        });
+        continue;
+      }
+
+      const run =
+        existing != null
+          ? await this.repository.restartRun(existing.id)
+          : await this.repository.createRun({
+              jobType: JobType.AUDITOR_QUARTER_REMINDER,
+              idempotencyKey,
+              organizationId: target.organizationId,
+              propertyId: target.propertyId,
+              year: input.year,
+              month: 1,
+            });
+
+      try {
+        const { enqueued } = await this.notifications.enqueueAuditorQuarterReminder({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          propertyName: target.propertyName,
+          assignmentId: target.assignmentId,
+          auditorUserId: target.auditorUserId,
+          auditorEmail: target.auditorEmail,
+          auditorName: target.auditorName,
+          year: target.year,
+          period: target.period,
+          reportStatus: target.reportStatus,
+          actorUserId: input.actorUserId ?? null,
+        });
+        await this.repository.finishRun(run.id, JobRunStatus.SUCCEEDED, { enqueued, period: input.period });
+        assignments.push({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          assignmentId: target.assignmentId,
+          status: enqueued > 0 ? "SUCCEEDED" : "SKIPPED",
+          enqueued,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "JOB_FAILED";
+        if (message === "NOTIFICATION_NO_RECIPIENTS") {
+          await this.repository.finishRun(run.id, JobRunStatus.SUCCEEDED, { skipped: message });
+          assignments.push({
+            organizationId: target.organizationId,
+            propertyId: target.propertyId,
+            assignmentId: target.assignmentId,
+            status: "SKIPPED",
+            error: message,
+          });
+          continue;
+        }
+        await this.repository.finishRun(run.id, JobRunStatus.FAILED, undefined, message);
+        assignments.push({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          assignmentId: target.assignmentId,
+          status: "FAILED",
+          error: message,
+        });
+      }
+    }
+
+    const orgIds = [...new Set(assignments.map((row) => row.organizationId))];
+    let processed = 0;
+    let sent = 0;
+    let failed = 0;
+    for (const organizationId of orgIds) {
+      const result = await this.notifications.processPending({ organizationId, limit: 50 });
+      processed += result.processed;
+      sent += result.sent;
+      failed += result.failed;
+    }
+
+    if (orgIds.length > 0) {
+      await this.auditJobBatch(
+        "jobs.auditorQuarterReminder.run",
+        { year: input.year, month: 1, actorUserId: input.actorUserId },
+        assignments,
+      );
+    }
+
+    return {
+      year: input.year,
+      period: input.period,
+      assignments,
+      outbox: { processed, sent, failed },
+    };
+  }
+
   private async executeJob(input: {
     jobType: JobType;
     idempotencyKey: string;
@@ -302,6 +414,7 @@ export class JobService implements JobServiceContract {
 export function createJobService(
   dues?: DuesServiceContract,
   notifications?: NotificationServiceContract,
+  auditorReports?: AuditorReportServiceContract,
 ): JobService {
-  return new JobService(dues, notifications);
+  return new JobService(dues, notifications, auditorReports);
 }

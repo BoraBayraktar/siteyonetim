@@ -41,11 +41,24 @@ function mapErrorCode(code: string, t: ReturnType<typeof useTranslations<"auth">
     "INVALID_TOTP_CODE",
     "INVALID_LOGIN_CHALLENGE",
     "TOTP_TOO_MANY_ATTEMPTS",
+    "TOTP_SECRET_DECRYPT_FAILED",
+    "INVALID_TOTP_ENROLLMENT",
+    "SESSION_ESTABLISH_FAILED",
   ] as const;
   if (known.includes(code as (typeof known)[number])) {
     return t(`errors.${code}` as "errors.INVALID_CREDENTIALS");
   }
   return t("invalidCredentials");
+}
+
+function updateChallengeStep(step: Step, challengeId: string): Step {
+  if (step.kind === "totp") {
+    return { kind: "totp", challengeId };
+  }
+  if (step.kind === "setup") {
+    return { ...step, challengeId };
+  }
+  return step;
 }
 
 export function AdminLoginForm({
@@ -82,7 +95,7 @@ export function AdminLoginForm({
       redirect: false,
     });
     if (result?.error) {
-      setError(t("invalidCredentials"));
+      setError(t("errors.SESSION_ESTABLISH_FAILED"));
       return false;
     }
     return true;
@@ -148,6 +161,9 @@ export function AdminLoginForm({
 
     if (!completed.ok) {
       setError(mapErrorCode(completed.error, t));
+      if (completed.nextChallengeId) {
+        setStep((current) => updateChallengeStep(current, completed.nextChallengeId!));
+      }
       return;
     }
 
@@ -207,7 +223,10 @@ export function AdminLoginForm({
               {step.kind === "totp" ? (
                 <Tabs
                   value={useBackupCode ? "backup" : "app"}
-                  onValueChange={(value) => setUseBackupCode(value === "backup")}
+                  onValueChange={(value) => {
+                    setUseBackupCode(value === "backup");
+                    setError(null);
+                  }}
                 >
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="app">{t("totpTabApp")}</TabsTrigger>
@@ -215,26 +234,28 @@ export function AdminLoginForm({
                   </TabsList>
                   <TabsContent value="app" className="mt-4 space-y-2">
                     <Label htmlFor="code">{t("totpCodeLabel")}</Label>
-                    <Input
-                      id="code"
-                      name="code"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="000000"
-                      required={!useBackupCode}
-                      disabled={useBackupCode}
-                    />
+                    {!useBackupCode ? (
+                      <Input
+                        id="code"
+                        name="code"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        placeholder="000000"
+                        required
+                      />
+                    ) : null}
                   </TabsContent>
                   <TabsContent value="backup" className="mt-4 space-y-2">
                     <Label htmlFor="code-backup">{t("totpBackupCodeLabel")}</Label>
-                    <Input
-                      id="code-backup"
-                      name="code"
-                      autoComplete="off"
-                      placeholder="ABCD1234"
-                      required={useBackupCode}
-                      disabled={!useBackupCode}
-                    />
+                    {useBackupCode ? (
+                      <Input
+                        id="code-backup"
+                        name="code"
+                        autoComplete="off"
+                        placeholder="ABCD1234"
+                        required
+                      />
+                    ) : null}
                   </TabsContent>
                 </Tabs>
               ) : (

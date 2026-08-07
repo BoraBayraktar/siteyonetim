@@ -37,6 +37,8 @@ export interface PropertyServiceContract {
   list(input: ListPropertiesInput): Promise<PaginatedProperties>;
   create(input: CreatePropertyInput): Promise<PropertyDto>;
   getById(organizationId: string, propertyId: string): Promise<PropertyDto | null>;
+  findByIdAny(propertyId: string): Promise<PropertyDto | null>;
+  listNavItemsGlobal(): Promise<Array<{ id: string; name: string }>>;
   getShowcaseProperty(): Promise<PropertyDto | null>;
 }
 

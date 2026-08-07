@@ -149,6 +149,19 @@ export class NotificationRepository {
     return Boolean(row);
   }
 
+  async hasAuditorQuarterReminderOutbox(organizationId: string, sourceId: string) {
+    const row = await prisma.outboxMessage.findFirst({
+      where: {
+        organizationId,
+        sourceType: "AuditorQuarterReminder",
+        sourceId,
+        deleted: false,
+        status: { in: [OutboxStatus.PENDING, OutboxStatus.SENT] },
+      },
+    });
+    return Boolean(row);
+  }
+
   async findUserEmail(userId: string) {
     const user = await prisma.user.findFirst({
       where: { id: userId, deleted: false },
@@ -409,6 +422,67 @@ export function buildReportExportReadyRows(input: {
       body,
       sourceType: "ReportExportReady",
       sourceId: input.exportId,
+    },
+  ];
+}
+
+export function buildAuditorQuarterReminderRows(input: {
+  organizationId: string;
+  propertyId: string;
+  propertyName: string;
+  assignmentId: string;
+  auditorEmail: string;
+  auditorName: string;
+  year: number;
+  period: string;
+  reportStatus: string | null;
+  appBaseUrl: string;
+  locale?: string;
+}) {
+  const loc = input.locale === "en" ? "en" : "tr";
+  const sourceId = `${input.assignmentId}:${input.year}:${input.period}`;
+  const path = `/${loc}/auditor/properties/${input.propertyId}/reports/audit/${input.assignmentId}`;
+  const link = input.appBaseUrl ? `${input.appBaseUrl.replace(/\/$/, "")}${path}` : path;
+  const periodLabel = loc === "en" ? `${input.period} ${input.year}` : `${input.year} ${input.period}`;
+  const statusHint =
+    input.reportStatus == null
+      ? loc === "en"
+        ? "No draft has been started yet."
+        : "Henüz taslak oluşturulmadı."
+      : loc === "en"
+        ? `Current report status: ${input.reportStatus}.`
+        : `Mevcut rapor durumu: ${input.reportStatus}.`;
+
+  const subject =
+    loc === "en"
+      ? `Quarterly audit reminder — ${input.propertyName} (${periodLabel})`
+      : `Çeyreklik denetim hatırlatması — ${input.propertyName} (${periodLabel})`;
+
+  const body =
+    loc === "en"
+      ? [
+          `Hello ${input.auditorName},`,
+          `This is a reminder to complete your auditor report for ${input.propertyName} (${periodLabel}).`,
+          statusHint,
+          `Open the report editor: ${link}`,
+        ].join("\n\n")
+      : [
+          `Merhaba ${input.auditorName},`,
+          `${input.propertyName} için ${periodLabel} dönem denetçi raporunuzu tamamlamanız gerekmektedir.`,
+          statusHint,
+          `Rapor editörü: ${link}`,
+        ].join("\n\n");
+
+  return [
+    {
+      organizationId: input.organizationId,
+      propertyId: input.propertyId,
+      channel: OutboxChannel.EMAIL,
+      recipient: input.auditorEmail,
+      subject,
+      body,
+      sourceType: "AuditorQuarterReminder",
+      sourceId,
     },
   ];
 }

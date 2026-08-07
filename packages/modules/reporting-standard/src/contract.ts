@@ -1,4 +1,4 @@
-import type { ReportExportFormat } from "@siteyonetim/db";
+import type { ReportExportFormat, AuditorReportPeriod } from "@siteyonetim/db";
 
 export type StandardReportKind =
   | "DUE_ACCRUAL_SUMMARY"
@@ -6,6 +6,7 @@ export type StandardReportKind =
   | "EXPENSE_BREAKDOWN"
   | "CASHBOX_SUMMARY"
   | "DEBT_AGING"
+  | "BANK_RECONCILIATION"
   | "ANNUAL_INCOME_EXPENSE"
   | "AUDITOR_REPORT_TEMPLATE"
   | "AUDIT_PACKAGE";
@@ -28,6 +29,8 @@ export type ReportFilter = {
   blockId?: string | null;
   actorUserId?: string | null;
   locale?: string;
+  fromMonth?: number;
+  toMonth?: number;
 };
 
 export type ReportExportDto = {
@@ -48,12 +51,19 @@ export type RequestReportExportInput = ReportFilter & {
   format?: ReportExportFormat;
 };
 
+export type ExportAuditorReportInput = ReportFilter & {
+  auditorPeriod?: AuditorReportPeriod;
+  opinionOverride?: import("./auditor-report-builder").AuditorOpinionOverride;
+};
+
 export type DueAccrualSummaryRow = {
   unitCode: string;
   blockName: string | null;
   definitionName: string;
   lineKind: string;
   amount: string;
+  supplierLateFeeAllocationMode?: string | null;
+  supplierReference?: string | null;
 };
 
 export type DueAccrualSummaryReport = {
@@ -129,6 +139,12 @@ export type AnnualIncomeExpenseReport = {
   cashboxBalance: string;
   budgetPlannedTotal: string | null;
   budgetActualTotal: string | null;
+  /** Posted accrual lines total for the report year */
+  totalAccruedYear: string;
+  /** Sum of paidAmount on posted accrual lines for the year */
+  totalCollectedOnAccrualsYear: string;
+  /** Percent collected / accrued; null when no accruals */
+  collectionRatePercent: string | null;
 };
 
 export type PortalIncomeExpenseInput = {
@@ -210,6 +226,9 @@ export interface StandardReportingContract {
   expenseBreakdown(filter: ReportFilter): Promise<ExpenseBreakdownReport>;
   cashboxSummary(filter: ReportFilter): Promise<CashboxSummaryReport>;
   debtAging(filter: ReportFilter): Promise<DebtAgingReport>;
+  bankReconciliation(
+    filter: ReportFilter,
+  ): Promise<import("@siteyonetim/finance-banking").BankReconciliationSummaryDto>;
   annualIncomeExpense(filter: ReportFilter): Promise<AnnualIncomeExpenseReport>;
   getPortalIncomeExpenseSummary(input: PortalIncomeExpenseInput): Promise<PortalIncomeExpenseSummaryDto>;
   propertyInfo(organizationId: string, propertyId: string): Promise<PropertyInfoDto>;
@@ -220,6 +239,9 @@ export interface StandardReportingContract {
     kind: StandardReportKind,
     filter: ReportFilter,
     format: ReportExportFormat,
+  ): Promise<{ buffer: Buffer; contentType: string; extension: string }>;
+  exportAuditorReportTemplate(
+    input: ExportAuditorReportInput,
   ): Promise<{ buffer: Buffer; contentType: string; extension: string }>;
   requestReportExport(input: RequestReportExportInput): Promise<ReportExportDto>;
   processReportExport(exportId: string): Promise<ReportExportDto>;

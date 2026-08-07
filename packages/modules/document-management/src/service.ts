@@ -6,6 +6,7 @@ import type {
   CreateDocumentInput,
   DocumentDownloadPayload,
   DocumentServiceContract,
+  ListBoardMinutesSummaryInput,
   ListDocumentsAdminInput,
   ListDocumentsPortalInput,
   OpenDocumentDownloadInput,
@@ -100,6 +101,10 @@ export class DocumentService implements DocumentServiceContract {
   async listForPortal(input: ListDocumentsPortalInput): Promise<PaginatedDocuments> {
     const { rows, total } = await this.repository.listForPortal(input);
     return { items: rows, total, page: input.page, pageSize: input.pageSize };
+  }
+
+  async listBoardMinutesSummary(input: ListBoardMinutesSummaryInput) {
+    return this.repository.listBoardMinutesSummary(input);
   }
 
   async openDownload(input: OpenDocumentDownloadInput): Promise<DocumentDownloadPayload> {

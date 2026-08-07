@@ -1,0 +1,23 @@
+export type {
+  AddDecisionInput,
+  AssemblyAttendanceDto,
+  AssemblyDecisionDto,
+  CreateMeetingInput,
+  DeleteAttendanceInput,
+  DeleteDecisionInput,
+  DeleteMeetingInput,
+  GeneralAssemblyMeetingDetailDto,
+  GeneralAssemblyMeetingSummaryDto,
+  GovernanceContext,
+  GovernanceServiceContract,
+  HazirunExportInput,
+  ListMeetingsInput,
+  PaginatedMeetings,
+  UpdateDecisionInput,
+  UpdateMeetingInput,
+  UpsertAttendanceInput,
+  AssemblyAttendanceKind,
+  AssemblyNoticeMethod,
+  GeneralAssemblyMeetingType,
+} from "./contract";
+export { createGovernanceService, GovernanceService } from "./service";

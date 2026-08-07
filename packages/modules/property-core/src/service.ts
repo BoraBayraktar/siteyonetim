@@ -70,6 +70,14 @@ export class PropertyService implements PropertyServiceContract {
     return this.repository.getById(organizationId, propertyId);
   }
 
+  async findByIdAny(propertyId: string): Promise<import("./contract").PropertyDto | null> {
+    return this.repository.findByIdAny(propertyId);
+  }
+
+  async listNavItemsGlobal(): Promise<Array<{ id: string; name: string }>> {
+    return this.repository.listNavItemsGlobal();
+  }
+
   async getShowcaseProperty(): Promise<import("./contract").PropertyDto | null> {
     const configuredId = process.env.HOME_SHOWCASE_PROPERTY_ID?.trim();
     if (configuredId) {

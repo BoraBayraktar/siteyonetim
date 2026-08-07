@@ -150,6 +150,17 @@ export class PropertyRepository {
     return property ? this.toDto(property) : null;
   }
 
+  async listNavItemsGlobal(): Promise<Array<{ id: string; name: string }>> {
+    return prisma.property.findMany({
+      where: {
+        ...notDeleted,
+        organization: { deleted: false },
+      },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  }
+
   async findShowcaseProperty(): Promise<PropertyDto | null> {
     const property = await prisma.property.findFirst({
       where: {

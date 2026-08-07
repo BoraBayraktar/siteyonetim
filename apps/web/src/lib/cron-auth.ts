@@ -50,3 +50,60 @@ export async function parseCronPeriod(request: Request): Promise<{ year: number;
   }
   return parseCronPeriodBody(request);
 }
+
+const QUARTER_PERIODS = ["Q1", "Q2", "Q3", "Q4"] as const;
+type CronQuarterPeriod = (typeof QUARTER_PERIODS)[number];
+
+function isQuarterPeriod(value: string): value is CronQuarterPeriod {
+  return QUARTER_PERIODS.includes(value as CronQuarterPeriod);
+}
+
+export function parseCronQuarterFromUrl(url: URL): { year: number; period: CronQuarterPeriod } | Response {
+  const yearRaw = url.searchParams.get("year");
+  const periodRaw = url.searchParams.get("period");
+  if (!yearRaw || !periodRaw || !isQuarterPeriod(periodRaw)) {
+    return Response.json({ error: "INVALID_QUARTER_PERIOD" }, { status: 400 });
+  }
+  const year = Number(yearRaw);
+  if (!Number.isFinite(year)) {
+    return Response.json({ error: "INVALID_YEAR" }, { status: 400 });
+  }
+  return { year, period: periodRaw };
+}
+
+export async function parseCronQuarterBody(
+  request: Request,
+): Promise<{ year: number; period: CronQuarterPeriod } | Response> {
+  let body: { year?: number; period?: string } = {};
+  try {
+    body = (await request.json()) as { year?: number; period?: string };
+  } catch {
+    /* empty body ok */
+  }
+  if (body.year == null || !body.period || !isQuarterPeriod(body.period)) {
+    return Response.json({ error: "INVALID_QUARTER_PERIOD" }, { status: 400 });
+  }
+  return { year: body.year, period: body.period };
+}
+
+export async function parseCronQuarterPeriod(
+  request: Request,
+): Promise<{ year: number; period: CronQuarterPeriod } | Response | null> {
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    if (url.searchParams.has("year") || url.searchParams.has("period")) {
+      return parseCronQuarterFromUrl(url);
+    }
+    return null;
+  }
+
+  const contentType = request.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const parsed = await parseCronQuarterBody(request);
+    if (parsed instanceof Response) {
+      return parsed;
+    }
+    return parsed;
+  }
+  return null;
+}

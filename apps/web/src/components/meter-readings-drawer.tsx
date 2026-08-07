@@ -42,7 +42,7 @@ function enrichReadingsWithConsumption(readings: MeterReadingDto[]): ReadingRow[
       continue;
     }
     const delta = Number(asc[i]!.readingValue) - Number(asc[i - 1]!.readingValue);
-    consumptionById.set(asc[i]!.id, delta > 0 ? String(delta) : null);
+    consumptionById.set(asc[i]!.id, delta >= 0 ? String(delta) : null);
   }
 
   return [...readings]

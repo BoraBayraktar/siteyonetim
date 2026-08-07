@@ -14,6 +14,7 @@ type ServerPaginationProps = {
   locale: string;
   extraSearchParams?: Record<string, string | undefined>;
   variant?: "simple" | "saas";
+  pageParam?: string;
 };
 
 function buildPageHref(
@@ -21,9 +22,10 @@ function buildPageHref(
   basePath: string,
   page: number,
   extraSearchParams?: Record<string, string | undefined>,
+  pageParam = "page",
 ) {
   const params = new URLSearchParams();
-  params.set("page", String(page));
+  params.set(pageParam, String(page));
   if (extraSearchParams) {
     for (const [key, value] of Object.entries(extraSearchParams)) {
       if (value) {
@@ -56,6 +58,7 @@ export function ServerPagination({
   locale,
   extraSearchParams,
   variant = "simple",
+  pageParam = "page",
 }: ServerPaginationProps) {
   const t = useTranslations("properties");
   const tDebt = useTranslations("unitsDebt");
@@ -75,7 +78,7 @@ export function ServerPagination({
         <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" disabled={page <= 1} asChild={page > 1}>
             {page > 1 ? (
-              <Link href={buildPageHref(locale, basePath, prevPage, extraSearchParams)} aria-label={tDebt("previousPage")}>
+              <Link href={buildPageHref(locale, basePath, prevPage, extraSearchParams, pageParam)} aria-label={tDebt("previousPage")}>
                 ←
               </Link>
             ) : (
@@ -93,13 +96,13 @@ export function ServerPagination({
               {pageNumber === page ? (
                 <span>{pageNumber}</span>
               ) : (
-                <Link href={buildPageHref(locale, basePath, pageNumber, extraSearchParams)}>{pageNumber}</Link>
+                <Link href={buildPageHref(locale, basePath, pageNumber, extraSearchParams, pageParam)}>{pageNumber}</Link>
               )}
             </Button>
           ))}
           <Button variant="outline" size="sm" disabled={page >= totalPages} asChild={page < totalPages}>
             {page < totalPages ? (
-              <Link href={buildPageHref(locale, basePath, nextPage, extraSearchParams)} aria-label={tDebt("nextPage")}>
+              <Link href={buildPageHref(locale, basePath, nextPage, extraSearchParams, pageParam)} aria-label={tDebt("nextPage")}>
                 →
               </Link>
             ) : (
@@ -119,14 +122,14 @@ export function ServerPagination({
       <div className="flex gap-2">
         <Button variant="outline" size="sm" disabled={page <= 1} asChild={page > 1}>
           {page > 1 ? (
-            <Link href={buildPageHref(locale, basePath, prevPage, extraSearchParams)}>←</Link>
+            <Link href={buildPageHref(locale, basePath, prevPage, extraSearchParams, pageParam)}>←</Link>
           ) : (
             <span>←</span>
           )}
         </Button>
         <Button variant="outline" size="sm" disabled={page >= totalPages} asChild={page < totalPages}>
           {page < totalPages ? (
-            <Link href={buildPageHref(locale, basePath, nextPage, extraSearchParams)}>→</Link>
+            <Link href={buildPageHref(locale, basePath, nextPage, extraSearchParams, pageParam)}>→</Link>
           ) : (
             <span>→</span>
           )}

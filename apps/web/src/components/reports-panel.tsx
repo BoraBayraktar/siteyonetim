@@ -10,6 +10,7 @@ import type {
   DueCollectionReport,
   ExpenseBreakdownReport,
   ReportExportDto,
+  ReportQuarterScope,
 } from "@siteyonetim/reporting-standard";
 import type { BlockDto } from "@siteyonetim/property-core";
 import Link from "next/link";
@@ -33,6 +34,7 @@ const DEFAULT_REPORTS: StandardReportKind[] = [
   "EXPENSE_BREAKDOWN",
   "CASHBOX_SUMMARY",
   "DEBT_AGING",
+  "BANK_RECONCILIATION",
   "ANNUAL_INCOME_EXPENSE",
   "AUDITOR_REPORT_TEMPLATE",
   "AUDIT_PACKAGE",
@@ -43,6 +45,7 @@ type Props = {
   propertyId: string;
   year: number;
   month: number;
+  quarter: ReportQuarterScope;
   blockId: string | null;
   activeKind: StandardReportKind;
   blocks: BlockDto[];
@@ -69,6 +72,7 @@ export function ReportsPanel({
   propertyId,
   year,
   month,
+  quarter,
   blockId,
   activeKind,
   blocks,
@@ -93,11 +97,20 @@ export function ReportsPanel({
   );
   const [asyncFormat, setAsyncFormat] = useState("CSV");
 
-  function applyFilters(next: { report?: StandardReportKind; year?: number; month?: number; blockId?: string | null }) {
+  function applyFilters(next: {
+    report?: StandardReportKind;
+    year?: number;
+    month?: number;
+    quarter?: ReportQuarterScope;
+    blockId?: string | null;
+  }) {
     const params = new URLSearchParams();
     params.set("report", next.report ?? activeKind);
     params.set("year", String(next.year ?? year));
     params.set("month", String(next.month ?? month));
+    if (annualActive || isAnnualReportKind(next.report ?? activeKind)) {
+      params.set("quarter", next.quarter ?? quarter);
+    }
     const nextBlockId = next.blockId !== undefined ? next.blockId : blockId;
     if (nextBlockId) {
       params.set("blockId", nextBlockId);
@@ -115,6 +128,9 @@ export function ReportsPanel({
       format,
     });
     if (blockId) params.set("blockId", blockId);
+    if (isAnnualReportKind(kind) && quarter !== "ANNUAL") {
+      params.set("quarter", quarter);
+    }
     return `/api/reports/export?${params.toString()}`;
   }
 
@@ -146,6 +162,23 @@ export function ReportsPanel({
               onBlur={(e) => applyFilters({ month: Number(e.target.value) })}
             />
           </div>
+          {annualActive ? (
+            <div className="grid gap-2">
+              <Label>{t("quarter")}</Label>
+              <Select value={quarter} onValueChange={(v) => applyFilters({ quarter: v as ReportQuarterScope })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["ANNUAL", "Q1", "Q2", "Q3", "Q4"] as ReportQuarterScope[]).map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {t(`quarters.${value}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           {annualActive ? (
             <p className="text-xs text-muted-foreground sm:col-span-2">{t("annualOnlyHint")}</p>
           ) : null}
@@ -324,8 +357,19 @@ export function ReportsPanel({
             ) : null}
             {(kind === "ANNUAL_INCOME_EXPENSE" || kind === "AUDITOR_REPORT_TEMPLATE") && annual ? (
               <div className="space-y-4">
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                   <SummaryCard label={t("dueCollectionTotal")} value={money(annual.dueCollectionTotal, locale)} />
+                  <SummaryCard label={t("totalAccruedYear")} value={money(annual.totalAccruedYear, locale)} />
+                  <SummaryCard
+                    label={t("totalCollectedOnAccrualsYear")}
+                    value={money(annual.totalCollectedOnAccrualsYear, locale)}
+                  />
+                  <SummaryCard
+                    label={t("collectionRate")}
+                    value={
+                      annual.collectionRatePercent != null ? `%${annual.collectionRatePercent}` : t("emptyValue")
+                    }
+                  />
                   <SummaryCard label={t("openDebtTotal")} value={money(annual.openDebtTotal, locale)} />
                   <SummaryCard label={t("cashboxBalance")} value={money(annual.cashboxBalance, locale)} />
                   <SummaryCard label={t("netResult")} value={money(annual.netResult, locale)} />

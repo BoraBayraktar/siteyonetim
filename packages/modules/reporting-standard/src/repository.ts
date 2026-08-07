@@ -20,6 +20,16 @@ function monthRange(year: number, month: number) {
   return { start, end };
 }
 
+function reportDateRange(filter: ReportFilter) {
+  if (filter.fromMonth != null && filter.toMonth != null) {
+    return {
+      start: new Date(filter.year, filter.fromMonth - 1, 1),
+      end: new Date(filter.year, filter.toMonth, 1),
+    };
+  }
+  return { start: new Date(filter.year, 0, 1), end: new Date(filter.year + 1, 0, 1) };
+}
+
 function unitWhere(blockId?: string | null): Prisma.UnitWhereInput | undefined {
   if (!blockId) return undefined;
   return { blockId };
@@ -223,7 +233,7 @@ export class StandardReportRepository {
   }
 
   async duePaymentsYear(filter: ReportFilter) {
-    const { start, end } = this.yearRange(filter.year);
+    const { start, end } = reportDateRange(filter);
     const payments = await prisma.payment.findMany({
       where: {
         organizationId: filter.organizationId,
@@ -237,7 +247,7 @@ export class StandardReportRepository {
   }
 
   async ledgerByCategoryYear(filter: ReportFilter, entryType: LedgerEntryType) {
-    const { start, end } = this.yearRange(filter.year);
+    const { start, end } = reportDateRange(filter);
     const entries = await prisma.ledgerEntry.groupBy({
       by: ["categoryId"],
       where: {

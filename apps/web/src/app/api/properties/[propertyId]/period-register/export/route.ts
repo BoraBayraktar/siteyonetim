@@ -33,6 +33,7 @@ export async function GET(
   const overdueOnly = url.searchParams.get("overdueOnly") === "1";
   const withDebtOnly = url.searchParams.get("withDebtOnly") === "1";
   const format = parseFormat(url.searchParams.get("format"));
+  const locale = url.searchParams.get("locale") ?? "tr";
 
   if (month < 1 || month > 12) {
     return Response.json({ error: "INVALID_MONTH" }, { status: 400 });
@@ -51,6 +52,7 @@ export async function GET(
       overdueOnly,
       withDebtOnly,
       format,
+      locale,
       actorUserId: session.user.id,
     });
 

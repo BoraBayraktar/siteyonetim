@@ -75,15 +75,32 @@ export async function PortalOpenDebtSection({ locale, lines, showMultipleUnits }
                     <TableCell className="font-medium">{displayPeriod(line, locale)}</TableCell>
                     <TableCell>{displayDefinition(line)}</TableCell>
                     <TableCell>
-                      <Badge variant={line.lineKind === DueAccrualLineKind.LATE_FEE ? "warning" : "info"}>
+                      <Badge
+                        variant={
+                          line.lineKind === DueAccrualLineKind.LATE_FEE
+                            ? "warning"
+                            : line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE
+                              ? "secondary"
+                              : "info"
+                        }
+                      >
                         {line.lineKind === DueAccrualLineKind.LATE_FEE
                           ? t("openDebtKindLateFee")
-                          : t("openDebtKindDue")}
+                          : line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE
+                            ? t("openDebtKindSupplierLateFee")
+                            : t("openDebtKindDue")}
                       </Badge>
                       {line.lineKind === DueAccrualLineKind.LATE_FEE ? (
                         <p className="mt-1 text-xs text-muted-foreground">
                           {t("openDebtKindLateFee")} — {t("openDebtPeriod")}:{" "}
                           {formatPeriod(line.year, line.month, locale)}
+                        </p>
+                      ) : null}
+                      {line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE &&
+                      line.supplierLateFeeAllocationMode ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {t(`supplierLateFeeAllocationMode.${line.supplierLateFeeAllocationMode}`)}
+                          {line.supplierReference ? ` · ${line.supplierReference}` : ""}
                         </p>
                       ) : null}
                     </TableCell>

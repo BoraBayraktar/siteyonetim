@@ -1,16 +1,31 @@
 import Link from "next/link";
 import type { StandardReportKind } from "@siteyonetim/reporting-standard";
+import { parseReportQuarter, reportQuarterToMonthRange } from "@siteyonetim/reporting-standard";
 import { isAnnualReportKind } from "@/lib/report-kinds";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { BankReconciliationPanel } from "@/components/bank-reconciliation-panel";
+import { BankWebhookSettingsPanel } from "@/components/bank-webhook-settings-panel";
 import { OperatingBudgetPanel } from "@/components/operating-budget-panel";
+import { AuditorAssignmentPanel } from "@/components/auditor-assignment-panel";
 import { ReportsPanel } from "@/components/reports-panel";
 import { getAdminSession } from "@/lib/cached-admin";
-import { isAuditorRole } from "@/lib/auth-context";
+import { canManageAuditorAssignments, isAuditorRole } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { getBlockService, getFinanceService, getPropertyService, getReportingService } from "@/lib/services";
+import {
+  getAuditorReportService,
+  getBankingService,
+  getBlockService,
+  getFinanceService,
+  getPropertyRbacService,
+  getPropertyService,
+  getReportingService,
+  getStaffFinanceService,
+} from "@/lib/services";
+import { getAppBaseUrl } from "@/lib/app-url";
+import { OrganizationRole } from "@siteyonetim/db";
 
 const KINDS: StandardReportKind[] = [
   "DUE_ACCRUAL_SUMMARY",
@@ -18,6 +33,7 @@ const KINDS: StandardReportKind[] = [
   "EXPENSE_BREAKDOWN",
   "CASHBOX_SUMMARY",
   "DEBT_AGING",
+  "BANK_RECONCILIATION",
   "ANNUAL_INCOME_EXPENSE",
   "AUDITOR_REPORT_TEMPLATE",
   "AUDIT_PACKAGE",
@@ -25,7 +41,7 @@ const KINDS: StandardReportKind[] = [
 
 type Props = {
   params: Promise<{ locale: string; propertyId: string }>;
-  searchParams: Promise<{ report?: string; year?: string; month?: string; blockId?: string }>;
+  searchParams: Promise<{ report?: string; year?: string; month?: string; quarter?: string; blockId?: string; page?: string }>;
 };
 
 export default async function PropertyReportsPage({ params, searchParams }: Props) {
@@ -49,6 +65,8 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
   const year = Number(sp.year ?? now.getFullYear());
   const month = Number(sp.month ?? now.getMonth() + 1);
   const blockId = sp.blockId ?? null;
+  const quarter = parseReportQuarter(sp.quarter);
+  const quarterMonths = reportQuarterToMonthRange(quarter);
   const activeKind = KINDS.includes(sp.report as StandardReportKind)
     ? (sp.report as StandardReportKind)
     : "DUE_ACCRUAL_SUMMARY";
@@ -61,6 +79,7 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
     blockId,
     actorUserId: session.user.id,
     locale,
+    ...quarterMonths,
   };
 
   const reporting = getReportingService();
@@ -82,6 +101,53 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
     activeKind === "CASHBOX_SUMMARY" ? reporting.cashboxSummary(filter) : null,
     activeKind === "DEBT_AGING" ? reporting.debtAging(filter) : null,
   ]);
+
+  const assignmentPage = Math.max(1, Number(sp.page ?? 1));
+  const assignmentPageSize = 10;
+  const showAuditorAssignments = activeKind === "AUDITOR_REPORT_TEMPLATE";
+  const canManageAssignments = canManageAuditorAssignments(session);
+
+  const [assignmentsPage, orgUsers] = showAuditorAssignments
+    ? await Promise.all([
+        getAuditorReportService().listAssignments({
+          organizationId,
+          propertyId,
+          year,
+          page: assignmentPage,
+          pageSize: assignmentPageSize,
+        }),
+        canManageAssignments
+          ? getPropertyRbacService().listOrgUsers({ organizationId })
+          : Promise.resolve([]),
+      ])
+    : [null, []];
+
+  const auditors = orgUsers.filter((user) => user.organizationRole === OrganizationRole.AUDITOR);
+
+  const bankingCtx = { organizationId, propertyId, actorUserId: session.user.id };
+  const showBankReconciliation = activeKind === "BANK_RECONCILIATION";
+  const [cashboxes, bankImports, unmatchedPage, bankReconciliation, bankWebhookProfile, staffProfilesPage] =
+    showBankReconciliation
+    ? await Promise.all([
+        finance.listCashboxes(bankingCtx),
+        getBankingService().listImports(bankingCtx, year, month),
+        getBankingService().listUnmatchedLines({
+          ...bankingCtx,
+          year,
+          month,
+          page: 1,
+          pageSize: 20,
+        }),
+        reporting.bankReconciliation(filter),
+        getBankingService().getWebhookProfile(bankingCtx),
+        getStaffFinanceService().listStaffProfiles({
+          ...bankingCtx,
+          page: 1,
+          pageSize: 200,
+          status: "ACTIVE",
+        }),
+      ])
+    : [[], [], { items: [], total: 0, page: 1, pageSize: 20 }, null, null, { items: [], total: 0, page: 1, pageSize: 200 }];
 
   const t = await getTranslations("reports");
   const tCommon = await getTranslations("common");
@@ -112,6 +178,7 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
           propertyId={propertyId}
           year={year}
           month={month}
+          quarter={quarter}
           blockId={blockId}
           activeKind={activeKind}
           blocks={blocksPage.items}
@@ -124,6 +191,45 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
           recentExports={recentExports}
         />
       </Suspense>
+
+      {showBankReconciliation && bankReconciliation ? (
+        <>
+          <BankWebhookSettingsPanel
+            locale={locale}
+            propertyId={propertyId}
+            cashboxes={cashboxes}
+            profile={bankWebhookProfile}
+            webhookEndpoint={`${getAppBaseUrl()}/api/banking/webhook/${propertyId}`}
+          />
+          <BankReconciliationPanel
+            locale={locale}
+            propertyId={propertyId}
+            year={year}
+            month={month}
+            cashboxes={cashboxes}
+            imports={bankImports}
+            unmatchedLines={unmatchedPage.items}
+            unmatchedTotal={unmatchedPage.total}
+            bankReconciliation={bankReconciliation}
+            categories={categories}
+            staffProfiles={staffProfilesPage.items}
+          />
+        </>
+      ) : null}
+
+      {showAuditorAssignments && assignmentsPage ? (
+        <AuditorAssignmentPanel
+          locale={locale}
+          propertyId={propertyId}
+          year={year}
+          assignments={assignmentsPage.items}
+          page={assignmentsPage.page}
+          pageSize={assignmentsPage.pageSize}
+          total={assignmentsPage.total}
+          auditors={auditors}
+          canManage={canManageAssignments}
+        />
+      ) : null}
     </div>
   );
 }

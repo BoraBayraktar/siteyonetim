@@ -7,6 +7,7 @@ import {
   Droplets,
   FileText,
   Gauge,
+  Landmark,
   LayoutDashboard,
   LayoutGrid,
   LineChart,
@@ -16,6 +17,7 @@ import {
   Scale,
   Settings,
   Shield,
+  UserRound,
   Users,
   Wallet,
   type LucideIcon,
@@ -242,6 +244,13 @@ function buildPropertyModuleLinks({
       active: pathname.includes("/reports"),
     },
     {
+      kind: "link",
+      href: `${propertyBase}/governance`,
+      label: t("governanceModule"),
+      icon: Landmark,
+      active: pathname.includes("/governance"),
+    },
+    {
       kind: "group",
       id: "structure",
       label: t("menuStructureGroup"),
@@ -296,6 +305,13 @@ function buildPropertyModuleLinks({
           label: t("accountsModule"),
           icon: Coins,
           active: onDuesPage && duesTab === "accounts",
+        },
+        {
+          kind: "link",
+          href: `${propertyBase}/dues?tab=staffAccounts`,
+          label: t("staffAccountsModule"),
+          icon: UserRound,
+          active: onDuesPage && duesTab === "staffAccounts",
         },
         {
           kind: "link",

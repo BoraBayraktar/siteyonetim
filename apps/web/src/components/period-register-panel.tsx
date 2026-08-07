@@ -6,10 +6,11 @@ import type {
   PeriodRegisterColumnDto,
   PeriodRegisterPageDto,
   PeriodRegisterRowDto,
+  DueAccrualRunDto,
   UnitDebtDetailDto,
 } from "@siteyonetim/finance-dues";
 import type { BlockDto } from "@siteyonetim/property-core";
-import { DueAccrualLineKind } from "@siteyonetim/db";
+import { DueAccrualLineKind, DueCalculationMode } from "@siteyonetim/db";
 import { Download, Filter, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -26,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { registerPeriodFilterOptions } from "@/lib/accrual-filters";
 
 type Props = {
   locale: string;
@@ -33,6 +35,7 @@ type Props = {
   registerPage: PeriodRegisterPageDto;
   blocks: BlockDto[];
   cashboxes: CashboxDto[];
+  runs: DueAccrualRunDto[];
   filters: {
     q: string;
     blockId: string | null;
@@ -78,6 +81,22 @@ function todayInputValue() {
 function formatStatementDate(date: Date | string, locale: string) {
   const value = typeof date === "string" ? new Date(date) : date;
   return value.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US");
+}
+
+function formatOpenDebtLineLabel(line: UnitDebtDetailDto["openLines"][number]) {
+  if (
+    line.lineKind === DueAccrualLineKind.LATE_FEE &&
+    line.sourceDueDefinitionName &&
+    line.sourceMonth != null &&
+    line.sourceYear != null
+  ) {
+    return `${line.dueDefinitionName} (${line.sourceDueDefinitionName} ${line.sourceMonth}/${line.sourceYear})`;
+  }
+  if (line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE && line.supplierLateFeeAllocationMode) {
+    const ref = line.supplierReference ? ` · ${line.supplierReference}` : "";
+    return `${line.dueDefinitionName} (${line.supplierLateFeeAllocationMode}${ref})`;
+  }
+  return `${line.dueDefinitionName} ${line.month}/${line.year}`;
 }
 
 function resolveDetailParty(detail: UnitDebtDetailDto) {
@@ -137,6 +156,11 @@ function RegisterCell({
       ) : null}
       {cell.lineKind === DueAccrualLineKind.LATE_FEE ? (
         <div className="text-[10px] uppercase tracking-wide opacity-70">{t("lateFeeBadge")}</div>
+      ) : null}
+      {cell.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE && cell.supplierLateFeeAllocationMode ? (
+        <div className="text-[10px] uppercase tracking-wide opacity-70">
+          {t(`supplierLateFeeAllocationMode.${cell.supplierLateFeeAllocationMode}`)}
+        </div>
       ) : null}
     </>
   );
@@ -231,6 +255,7 @@ export function PeriodRegisterPanel({
   registerPage,
   blocks,
   cashboxes,
+  runs,
   filters,
   initialUnitId,
 }: Props) {
@@ -287,6 +312,16 @@ export function PeriodRegisterPanel({
     overdueOnly: filters.overdueOnly ? "1" : undefined,
     withDebtOnly: filters.withDebtOnly ? "1" : undefined,
   };
+
+  const yearOptions = useMemo(
+    () => registerPeriodFilterOptions(runs, filters).years,
+    [runs, filters.year, filters.month],
+  );
+
+  const monthOptions = useMemo(
+    () => registerPeriodFilterOptions(runs, { year: Number(year), month: Number(month) }).months,
+    [runs, year, month],
+  );
 
   useEffect(() => {
     setQ(filters.q);
@@ -563,26 +598,51 @@ export function PeriodRegisterPanel({
                 ))}
               </SelectContent>
             </Select>
-            <div className="grid grid-cols-2 gap-2 md:w-auto">
-              <Input
-                type="number"
-                min={2000}
-                max={2100}
-                value={year}
-                onChange={(event) => setYear(event.target.value)}
-                onBlur={() => pushFilters({ year: Number(year) })}
-                aria-label={t("year")}
-              />
-              <Input
-                type="number"
-                min={1}
-                max={12}
-                value={month}
-                onChange={(event) => setMonth(event.target.value)}
-                onBlur={() => pushFilters({ month: Number(month) })}
-                aria-label={t("month")}
-              />
-            </div>
+            <Select
+              value={year}
+              onValueChange={(value) => {
+                const nextYear = Number(value);
+                const nextMonths = registerPeriodFilterOptions(runs, {
+                  year: nextYear,
+                  month: Number(month),
+                }).months;
+                const nextMonth = nextMonths.includes(Number(month))
+                  ? Number(month)
+                  : (nextMonths[0] ?? Number(month));
+                setYear(String(nextYear));
+                setMonth(String(nextMonth));
+                pushFilters({ year: nextYear, month: nextMonth });
+              }}
+            >
+              <SelectTrigger className="w-full bg-background md:w-28" aria-label={t("year")}>
+                <SelectValue placeholder={t("year")} />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((optionYear) => (
+                  <SelectItem key={optionYear} value={String(optionYear)}>
+                    {optionYear}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={month}
+              onValueChange={(value) => {
+                setMonth(value);
+                pushFilters({ month: Number(value) });
+              }}
+            >
+              <SelectTrigger className="w-full bg-background md:w-36" aria-label={t("month")}>
+                <SelectValue placeholder={t("month")} />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((optionMonth) => (
+                  <SelectItem key={optionMonth} value={String(optionMonth)}>
+                    {tDues(`monthNames.${optionMonth}` as "monthNames.1")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               type="button"
               variant={overdueOnly ? "default" : "outline"}
@@ -651,8 +711,14 @@ export function PeriodRegisterPanel({
                 <TableHead className="sticky left-0 z-10 min-w-[120px] bg-card">{t("columnUnit")}</TableHead>
                 <TableHead className="sticky left-[120px] z-10 min-w-[140px] bg-card">{t("columnParty")}</TableHead>
                 {registerPage.columns.map((column) => (
-                  <TableHead key={column.id} className="min-w-[130px]">
-                    {column.name}
+                  <TableHead key={column.id} className="min-w-[130px] whitespace-normal">
+                    <div>{column.name}</div>
+                    {column.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL &&
+                    column.supplierLateFeeAllocationMode ? (
+                      <div className="text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+                        {t(`supplierLateFeeAllocationMode.${column.supplierLateFeeAllocationMode}`)}
+                      </div>
+                    ) : null}
                   </TableHead>
                 ))}
                 <TableHead className="min-w-[110px]">{t("columnPeriodRemaining")}</TableHead>
@@ -752,9 +818,9 @@ export function PeriodRegisterPanel({
       >
         <SheetContent
           side="right"
-          className="flex h-full !w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-2xl"
+          className="flex h-full !w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-4xl"
         >
-          <SheetHeader className="border-b px-4 py-4 text-left">
+          <SheetHeader className="border-b px-4 py-4 pr-20 text-left">
             <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
@@ -781,8 +847,8 @@ export function PeriodRegisterPanel({
                           key={line.id}
                           className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 pr-2 text-sm"
                         >
-                          <span className="min-w-0 shrink truncate">
-                            {line.month}/{line.year}
+                          <span className="min-w-0 break-words">
+                            {formatOpenDebtLineLabel(line)}
                           </span>
                           <span className="shrink-0 font-medium tabular-nums">
                             {formatDebtMoney(line.remaining, locale)}
@@ -848,7 +914,9 @@ export function PeriodRegisterPanel({
                               <TableCell className="whitespace-nowrap">
                                 {formatStatementDate(line.date, locale)}
                               </TableCell>
-                              <TableCell className="max-w-[160px] truncate">{line.label}</TableCell>
+                              <TableCell className="min-w-[14rem] max-w-[28rem] whitespace-normal break-words">
+                                {line.label}
+                              </TableCell>
                               <TableCell className="whitespace-nowrap text-right tabular-nums">
                                 {line.debit !== "0" ? formatDebtMoney(line.debit, locale) : "—"}
                               </TableCell>

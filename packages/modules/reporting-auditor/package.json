@@ -1,0 +1,16 @@
+{
+  "name": "@siteyonetim/reporting-auditor",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@siteyonetim/db": "*",
+    "@siteyonetim/document-management": "*",
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/platform-rbac": "*",
+    "@siteyonetim/platform-cache": "*",
+    "@siteyonetim/reporting-standard": "*",
+    "isomorphic-dompurify": "^3.19.0"
+  }
+}

@@ -1,9 +1,9 @@
 "use server";
 
-import { DueCalculationMode, LateFeeRateKind } from "@siteyonetim/db";
+import { DueCalculationMode, LateFeeRateKind, SupplierLateFeeAllocationMode } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/auth";
+import { adminPropertyActionContext } from "@/lib/admin-action-context";
 import { getDuesService } from "@/lib/services";
 
 export type DuesActionState = { error?: string; success?: boolean; advanceAmount?: string };
@@ -13,35 +13,30 @@ function revalidateDues(locale: string, propertyId: string) {
   revalidatePath(`/${locale}/admin/properties/${propertyId}/dashboard`, "page");
 }
 
-async function adminContext() {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return null;
-  }
-  return session;
-}
-
 export async function createDueDefinitionAction(
   locale: string,
   propertyId: string,
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   const mode = String(formData.get("calculationMode") ?? DueCalculationMode.FIXED) as DueCalculationMode;
   try {
     await getDuesService().createDefinition({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       name: String(formData.get("name") ?? ""),
       calculationMode: mode,
       fixedAmount: String(formData.get("fixedAmount") ?? "") || null,
       ratePerM2: String(formData.get("ratePerM2") ?? "") || null,
       meterKind: (String(formData.get("meterKind") ?? "") || null) as import("@siteyonetim/db").MeterKind | null,
-      autoAccrualMonthly: formData.get("autoAccrualMonthly") === "on",
-      actorUserId: session.user.id,
+      supplierLateFeeAllocationMode:
+        (String(formData.get("supplierLateFeeAllocationMode") ?? "") || null) as SupplierLateFeeAllocationMode | null,
+      autoAccrualMonthly:
+        mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? false : formData.get("autoAccrualMonthly") === "on",
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return { success: true };
@@ -54,6 +49,7 @@ export async function createDueDefinitionAction(
         "RATE_REQUIRED",
         "SHARE_POOL_REQUIRED",
         "METER_KIND_REQUIRED",
+        "SUPPLIER_LATE_FEE_MODE_REQUIRED",
       ];
       if (codes.includes(error.message)) return { error: error.message };
     }
@@ -68,13 +64,13 @@ export async function updateDueDefinitionAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   const mode = String(formData.get("calculationMode") ?? DueCalculationMode.FIXED) as DueCalculationMode;
   try {
     await getDuesService().updateDefinition({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       definitionId,
       name: String(formData.get("name") ?? ""),
@@ -82,8 +78,11 @@ export async function updateDueDefinitionAction(
       fixedAmount: String(formData.get("fixedAmount") ?? "") || null,
       ratePerM2: String(formData.get("ratePerM2") ?? "") || null,
       meterKind: (String(formData.get("meterKind") ?? "") || null) as import("@siteyonetim/db").MeterKind | null,
-      autoAccrualMonthly: formData.get("autoAccrualMonthly") === "on",
-      actorUserId: session.user.id,
+      supplierLateFeeAllocationMode:
+        (String(formData.get("supplierLateFeeAllocationMode") ?? "") || null) as SupplierLateFeeAllocationMode | null,
+      autoAccrualMonthly:
+        mode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? false : formData.get("autoAccrualMonthly") === "on",
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return { success: true };
@@ -97,6 +96,8 @@ export async function updateDueDefinitionAction(
         "RATE_REQUIRED",
         "SHARE_POOL_REQUIRED",
         "METER_KIND_REQUIRED",
+        "SUPPLIER_LATE_FEE_MODE_REQUIRED",
+        "CALCULATION_MODE_CHANGE_NOT_ALLOWED",
       ];
       if (codes.includes(error.message)) return { error: error.message };
     }
@@ -111,15 +112,15 @@ export async function setDefinitionAutoAccrualAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
   const enabled = formData.get("autoAccrualMonthly") === "true";
   try {
     await getDuesService().setDefinitionAutoAccrual(
       {
-        organizationId: session.user.organizationId,
+        organizationId: ctx.organizationId,
         propertyId,
-        actorUserId: session.user.id,
+        actorUserId: ctx.actorUserId,
       },
       definitionId,
       enabled,
@@ -127,8 +128,9 @@ export async function setDefinitionAutoAccrualAction(
     revalidateDues(locale, propertyId);
     return { success: true };
   } catch (error) {
-    if (error instanceof Error && error.message === "DEFINITION_NOT_FOUND") {
-      return { error: error.message };
+    if (error instanceof Error) {
+      const codes = ["DEFINITION_NOT_FOUND", "SUPPLIER_LATE_FEE_AUTO_ACCRUAL_NOT_ALLOWED"];
+      if (codes.includes(error.message)) return { error: error.message };
     }
     throw error;
   }
@@ -140,19 +142,22 @@ export async function generateAccrualAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getDuesService().generateAccrual({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       dueDefinitionId: String(formData.get("dueDefinitionId") ?? ""),
       year: Number(formData.get("year")),
       month: Number(formData.get("month")),
       totalBillAmount: String(formData.get("totalBillAmount") ?? "") || null,
       totalBillConsumptionM3: String(formData.get("totalBillConsumptionM3") ?? "") || null,
-      actorUserId: session.user.id,
+      supplierLateFeeAllocationMode:
+        (String(formData.get("supplierLateFeeAllocationMode") ?? "") || null) as SupplierLateFeeAllocationMode | null,
+      supplierReference: String(formData.get("supplierReference") ?? "") || null,
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return { success: true };
@@ -173,6 +178,8 @@ export async function generateAccrualAction(
         "TOTAL_BILL_CONSUMPTION_REQUIRED",
         "BILL_CONSUMPTION_INVALID",
         "BILL_CONSUMPTION_MISMATCH",
+        "SUPPLIER_LATE_FEE_MODE_REQUIRED",
+        "SUPPLIER_LATE_FEE_NO_DELINQUENT_UNITS",
       ];
       if (codes.includes(error.message)) return { error: error.message };
     }
@@ -187,17 +194,17 @@ export async function recalculateAccrualAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getDuesService().recalculateAccrual({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       runId,
       totalBillAmount: String(formData.get("totalBillAmount") ?? "") || null,
       totalBillConsumptionM3: String(formData.get("totalBillConsumptionM3") ?? "") || null,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return { success: true };
@@ -229,15 +236,15 @@ export async function voidPostedAccrualAction(
   propertyId: string,
   runId: string,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getDuesService().voidPostedAccrual(
       {
-        organizationId: session.user.organizationId,
+        organizationId: ctx.organizationId,
         propertyId,
-        actorUserId: session.user.id,
+        actorUserId: ctx.actorUserId,
       },
       runId,
     );
@@ -262,15 +269,15 @@ export async function supplementPostedAccrualAction(
   propertyId: string,
   runId: string,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getDuesService().supplementPostedAccrual(
       {
-        organizationId: session.user.organizationId,
+        organizationId: ctx.organizationId,
         propertyId,
-        actorUserId: session.user.id,
+        actorUserId: ctx.actorUserId,
       },
       runId,
     );
@@ -296,15 +303,15 @@ export async function supplementPostedAccrualAction(
 }
 
 export async function postAccrualAction(locale: string, propertyId: string, runId: string): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getDuesService().postAccrual(
       {
-        organizationId: session.user.organizationId,
+        organizationId: ctx.organizationId,
         propertyId,
-        actorUserId: session.user.id,
+        actorUserId: ctx.actorUserId,
       },
       runId,
     );
@@ -312,7 +319,20 @@ export async function postAccrualAction(locale: string, propertyId: string, runI
     return { success: true };
   } catch (error) {
     if (error instanceof Error) {
-      const codes = ["RUN_NOT_FOUND", "ACCRUAL_ALREADY_POSTED", "PERIOD_CLOSED", "ACCRUAL_INCOMPLETE"];
+      const codes = [
+        "RUN_NOT_FOUND",
+        "ACCRUAL_ALREADY_POSTED",
+        "PERIOD_CLOSED",
+        "ACCRUAL_INCOMPLETE",
+        "TOTAL_BILL_REQUIRED",
+        "TOTAL_BILL_CONSUMPTION_REQUIRED",
+        "BILL_CONSUMPTION_MISMATCH",
+        "NO_METER_CONSUMPTION",
+        "INCOMPLETE_METER_READINGS",
+        "SUPPLIER_LATE_FEE_MODE_REQUIRED",
+        "AMOUNT_INVALID",
+        "NO_UNITS",
+      ];
       if (codes.includes(error.message)) return { error: error.message };
     }
     throw error;
@@ -325,8 +345,8 @@ export async function recordDuePaymentAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     const lineId = String(formData.get("dueAccrualLineId") ?? "") || null;
@@ -347,7 +367,7 @@ export async function recordDuePaymentAction(
     }
 
     const result = await getDuesService().recordPayment({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       cashboxId: String(formData.get("cashboxId") ?? ""),
       partyId: String(formData.get("partyId") ?? ""),
@@ -359,7 +379,7 @@ export async function recordDuePaymentAction(
       autoAllocate,
       allowAdvance: formData.get("allowAdvance") !== "off",
       allocations,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return {
@@ -389,8 +409,8 @@ export async function upsertLateFeePolicyAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
   try {
     const mode = String(formData.get("lateFeeMode") ?? "NONE");
     const active = mode !== "NONE";
@@ -398,14 +418,14 @@ export async function upsertLateFeePolicyAction(
       mode === LateFeeRateKind.LEGAL_TCMB ? LateFeeRateKind.LEGAL_TCMB : LateFeeRateKind.CONTRACTUAL
     ) as LateFeeRateKind;
     await getDuesService().upsertLateFeePolicy({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       rateKind,
       active,
       monthlyRatePercent: String(formData.get("monthlyRatePercent") ?? ""),
       graceDays: Number(formData.get("graceDays") ?? 0),
       dueDayOfMonth: Number(formData.get("dueDayOfMonth") ?? 1),
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return { success: true };
@@ -423,15 +443,15 @@ export async function applyLateFeesAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
   try {
     await getDuesService().applyLateFees({
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
       year: Number(formData.get("year")),
       month: Number(formData.get("month")),
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateDues(locale, propertyId);
     return { success: true };
@@ -445,14 +465,14 @@ export async function applyLateFeesAction(
 }
 
 export async function getUnitDebtDetailAction(propertyId: string, unitId: string) {
-  const session = await adminContext();
-  if (!session) return null;
+  const ctx = await adminPropertyActionContext(propertyId);
+  if (!ctx) return null;
 
   return getDuesService().getUnitDebtDetail(
     {
-      organizationId: session.user.organizationId,
+      organizationId: ctx.organizationId,
       propertyId,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     },
     unitId,
   );

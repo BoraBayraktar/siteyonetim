@@ -1,6 +1,8 @@
 import { Prisma, PropertyKind, ReportExportFormat, LedgerEntryType } from "@siteyonetim/db";
+import { createDocumentService } from "@siteyonetim/document-management";
 import type { NotificationServiceContract } from "@siteyonetim/comm-notifications";
 import { createNotificationService } from "@siteyonetim/comm-notifications";
+import { createBankingService } from "@siteyonetim/finance-banking";
 import type { ReportingCoreContract } from "@siteyonetim/reporting-core";
 import { contentTypeForFormat, createReportingCoreService, extensionForFormat } from "@siteyonetim/reporting-core";
 import { createAuditService } from "@siteyonetim/platform-audit";
@@ -23,6 +25,7 @@ import type {
   PropertySetupStepId,
   ReportExportDto,
   ReportFilter,
+  ExportAuditorReportInput,
   RequestReportExportInput,
   StandardReportKind,
   StandardReportingContract,
@@ -30,6 +33,10 @@ import type {
 import { isAnnualReportKind } from "./contract";
 import { buildAuditPackageZip } from "./audit-package";
 import { buildAuditorReportDocument } from "./auditor-report-builder";
+import {
+  computeCollectionRatePercent,
+  queryYearAccrualCollectionTotals,
+} from "./collection-rate-query";
 import { sortByUnitCode } from "./unit-sort";
 import { ReportExportRepository } from "./export-repository";
 import { buildReportTableDocument } from "./report-document";
@@ -63,6 +70,8 @@ async function loadReportData(
       return { cashbox: await service.cashboxSummary(filter) };
     case "DEBT_AGING":
       return { aging: await service.debtAging(filter) };
+    case "BANK_RECONCILIATION":
+      return { bankReconciliation: await service.bankReconciliation(filter) };
     case "ANNUAL_INCOME_EXPENSE":
       return { annual: await service.annualIncomeExpense(filter) };
     default:
@@ -88,8 +97,20 @@ export class StandardReportingService implements StandardReportingContract {
 
   private async buildDocument(kind: StandardReportKind, filter: ReportFilter) {
     await this.assertFilter(filter);
-    const data = await loadReportData(this, kind, filter);
-    return buildReportTableDocument(kind, filter, data);
+    const [data, property] = await Promise.all([
+      loadReportData(this, kind, filter),
+      this.propertyInfo(filter.organizationId, filter.propertyId),
+    ]);
+    const document = buildReportTableDocument(kind, filter, data);
+    return {
+      ...document,
+      meta: {
+        ...document.meta,
+        propertyName: document.meta?.propertyName ?? property.name,
+        organizationName: property.organizationName,
+        subtitle: property.address ?? document.meta?.subtitle,
+      },
+    };
   }
 
   private async assertFilter(filter: ReportFilter) {
@@ -112,6 +133,8 @@ export class StandardReportingService implements StandardReportingContract {
         definitionName: line.accrualRun.dueDefinition.name,
         lineKind: line.lineKind,
         amount: line.amount.toString(),
+        supplierLateFeeAllocationMode: line.accrualRun.supplierLateFeeAllocationMode,
+        supplierReference: line.accrualRun.supplierReference,
       };
     });
     return { rows, totalAccrued: total.toString() };
@@ -218,6 +241,19 @@ export class StandardReportingService implements StandardReportingContract {
     return { rows, totalDebt: totalDebt.toString() };
   }
 
+  async bankReconciliation(filter: ReportFilter) {
+    await this.assertFilter(filter);
+    return createBankingService().buildReconciliationSummary(
+      {
+        organizationId: filter.organizationId,
+        propertyId: filter.propertyId,
+        actorUserId: filter.actorUserId,
+      },
+      filter.year,
+      filter.month,
+    );
+  }
+
   async propertyInfo(organizationId: string, propertyId: string): Promise<PropertyInfoDto> {
     const row = await this.repository.getPropertyInfo(organizationId, propertyId);
     if (!row) throw new Error("PROPERTY_NOT_FOUND");
@@ -233,13 +269,15 @@ export class StandardReportingService implements StandardReportingContract {
     await this.assertFilter(filter);
     const property = await this.propertyInfo(filter.organizationId, filter.propertyId);
 
-    const [dueCollectionTotal, incomeRows, expenseRows, budget, cashbox, aging] = await Promise.all([
+    const [dueCollectionTotal, incomeRows, expenseRows, budget, cashbox, aging, accrualTotals] =
+      await Promise.all([
       this.repository.duePaymentsYear(filter),
       this.repository.ledgerByCategoryYear(filter, LedgerEntryType.INCOME),
       this.repository.ledgerByCategoryYear(filter, LedgerEntryType.EXPENSE),
       this.repository.getOperatingBudgetLines(filter),
       this.cashboxSummary({ ...filter, month: 12 }),
       this.debtAging({ ...filter, month: 12 }),
+      queryYearAccrualCollectionTotals(filter),
     ]);
 
     const ledgerIncomeTotal = incomeRows.reduce(
@@ -326,7 +364,55 @@ export class StandardReportingService implements StandardReportingContract {
       cashboxBalance: cashbox.totalBalance,
       budgetPlannedTotal: budgetPlannedTotal?.toString() ?? null,
       budgetActualTotal: budgetActualTotal?.toString() ?? null,
+      totalAccruedYear: accrualTotals.totalAccrued.toString(),
+      totalCollectedOnAccrualsYear: accrualTotals.totalCollected.toString(),
+      collectionRatePercent: computeCollectionRatePercent(
+        accrualTotals.totalAccrued,
+        accrualTotals.totalCollected,
+      ),
     };
+  }
+
+  private async exportPeriodRegisterForAudit(
+    filter: ReportFilter,
+  ): Promise<{ buffer: Buffer; extension: string }> {
+    const { createDuesService } = await import("@siteyonetim/finance-dues");
+    const rendered = await createDuesService().exportPeriodRegister({
+      organizationId: filter.organizationId,
+      propertyId: filter.propertyId,
+      year: filter.year,
+      month: 12,
+      page: 1,
+      pageSize: 5000,
+      blockId: filter.blockId ?? null,
+      format: ReportExportFormat.XLSX,
+      actorUserId: filter.actorUserId,
+    });
+    return { buffer: rendered.buffer, extension: rendered.extension };
+  }
+
+  private async buildAuditorReportPdf(
+    filter: ReportFilter,
+    options?: Pick<ExportAuditorReportInput, "opinionOverride" | "auditorPeriod">,
+  ) {
+    const [property, annual, boardMinutes] = await Promise.all([
+      this.propertyInfo(filter.organizationId, filter.propertyId),
+      this.annualIncomeExpense(filter),
+      createDocumentService().listBoardMinutesSummary({
+        organizationId: filter.organizationId,
+        propertyId: filter.propertyId,
+        year: filter.year,
+      }),
+    ]);
+    const document = buildAuditorReportDocument({
+      filter,
+      property,
+      annual,
+      boardMinutes,
+      opinionOverride: options?.opinionOverride,
+      auditorPeriod: options?.auditorPeriod,
+    });
+    return this.reportingCore.renderAuditorTemplate(document);
   }
 
   async getPortalIncomeExpenseSummary(
@@ -472,6 +558,28 @@ export class StandardReportingService implements StandardReportingContract {
     return rendered.buffer.toString("utf-8");
   }
 
+  async exportAuditorReportTemplate(input: ExportAuditorReportInput) {
+    await this.assertFilter(input);
+    const rendered = await this.buildAuditorReportPdf(input, {
+      opinionOverride: input.opinionOverride,
+      auditorPeriod: input.auditorPeriod,
+    });
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "reporting.exportFile",
+      entityType: "StandardReport",
+      metadata: {
+        kind: "AUDITOR_REPORT_TEMPLATE",
+        format: "PDF",
+        year: input.year,
+        auditorPeriod: input.auditorPeriod ?? null,
+        hasOpinionOverride: Boolean(input.opinionOverride),
+      },
+    });
+    return rendered;
+  }
+
   async exportReportFile(
     kind: StandardReportKind,
     filter: ReportFilter,
@@ -480,12 +588,7 @@ export class StandardReportingService implements StandardReportingContract {
     await this.assertFilter(filter);
 
     if (kind === "AUDITOR_REPORT_TEMPLATE") {
-      const [property, annual] = await Promise.all([
-        this.propertyInfo(filter.organizationId, filter.propertyId),
-        this.annualIncomeExpense(filter),
-      ]);
-      const document = buildAuditorReportDocument({ filter, property, annual });
-      const rendered = await this.reportingCore.renderAuditorTemplate(document);
+      const rendered = await this.buildAuditorReportPdf(filter);
       await this.audit.record({
         organizationId: filter.organizationId,
         userId: filter.actorUserId,
@@ -497,13 +600,18 @@ export class StandardReportingService implements StandardReportingContract {
     }
 
     if (kind === "AUDIT_PACKAGE") {
-      const rendered = await buildAuditPackageZip(filter, (k, f, fmt) => this.exportReportFile(k, f, fmt), this.reportingCore);
+      const rendered = await buildAuditPackageZip(
+        filter,
+        (k, f, fmt) => this.exportReportFile(k, f, fmt),
+        this.reportingCore,
+        (f) => this.exportPeriodRegisterForAudit(f),
+      );
       await this.audit.record({
         organizationId: filter.organizationId,
         userId: filter.actorUserId,
         action: "reporting.exportFile",
         entityType: "StandardReport",
-        metadata: { kind, format: "ZIP", year: filter.year },
+        metadata: { kind, format: "ZIP", year: filter.year, periodRegisterIncluded: true },
       });
       return rendered;
     }
@@ -608,6 +716,7 @@ export class StandardReportingService implements StandardReportingContract {
           filter,
           (k, f, fmt) => this.exportReportFile(k, f, fmt),
           this.reportingCore,
+          (f) => this.exportPeriodRegisterForAudit(f),
         );
       } else {
         rendered = await this.exportReportFile(row.reportKind as StandardReportKind, filter, format);

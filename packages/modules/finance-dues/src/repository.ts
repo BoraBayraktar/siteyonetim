@@ -26,6 +26,7 @@ import type {
 import { queryDebtRowsPaginated } from "./debt-rows-query";
 import { queryOpenLinesPaginated } from "./open-lines-query";
 import {
+  queryPeriodRegisterDefinitionIds,
   queryPeriodRegisterLinesForUnits,
   queryPeriodRegisterUnitsPaginated,
 } from "./period-register-query";
@@ -33,6 +34,13 @@ import {
 export const notDeleted = { deleted: false };
 
 const BULK_ACCRUAL_TX_TIMEOUT_MS = 120_000;
+
+function parseOptionalDecimal(value?: string | null): Prisma.Decimal | null {
+  const raw = value?.replace(",", ".")?.trim() ?? "";
+  if (!raw) return null;
+  const decimal = new Prisma.Decimal(raw);
+  return decimal.lte(0) ? null : decimal;
+}
 
 async function applyAccountBalanceDeltas(
   tx: Prisma.TransactionClient,
@@ -107,6 +115,7 @@ export class DuesRepository {
         fixedAmount: input.fixedAmount ? new Prisma.Decimal(input.fixedAmount) : null,
         ratePerM2: input.ratePerM2 ? new Prisma.Decimal(input.ratePerM2) : null,
         meterKind: input.meterKind ?? null,
+        supplierLateFeeAllocationMode: input.supplierLateFeeAllocationMode ?? null,
         autoAccrualMonthly: input.autoAccrualMonthly ?? false,
       },
     });
@@ -134,6 +143,7 @@ export class DuesRepository {
         fixedAmount: input.fixedAmount ? new Prisma.Decimal(input.fixedAmount) : null,
         ratePerM2: input.ratePerM2 ? new Prisma.Decimal(input.ratePerM2) : null,
         meterKind: input.meterKind ?? null,
+        supplierLateFeeAllocationMode: input.supplierLateFeeAllocationMode ?? null,
         autoAccrualMonthly: input.autoAccrualMonthly ?? false,
       },
     });
@@ -302,7 +312,18 @@ export class DuesRepository {
       lineKind?: import("@siteyonetim/db").DueAccrualLineKind;
       sourceLineId?: string | null;
     }[],
+    runMeta?: {
+      supplierLateFeeAllocationMode?: import("@siteyonetim/db").SupplierLateFeeAllocationMode | null;
+      supplierReference?: string | null;
+      totalBillAmount?: string | null;
+      totalBillConsumptionM3?: string | null;
+    },
   ) {
+    const totalBillAmount = parseOptionalDecimal(runMeta?.totalBillAmount ?? input.totalBillAmount);
+    const totalBillConsumptionM3 = parseOptionalDecimal(
+      runMeta?.totalBillConsumptionM3 ?? input.totalBillConsumptionM3,
+    );
+
     return prisma.$transaction(async (tx) => {
       const existing = await tx.dueAccrualRun.findFirst({
         where: {
@@ -326,7 +347,16 @@ export class DuesRepository {
         });
         run = await tx.dueAccrualRun.update({
           where: { id: run.id },
-          data: { financePeriodId: periodId, totalAmount: 0, status: DueAccrualStatus.DRAFT, postedAt: null },
+          data: {
+            financePeriodId: periodId,
+            totalAmount: 0,
+            status: DueAccrualStatus.DRAFT,
+            postedAt: null,
+            supplierLateFeeAllocationMode: runMeta?.supplierLateFeeAllocationMode ?? null,
+            supplierReference: runMeta?.supplierReference?.trim() || null,
+            totalBillAmount,
+            totalBillConsumptionM3,
+          },
         });
       } else {
         run = await tx.dueAccrualRun.create({
@@ -337,6 +367,10 @@ export class DuesRepository {
             financePeriodId: periodId,
             year: input.year,
             month: input.month,
+            supplierLateFeeAllocationMode: runMeta?.supplierLateFeeAllocationMode ?? null,
+            supplierReference: runMeta?.supplierReference?.trim() || null,
+            totalBillAmount,
+            totalBillConsumptionM3,
           },
         });
       }
@@ -787,6 +821,27 @@ export class DuesRepository {
     return { units, lines, total };
   }
 
+  async listPeriodRegisterDefinitionIdsForPeriod(input: ListPeriodRegisterInput) {
+    return queryPeriodRegisterDefinitionIds(input);
+  }
+
+  async getExportLetterheadMeta(organizationId: string, propertyId: string) {
+    const row = await prisma.property.findFirst({
+      where: { id: propertyId, organizationId, deleted: false },
+      select: {
+        name: true,
+        address: true,
+        organization: { select: { name: true } },
+      },
+    });
+    if (!row) return null;
+    return {
+      propertyName: row.name,
+      organizationName: row.organization.name,
+      address: row.address,
+    };
+  }
+
   async listOpenLinesByUnit(ctx: DuesContext, unitId: string) {
     return prisma.dueAccrualLine.findMany({
       where: {
@@ -804,7 +859,26 @@ export class DuesRepository {
       include: {
         unit: { select: { id: true, code: true } },
         party: { select: { id: true, displayName: true } },
-        accrualRun: { select: { year: true, month: true, dueDefinition: { select: { name: true } } } },
+        accrualRun: {
+          select: {
+            year: true,
+            month: true,
+            supplierLateFeeAllocationMode: true,
+            supplierReference: true,
+            dueDefinition: { select: { name: true } },
+          },
+        },
+        sourceLine: {
+          select: {
+            accrualRun: {
+              select: {
+                year: true,
+                month: true,
+                dueDefinition: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -1116,7 +1190,27 @@ export class DuesRepository {
           },
           createdAt: { gte: since },
         },
-        include: { accrualRun: true, unit: { select: { code: true } } },
+        include: {
+          accrualRun: {
+            select: {
+              year: true,
+              month: true,
+              dueDefinition: { select: { name: true } },
+            },
+          },
+          unit: { select: { code: true } },
+          sourceLine: {
+            select: {
+              accrualRun: {
+                select: {
+                  year: true,
+                  month: true,
+                  dueDefinition: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: "asc" },
       }),
       prisma.payment.findMany({
@@ -1125,6 +1219,36 @@ export class DuesRepository {
           propertyId: ctx.propertyId,
           deleted: false,
           paymentDate: { gte: since },
+        },
+        include: {
+          cashbox: { select: { name: true } },
+          allocations: {
+            where: { deleted: false },
+            include: {
+              dueAccrualLine: {
+                include: {
+                  accrualRun: {
+                    select: {
+                      year: true,
+                      month: true,
+                      dueDefinition: { select: { name: true } },
+                    },
+                  },
+                  sourceLine: {
+                    select: {
+                      accrualRun: {
+                        select: {
+                          year: true,
+                          month: true,
+                          dueDefinition: { select: { name: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         orderBy: { paymentDate: "asc" },
       }),
@@ -1224,6 +1348,8 @@ export class DuesRepository {
           select: {
             year: true,
             month: true,
+            supplierLateFeeAllocationMode: true,
+            supplierReference: true,
             dueDefinition: { select: { name: true } },
           },
         },
@@ -1270,6 +1396,8 @@ export class DuesRepository {
           select: {
             year: true,
             month: true,
+            supplierLateFeeAllocationMode: true,
+            supplierReference: true,
             dueDefinition: { select: { name: true } },
           },
         },
@@ -1302,8 +1430,25 @@ export class DuesRepository {
         },
       },
       include: {
-        accrualRun: { select: { year: true, month: true } },
+        accrualRun: {
+          select: {
+            year: true,
+            month: true,
+            dueDefinition: { select: { name: true } },
+          },
+        },
         unit: { select: { code: true } },
+        sourceLine: {
+          select: {
+            accrualRun: {
+              select: {
+                year: true,
+                month: true,
+                dueDefinition: { select: { name: true } },
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -1322,9 +1467,33 @@ export class DuesRepository {
         paymentDate: { gte: since },
       },
       include: {
+        cashbox: { select: { name: true } },
         allocations: {
           where: { deleted: false, dueAccrualLine: { unitId, deleted: false } },
-          include: { dueAccrualLine: true },
+          include: {
+            dueAccrualLine: {
+              include: {
+                accrualRun: {
+                  select: {
+                    year: true,
+                    month: true,
+                    dueDefinition: { select: { name: true } },
+                  },
+                },
+                sourceLine: {
+                  select: {
+                    accrualRun: {
+                      select: {
+                        year: true,
+                        month: true,
+                        dueDefinition: { select: { name: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
       orderBy: { paymentDate: "asc" },
@@ -1488,6 +1657,38 @@ export class DuesRepository {
       },
       { timeout: 60_000 },
     );
+  }
+
+  async listDelinquentUnitDebts(
+    ctx: DuesContext,
+    dueDayOfMonth: number,
+    graceDays: number,
+  ): Promise<Array<{ unitId: string; remaining: Prisma.Decimal }>> {
+    const lines = await this.listStandardOpenLines(ctx);
+    const byUnit = new Map<string, Prisma.Decimal>();
+
+    for (const line of lines) {
+      const remaining = line.amount.sub(line.paidAmount);
+      if (remaining.lte(0)) continue;
+
+      const overdue = Math.max(
+        0,
+        Math.floor(
+          (Date.now() -
+            new Date(
+              line.accrualRun.year,
+              line.accrualRun.month - 1,
+              Math.min(Math.max(dueDayOfMonth, 1), 28),
+            ).getTime()) /
+            (1000 * 60 * 60 * 24),
+        ),
+      );
+      if (overdue <= graceDays) continue;
+
+      byUnit.set(line.unitId, (byUnit.get(line.unitId) ?? new Prisma.Decimal(0)).add(remaining));
+    }
+
+    return [...byUnit.entries()].map(([unitId, remaining]) => ({ unitId, remaining }));
   }
 
   async listStandardOpenLines(ctx: DuesContext) {

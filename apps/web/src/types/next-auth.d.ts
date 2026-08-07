@@ -14,6 +14,7 @@ declare module "next-auth" {
       organizationName: string;
       role: string | null;
       orgWideAccess?: boolean;
+      isSuperAdmin?: boolean;
       propertyAccess?: PropertyAccessClaim[];
       portalAuthKind?: "EMAIL" | "UNIT";
       propertyId?: string;
@@ -28,6 +29,7 @@ declare module "next-auth" {
     organizationName: string;
     role: string | null;
     orgWideAccess?: boolean;
+    isSuperAdmin?: boolean;
     propertyAccess?: PropertyAccessClaim[];
     portalAuthKind?: "EMAIL" | "UNIT";
     propertyId?: string;
@@ -44,11 +46,15 @@ declare module "next-auth/jwt" {
     organizationName?: string;
     role?: string | null;
     orgWideAccess?: boolean;
+    isSuperAdmin?: boolean;
     propertyAccess?: PropertyAccessClaim[];
     portalAuthKind?: "EMAIL" | "UNIT";
     propertyId?: string;
     unitId?: string;
     credentialId?: string;
+    rememberMe?: boolean;
     sessionMaxAge?: number;
+    /** Unix seconds; absolute session end (remember-me aware). */
+    absoluteExp?: number;
   }
 }

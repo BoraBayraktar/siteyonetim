@@ -30,6 +30,10 @@ export class PropertyRbacService implements PropertyRbacServiceContract {
   ) {}
 
   async resolveAccessiblePropertyIds(input: ResolvePropertyAccessInput): Promise<string[] | "ALL"> {
+    if (await this.repository.isSuperAdminUser(input.userId)) {
+      return "ALL";
+    }
+
     if (isOrgWideRole(input.organizationRole)) {
       return "ALL";
     }
@@ -60,6 +64,10 @@ export class PropertyRbacService implements PropertyRbacServiceContract {
   async hasPropertyAccess(input: AssertPropertyAccessInput): Promise<boolean> {
     if (isOrgWideRole(input.organizationRole)) {
       return this.repository.propertyBelongsToOrg(input.organizationId, input.propertyId);
+    }
+
+    if (await this.repository.isSuperAdminUser(input.userId)) {
+      return this.repository.propertyExists(input.propertyId);
     }
 
     const role = await this.repository.findPropertyAccess(

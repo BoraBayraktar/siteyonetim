@@ -1,6 +1,6 @@
 "use client";
 
-import { DueAccrualStatus, DueCalculationMode } from "@siteyonetim/db";
+import { DueAccrualStatus, DueCalculationMode, SupplierLateFeeAllocationMode } from "@siteyonetim/db";
 import type {
   AccrualContextWarningsDto,
   AccrualRunCorrectionDto,
@@ -24,10 +24,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccrualFilters } from "@/lib/accrual-filters";
 import { filterAccrualLines, filterAccrualRuns } from "@/lib/accrual-filters";
-import { needsTotalBill } from "@/lib/dues-definition-form";
+import { isSupplierLateFeeDefinition, needsTotalBill } from "@/lib/dues-definition-form";
+import { SUPPLIER_LATE_FEE_ALLOCATION_MODES } from "@/lib/supplier-late-fee";
 
 const initial: DuesActionState = {};
 
@@ -76,8 +78,30 @@ export function DuesAccrualPanel({
     generateAccrualAction.bind(null, locale, propertyId),
     initial,
   );
-  const [definitionId, setDefinitionId] = useState(definitions[0]?.id ?? "");
+  const aidatDefinitions = useMemo(
+    () => definitions.filter((d) => !isSupplierLateFeeDefinition(d.calculationMode)),
+    [definitions],
+  );
+  const supplierDefinitions = useMemo(
+    () => definitions.filter((d) => isSupplierLateFeeDefinition(d.calculationMode)),
+    [definitions],
+  );
+  const defaultDefinitionId =
+    aidatDefinitions[0]?.id ?? definitions[0]?.id ?? "";
+  const [definitionId, setDefinitionId] = useState(defaultDefinitionId);
   const selectedDef = definitions.find((d) => d.id === definitionId);
+  const selectedIsSupplier = selectedDef ? isSupplierLateFeeDefinition(selectedDef.calculationMode) : false;
+  const [supplierAllocationMode, setSupplierAllocationMode] = useState<SupplierLateFeeAllocationMode>(
+    selectedDef?.supplierLateFeeAllocationMode ?? SupplierLateFeeAllocationMode.DELINQUENT_BY_DEBT_RATIO,
+  );
+
+  useEffect(() => {
+    if (selectedDef?.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL) {
+      setSupplierAllocationMode(
+        selectedDef.supplierLateFeeAllocationMode ?? SupplierLateFeeAllocationMode.DELINQUENT_BY_DEBT_RATIO,
+      );
+    }
+  }, [selectedDef]);
 
   const filteredRuns = useMemo(
     () => filterAccrualRuns(runs, filters, runLinesByRunId),
@@ -118,6 +142,9 @@ export function DuesAccrualPanel({
           >
             <form action={genAction} className="grid gap-3">
               <input type="hidden" name="dueDefinitionId" value={definitionId} />
+              {selectedDef?.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? (
+                <input type="hidden" name="supplierLateFeeAllocationMode" value={supplierAllocationMode} />
+              ) : null}
               <div className="grid gap-2">
                 <Label>{t("definitionName")}</Label>
                 <Select value={definitionId} onValueChange={setDefinitionId}>
@@ -125,14 +152,42 @@ export function DuesAccrualPanel({
                     <SelectValue placeholder="…" />
                   </SelectTrigger>
                   <SelectContent>
-                    {definitions.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
+                    {aidatDefinitions.length > 0 ? (
+                      <>
+                        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                          {t("definitionGroupAidat")}
+                        </p>
+                        {aidatDefinitions.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </>
+                    ) : null}
+                    {aidatDefinitions.length > 0 && supplierDefinitions.length > 0 ? (
+                      <Separator className="my-1" />
+                    ) : null}
+                    {supplierDefinitions.length > 0 ? (
+                      <>
+                        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                          {t("definitionGroupSupplierLateFee")}
+                        </p>
+                        {supplierDefinitions.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </>
+                    ) : null}
                   </SelectContent>
                 </Select>
               </div>
+              {selectedIsSupplier ? (
+                <div className="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-2 text-sm text-blue-900 dark:text-blue-200">
+                  <p className="font-medium">{t("wizard.supplierNotAidatTitle")}</p>
+                  <p className="mt-1 text-xs">{t("accrualSupplierLateFeeHint")}</p>
+                </div>
+              ) : null}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="year">{t("year")}</Label>
@@ -157,6 +212,39 @@ export function DuesAccrualPanel({
                     <Label htmlFor="total-bill">{t("totalBillAmount")}</Label>
                     <Input id="total-bill" name="totalBillAmount" required />
                   </div>
+                  {selectedDef.calculationMode === DueCalculationMode.SUPPLIER_LATE_FEE_BILL ? (
+                    <>
+                      <div className="grid gap-2">
+                        <Label htmlFor="supplier-allocation-mode">{t("supplierLateFeeAllocationModeLabel")}</Label>
+                        <Select
+                          value={supplierAllocationMode}
+                          onValueChange={(value) =>
+                            setSupplierAllocationMode(value as SupplierLateFeeAllocationMode)
+                          }
+                        >
+                          <SelectTrigger id="supplier-allocation-mode">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SUPPLIER_LATE_FEE_ALLOCATION_MODES.map((modeOption) => (
+                              <SelectItem key={modeOption} value={modeOption}>
+                                {t(`supplierLateFeeAllocationMode.${modeOption}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">{t("supplierLateFeeAllocationModeHint")}</p>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="supplier-reference">{t("supplierReference")}</Label>
+                        <Input
+                          id="supplier-reference"
+                          name="supplierReference"
+                          placeholder={t("supplierReferencePlaceholder")}
+                        />
+                      </div>
+                    </>
+                  ) : null}
                   {selectedDef.calculationMode === DueCalculationMode.METER_ALLOCATED_BILL ? (
                     <>
                       <div className="grid gap-2">

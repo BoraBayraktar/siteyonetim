@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { notFound, redirect } from "next/navigation";
 
-import { getAdminSession } from "@/lib/cached-admin";
-import { assertAdminPropertyAccess, canManageOrgUsers, canMutateAdminData } from "@/lib/auth-context";
+import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
+import { canManageOrgUsers, canMutateAdminData } from "@/lib/auth-context";
 import { isTenantDatabaseIsolationEnabled } from "@/lib/platform-features";
 import { PropertyDashboardPanel } from "@/components/property-dashboard-panel";
 import { PropertyTenantPanel } from "@/components/property-tenant-panel";
 import { Button } from "@/components/ui/button";
-import { getFinanceService, getPropertyService, getPropertyTenantService, getReportingService, getUnitService } from "@/lib/services";
+import { getFinanceService, getPropertyTenantService, getReportingService, getUnitService } from "@/lib/services";
 
 type Props = {
   params: Promise<{ locale: string; propertyId: string }>;
@@ -18,22 +17,7 @@ export default async function PropertyDashboardPage({ params }: Props) {
   const { locale, propertyId } = await params;
   setRequestLocale(locale);
 
-  const session = await getAdminSession();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    redirect(`/${locale}/login`);
-  }
-
-  const organizationId = session.user.organizationId;
-  const property = await getPropertyService().getById(organizationId, propertyId);
-  if (!property) {
-    notFound();
-  }
-
-  try {
-    await assertAdminPropertyAccess(session, propertyId);
-  } catch {
-    notFound();
-  }
+  const { session, organizationId, property, actorUserId } = await requireAdminPropertyScope(locale, propertyId);
 
   const tenantService = getPropertyTenantService();
   let tenant = await tenantService.getByPropertyId(organizationId, propertyId);
@@ -42,7 +26,7 @@ export default async function PropertyDashboardPage({ params }: Props) {
       organizationId,
       propertyId,
       propertyName: property.name,
-      actorUserId: session.user.id,
+      actorUserId,
     });
   }
   const portalSettings =
@@ -63,9 +47,9 @@ export default async function PropertyDashboardPage({ params }: Props) {
     propertyId,
     year: now.getFullYear(),
     month: now.getMonth() + 1,
-    actorUserId: session.user.id,
+    actorUserId,
   };
-  const ctx = { organizationId, propertyId, actorUserId: session.user.id };
+  const ctx = { organizationId, propertyId, actorUserId };
 
   const reporting = getReportingService();
   const finance = getFinanceService();

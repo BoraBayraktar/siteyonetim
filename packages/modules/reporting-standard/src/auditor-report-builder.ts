@@ -1,6 +1,14 @@
 import type { AuditorReportDocument } from "@siteyonetim/reporting-core";
+import type { BoardMinutesSummaryDto } from "@siteyonetim/document-management";
+import type { AuditorDischargeRecommendation, AuditorReportPeriod } from "@siteyonetim/db";
 
 import type { AnnualIncomeExpenseReport, PropertyInfoDto, ReportFilter } from "./contract";
+
+export type AuditorOpinionOverride = {
+  findingsLines?: string[];
+  opinionLines: string[];
+  dischargeRecommendation?: AuditorDischargeRecommendation | null;
+};
 
 const TR = {
   title: "KAT MALIKLERI DENETIM KURULU RAPORU",
@@ -12,6 +20,7 @@ const TR = {
   expenseLine: (amount: string) => `Toplam gider: ${amount} TL`,
   netLine: (amount: string) => `Donem farki (gelir - gider): ${amount} TL`,
   collectionLine: (amount: string) => `Aidat ve tahsilat toplami: ${amount} TL`,
+  collectionRateLine: (rate: string) => `Kesinlesmis borclandirmada tahsilat orani: %${rate}`,
   debtLine: (amount: string) => `Acik borc toplami: ${amount} TL`,
   cashboxLine: (amount: string) => `Kasa/banka bakiyesi: ${amount} TL`,
   budgetLine: (planned: string, actual: string) =>
@@ -45,6 +54,7 @@ const EN = {
   expenseLine: (amount: string) => `Total expense: ${amount} TRY`,
   netLine: (amount: string) => `Period result (income - expense): ${amount} TRY`,
   collectionLine: (amount: string) => `Dues and collections total: ${amount} TRY`,
+  collectionRateLine: (rate: string) => `Collection rate on posted accruals: ${rate}%`,
   debtLine: (amount: string) => `Total open debt: ${amount} TRY`,
   cashboxLine: (amount: string) => `Cash/bank balance: ${amount} TRY`,
   budgetLine: (planned: string, actual: string) =>
@@ -72,13 +82,105 @@ function labels(locale?: string) {
   return locale === "en" ? EN : TR;
 }
 
+function dischargeLabel(
+  recommendation: AuditorDischargeRecommendation,
+  locale?: string,
+): string {
+  if (locale === "en") {
+    switch (recommendation) {
+      case "RECOMMEND":
+        return "Discharge recommendation: Recommend discharge of the manager.";
+      case "NOT_RECOMMEND":
+        return "Discharge recommendation: Do not recommend discharge.";
+      case "CONDITIONAL":
+        return "Discharge recommendation: Conditional discharge.";
+    }
+  }
+  switch (recommendation) {
+    case "RECOMMEND":
+      return "Ibra onerisi: Yoneticinin ibra edilmesi onerilir.";
+    case "NOT_RECOMMEND":
+      return "Ibra onerisi: Ibra edilmesi onerilmez.";
+    case "CONDITIONAL":
+      return "Ibra onerisi: Kosullu ibra onerilir.";
+  }
+}
+
+function buildOpinionLines(
+  t: typeof TR,
+  locale: string | undefined,
+  override?: AuditorOpinionOverride,
+): string[] {
+  const hasOverride =
+    Boolean(override?.opinionLines?.length) || Boolean(override?.findingsLines?.length);
+  if (!hasOverride) {
+    return t.opinionLines;
+  }
+
+  const lines: string[] = [];
+  if (override?.findingsLines?.length) {
+    lines.push(
+      locale === "en" ? "Findings:" : "Tespitler:",
+      ...override.findingsLines,
+      "",
+    );
+  }
+  if (override?.opinionLines?.length) {
+    lines.push(...override.opinionLines);
+  }
+  if (override?.dischargeRecommendation) {
+    lines.push("", dischargeLabel(override.dischargeRecommendation, locale));
+  }
+  return lines;
+}
+
+function formatBoardMinutesDate(value: Date, locale?: string) {
+  return value.toLocaleDateString(locale === "en" ? "en-US" : "tr-TR");
+}
+
+function buildAdminLines(
+  t: typeof TR,
+  boardMinutes: BoardMinutesSummaryDto | undefined,
+  locale?: string,
+): string[] {
+  const lines = [...t.adminLines];
+  if (!boardMinutes) {
+    return lines;
+  }
+  if (boardMinutes.count === 0) {
+    lines.push(
+      locale === "en"
+        ? "No board minutes documents archived for this year."
+        : "Bu yil icin karar defteri evraki arsivlenmemis.",
+    );
+    return lines;
+  }
+  lines.push(
+    locale === "en"
+      ? `${boardMinutes.count} board minutes document(s) in archive:`
+      : `Arsivde ${boardMinutes.count} karar defteri evraki:`,
+  );
+  for (const item of boardMinutes.items) {
+    lines.push(`- ${item.title} (${formatBoardMinutesDate(item.createdAt, locale)})`);
+  }
+  return lines;
+}
+
 export function buildAuditorReportDocument(input: {
   filter: ReportFilter;
   property: PropertyInfoDto;
   annual: AnnualIncomeExpenseReport;
+  boardMinutes?: BoardMinutesSummaryDto;
+  opinionOverride?: AuditorOpinionOverride;
+  auditorPeriod?: AuditorReportPeriod;
 }): AuditorReportDocument {
   const t = labels(input.filter.locale);
-  const periodLabel = input.filter.locale === "en" ? `Year ${input.filter.year}` : `${input.filter.year} yili`;
+  const periodLabel =
+    input.auditorPeriod && input.auditorPeriod !== "ANNUAL"
+      ? `${input.filter.year} ${input.auditorPeriod}`
+      : input.filter.locale === "en"
+        ? `Year ${input.filter.year}`
+        : `${input.filter.year} yili`;
 
   const financialRows = input.annual.rows.map((row) => {
     const cols = [row.label, row.amount];
@@ -109,6 +211,11 @@ export function buildAuditorReportDocument(input: {
       t.budgetLine(input.annual.budgetPlannedTotal, input.annual.budgetActualTotal),
     );
   }
+  if (input.annual.collectionRatePercent != null) {
+    financialSectionLines.push(t.collectionRateLine(input.annual.collectionRatePercent));
+  }
+
+  const adminLines = buildAdminLines(t, input.boardMinutes, input.filter.locale);
 
   return {
     title: t.title,
@@ -131,7 +238,7 @@ export function buildAuditorReportDocument(input: {
       },
       {
         heading: t.adminHeading,
-        lines: t.adminLines,
+        lines: adminLines,
       },
     ],
     financialTable: {
@@ -147,7 +254,7 @@ export function buildAuditorReportDocument(input: {
         : [input.filter.locale === "en" ? "Net" : "Net", input.annual.netResult],
     },
     opinionHeading: t.opinionHeading,
-    opinionLines: t.opinionLines,
+    opinionLines: buildOpinionLines(t, input.filter.locale, input.opinionOverride),
     signatureHeading: t.signatureHeading,
     signatureLines: t.signatureLines,
   };

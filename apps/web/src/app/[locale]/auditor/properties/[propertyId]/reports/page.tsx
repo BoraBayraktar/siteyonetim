@@ -1,16 +1,18 @@
 import Link from "next/link";
 import type { StandardReportKind } from "@siteyonetim/reporting-standard";
+import { parseReportQuarter, reportQuarterToMonthRange } from "@siteyonetim/reporting-standard";
 import { isAnnualReportKind } from "@/lib/report-kinds";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { OperatingBudgetPanel } from "@/components/operating-budget-panel";
+import { AuditorMyAssignmentsPanel } from "@/components/auditor-my-assignments-panel";
 import { ReportsPanel } from "@/components/reports-panel";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { auditorPortalPath, assertAdminPropertyAccess, isAuditorRole } from "@/lib/auth-context";
-import { getBlockService, getFinanceService, getPropertyService, getReportingService } from "@/lib/services";
+import { getBlockService, getAuditorReportService, getFinanceService, getPropertyService, getReportingService } from "@/lib/services";
 
 const KINDS: StandardReportKind[] = [
   "ANNUAL_INCOME_EXPENSE",
@@ -24,7 +26,7 @@ const KINDS: StandardReportKind[] = [
 
 type Props = {
   params: Promise<{ locale: string; propertyId: string }>;
-  searchParams: Promise<{ report?: string; year?: string; month?: string; blockId?: string }>;
+  searchParams: Promise<{ report?: string; year?: string; month?: string; quarter?: string; blockId?: string }>;
 };
 
 export default async function AuditorPropertyReportsPage({ params, searchParams }: Props) {
@@ -54,6 +56,8 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
   const year = Number(sp.year ?? now.getFullYear());
   const month = Number(sp.month ?? now.getMonth() + 1);
   const blockId = sp.blockId ?? null;
+  const quarter = parseReportQuarter(sp.quarter);
+  const quarterMonths = reportQuarterToMonthRange(quarter);
   const activeKind = KINDS.includes(sp.report as StandardReportKind)
     ? (sp.report as StandardReportKind)
     : "ANNUAL_INCOME_EXPENSE";
@@ -66,6 +70,7 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
     blockId,
     actorUserId: session.user.id,
     locale,
+    ...quarterMonths,
   };
 
   const reporting = getReportingService();
@@ -80,11 +85,19 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
       ? await reporting.annualIncomeExpense({ ...filter, month: 1 })
       : null;
 
-  const [collection, expense, cashbox, aging] = await Promise.all([
+  const [collection, expense, cashbox, aging, myAssignmentsPage] = await Promise.all([
     activeKind === "DUE_COLLECTION" ? reporting.dueCollection(filter) : null,
     activeKind === "EXPENSE_BREAKDOWN" ? reporting.expenseBreakdown(filter) : null,
     activeKind === "CASHBOX_SUMMARY" ? reporting.cashboxSummary(filter) : null,
     activeKind === "DEBT_AGING" ? reporting.debtAging(filter) : null,
+    getAuditorReportService().listAssignments({
+      organizationId,
+      propertyId,
+      year,
+      page: 1,
+      pageSize: 50,
+      auditorUserId: session.user.id,
+    }),
   ]);
 
   const t = await getTranslations("reports");
@@ -111,12 +124,19 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
         readOnly
       />
 
+      <AuditorMyAssignmentsPanel
+        locale={locale}
+        propertyId={propertyId}
+        assignments={myAssignmentsPage.items}
+      />
+
       <Suspense fallback={<p className="text-sm text-muted-foreground">…</p>}>
         <ReportsPanel
           locale={locale}
           propertyId={propertyId}
           year={year}
           month={month}
+          quarter={quarter}
           blockId={blockId}
           activeKind={activeKind}
           blocks={blocksPage.items}

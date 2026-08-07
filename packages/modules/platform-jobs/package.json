@@ -8,6 +8,7 @@
     "@siteyonetim/comm-notifications": "*",
     "@siteyonetim/db": "*",
     "@siteyonetim/finance-dues": "*",
-    "@siteyonetim/platform-audit": "*"
+    "@siteyonetim/platform-audit": "*",
+    "@siteyonetim/reporting-auditor": "*"
   }
 }

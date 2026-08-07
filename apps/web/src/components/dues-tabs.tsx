@@ -13,6 +13,10 @@ import type {
 import type { BlockDto, UnitDto } from "@siteyonetim/property-core";
 import type { MeterReadingDto, UnitMeterDto } from "@siteyonetim/property-meters";
 import type { PartyDto } from "@siteyonetim/property-parties";
+import type {
+  PaginatedStaffProfiles,
+  PaginatedStaffStatement,
+} from "@siteyonetim/property-staff-finance";
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
@@ -23,10 +27,11 @@ import { DuesLateFeePanel } from "@/components/dues-late-fee-panel";
 import { DuesMetersPanel } from "@/components/dues-meters-panel";
 import { FinanceTabs } from "@/components/finance-tabs";
 import { PeriodRegisterPanel } from "@/components/period-register-panel";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccrualFilters } from "@/lib/accrual-filters";
-import { definitionSummary } from "@/lib/dues-definition-form";
+import { definitionSummary, isSupplierLateFeeDefinition } from "@/lib/dues-definition-form";
 import { resolveDuesTab, type DuesTab } from "@/lib/dues-tab";
 
 const initial: DuesActionState = {};
@@ -59,9 +64,12 @@ type Props = {
   accounts: FinanceAccountDto[];
   ledger: { items: LedgerEntryDto[]; total: number; page: number; pageSize: number };
   orgParties: PartyDto[];
+  staffProfiles: PaginatedStaffProfiles;
+  staffStatement: PaginatedStaffStatement;
   initialTab?: string;
   initialUnitId?: string | null;
   initialRunId?: string | null;
+  initialStaffProfileId?: string | null;
   accrualFilters: AccrualFilters;
   accrualUnits: UnitDto[];
 };
@@ -114,9 +122,12 @@ export function DuesTabs({
   accounts,
   ledger,
   orgParties,
+  staffProfiles,
+  staffStatement,
   initialTab,
   initialUnitId,
   initialRunId,
+  initialStaffProfileId,
   accrualFilters,
   accrualUnits,
 }: Props) {
@@ -132,6 +143,7 @@ export function DuesTabs({
           registerPage={registerPage}
           blocks={blocks}
           cashboxes={cashboxes}
+          runs={runs}
           filters={registerFilters}
           initialUnitId={initialUnitId}
         />
@@ -142,13 +154,30 @@ export function DuesTabs({
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle>{t("definitionsList")}</CardTitle>
-              <DueDefinitionWizard mode="insert" locale={locale} propertyId={propertyId} />
+              <div className="flex flex-wrap gap-2">
+                <DueDefinitionWizard mode="insert" locale={locale} propertyId={propertyId} variant="aidat" />
+                <DueDefinitionWizard
+                  mode="insert"
+                  locale={locale}
+                  propertyId={propertyId}
+                  variant="supplier"
+                />
+              </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {definitions.map((d) => (
+              {definitions.map((d) => {
+                const isSupplier = isSupplierLateFeeDefinition(d.calculationMode);
+                return (
                 <div key={d.id} className="flex flex-wrap items-start justify-between gap-2 border-b pb-2">
                   <div className="min-w-0">
-                    <p className="font-medium">{d.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{d.name}</p>
+                      {isSupplier ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {t("supplierLateFeeDefinitionBadge")}
+                        </Badge>
+                      ) : null}
+                    </div>
                     <p className="text-muted-foreground">{definitionSummary(d, t)}</p>
                     {d.autoAccrualMonthly ? (
                       <p className="text-xs text-primary">{t("autoAccrualBadge")}</p>
@@ -160,11 +189,15 @@ export function DuesTabs({
                       locale={locale}
                       propertyId={propertyId}
                       definition={d}
+                      variant={isSupplier ? "supplier" : "aidat"}
                     />
-                    <AutoAccrualToggle locale={locale} propertyId={propertyId} definitionId={d.id} enabled={d.autoAccrualMonthly} />
+                    {!isSupplier ? (
+                      <AutoAccrualToggle locale={locale} propertyId={propertyId} definitionId={d.id} enabled={d.autoAccrualMonthly} />
+                    ) : null}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </CardContent>
           </Card>
         </div>
@@ -214,6 +247,9 @@ export function DuesTabs({
           cashboxes={cashboxes}
           ledger={ledger}
           parties={orgParties}
+          staffProfiles={staffProfiles}
+          staffStatement={staffStatement}
+          selectedStaffProfileId={initialStaffProfileId}
           activePanel="ledger"
           duesTab="expenses"
         />
@@ -229,6 +265,9 @@ export function DuesTabs({
           cashboxes={cashboxes}
           ledger={ledger}
           parties={orgParties}
+          staffProfiles={staffProfiles}
+          staffStatement={staffStatement}
+          selectedStaffProfileId={initialStaffProfileId}
           activePanel="cashboxes"
           showPeriodCard={false}
           duesTab="cashboxes"
@@ -245,9 +284,31 @@ export function DuesTabs({
           cashboxes={cashboxes}
           ledger={ledger}
           parties={orgParties}
+          staffProfiles={staffProfiles}
+          staffStatement={staffStatement}
+          selectedStaffProfileId={initialStaffProfileId}
           activePanel="accounts"
           showPeriodCard={false}
           duesTab="accounts"
+        />
+      ) : null}
+
+      {activeTab === "staffAccounts" ? (
+        <FinanceTabs
+          locale={locale}
+          propertyId={propertyId}
+          period={period}
+          categories={categories}
+          accounts={accounts}
+          cashboxes={cashboxes}
+          ledger={ledger}
+          parties={orgParties}
+          staffProfiles={staffProfiles}
+          staffStatement={staffStatement}
+          selectedStaffProfileId={initialStaffProfileId}
+          activePanel="staffAccounts"
+          showPeriodCard={false}
+          duesTab="staffAccounts"
         />
       ) : null}
 
@@ -261,6 +322,9 @@ export function DuesTabs({
           cashboxes={cashboxes}
           ledger={ledger}
           parties={orgParties}
+          staffProfiles={staffProfiles}
+          staffStatement={staffStatement}
+          selectedStaffProfileId={initialStaffProfileId}
           activePanel="categories"
           showPeriodCard={false}
           duesTab="categories"

@@ -7,6 +7,7 @@ export const DUES_TABS = [
   "expenses",
   "cashboxes",
   "accounts",
+  "staffAccounts",
   "categories",
 ] as const;
 

@@ -9,10 +9,15 @@ type ExportFn = (
   format: ReportExportFormat,
 ) => Promise<{ buffer: Buffer; contentType: string; extension: string }>;
 
+type PeriodRegisterExportFn = (
+  filter: ReportFilter,
+) => Promise<{ buffer: Buffer; extension: string }>;
+
 export async function buildAuditPackageZip(
   filter: ReportFilter,
   exportFn: ExportFn,
   reportingCore: ReportingCoreContract,
+  exportPeriodRegister?: PeriodRegisterExportFn,
 ) {
   const year = filter.year;
   const yearFilter: ReportFilter = { ...filter, month: 12 };
@@ -24,6 +29,8 @@ export async function buildAuditPackageZip(
     expenseXlsx,
     agingPdf,
     cashboxPdf,
+    bankReconciliationPdf,
+    periodRegister,
   ] = await Promise.all([
     exportFn("ANNUAL_INCOME_EXPENSE", { ...filter, month: 1 }, ReportExportFormat.PDF),
     exportFn("AUDITOR_REPORT_TEMPLATE", { ...filter, month: 1 }, ReportExportFormat.PDF),
@@ -31,14 +38,26 @@ export async function buildAuditPackageZip(
     exportFn("EXPENSE_BREAKDOWN", { ...filter, month: 0 }, ReportExportFormat.XLSX),
     exportFn("DEBT_AGING", yearFilter, ReportExportFormat.PDF),
     exportFn("CASHBOX_SUMMARY", yearFilter, ReportExportFormat.PDF),
+    exportFn("BANK_RECONCILIATION", { ...filter, month: 0 }, ReportExportFormat.PDF),
+    exportPeriodRegister?.({ ...filter, month: 12 }) ?? Promise.resolve(null),
   ]);
 
-  return reportingCore.renderZip([
+  const entries = [
     { fileName: `gelir-gider-ozeti_${year}.pdf`, buffer: annualPdf.buffer },
     { fileName: `denetci-raporu-sablonu_${year}.pdf`, buffer: auditorPdf.buffer },
     { fileName: `tahsilat_${year}.xlsx`, buffer: collectionXlsx.buffer },
     { fileName: `gider-dagilimi_${year}.xlsx`, buffer: expenseXlsx.buffer },
     { fileName: `borc-yaslandirma_${year}-12.pdf`, buffer: agingPdf.buffer },
     { fileName: `kasa-ozeti_${year}-12.pdf`, buffer: cashboxPdf.buffer },
-  ]);
+    { fileName: `banka-mutabakat_${year}.pdf`, buffer: bankReconciliationPdf.buffer },
+  ];
+
+  if (periodRegister) {
+    entries.push({
+      fileName: `donem-defteri_${year}-12.${periodRegister.extension}`,
+      buffer: periodRegister.buffer,
+    });
+  }
+
+  return reportingCore.renderZip(entries);
 }

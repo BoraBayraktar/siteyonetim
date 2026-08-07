@@ -6,6 +6,7 @@ import type {
   LateFeeRateKind,
   MeterKind,
   ReportExportFormat,
+  SupplierLateFeeAllocationMode,
 } from "@siteyonetim/db";
 
 export type DuesContext = {
@@ -21,6 +22,7 @@ export type DueDefinitionDto = {
   fixedAmount: string | null;
   ratePerM2: string | null;
   meterKind: MeterKind | null;
+  supplierLateFeeAllocationMode: SupplierLateFeeAllocationMode | null;
   autoAccrualMonthly: boolean;
   active: boolean;
 };
@@ -56,6 +58,8 @@ export type DueAccrualRunDto = {
   dueDefinitionName: string;
   calculationMode: DueCalculationMode;
   meterKind: import("@siteyonetim/db").MeterKind | null;
+  supplierLateFeeAllocationMode: SupplierLateFeeAllocationMode | null;
+  supplierReference: string | null;
   year: number;
   month: number;
   status: DueAccrualStatus;
@@ -86,6 +90,14 @@ export type DueAccrualLineDto = {
   status: DueLineStatus;
   year: number;
   month: number;
+  lineKind: DueAccrualLineKind;
+  dueDefinitionName: string;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
+  supplierReference?: string | null;
+  /** LATE_FEE: overdue source accrual period / definition */
+  sourceYear?: number;
+  sourceMonth?: number;
+  sourceDueDefinitionName?: string;
 };
 
 export type DuePaymentTargetDto = {
@@ -143,6 +155,8 @@ export type PortalOpenDebtLineDto = {
   amount: string;
   paidAmount: string;
   remaining: string;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
+  supplierReference?: string | null;
   /** LATE_FEE: overdue source accrual period */
   sourceYear?: number;
   sourceMonth?: number;
@@ -176,6 +190,8 @@ export type PeriodRegisterCellDto = {
   remaining: string;
   status: PeriodRegisterCellStatus;
   lineKind: DueAccrualLineKind | null;
+  supplierLateFeeAllocationMode: SupplierLateFeeAllocationMode | null;
+  supplierReference: string | null;
   lastDocumentNo: string | null;
   isOverdue: boolean;
 };
@@ -199,7 +215,7 @@ export type PeriodRegisterRowDto = {
 
 export type PeriodRegisterColumnDto = Pick<
   DueDefinitionDto,
-  "id" | "name" | "calculationMode"
+  "id" | "name" | "calculationMode" | "supplierLateFeeAllocationMode"
 >;
 
 export type ListPeriodRegisterInput = DuesContext & {
@@ -224,6 +240,7 @@ export type PeriodRegisterPageDto = {
 
 export type ExportPeriodRegisterInput = ListPeriodRegisterInput & {
   format: ReportExportFormat;
+  locale?: string;
 };
 
 export type ExportedPeriodRegisterFile = {
@@ -269,6 +286,20 @@ export type AccrualWarningCode =
   | "METER_RUN_MISMATCH"
   | "METER_AMOUNT_MISMATCH";
 
+export type AccrualMissingUnitReason =
+  | "NO_OCCUPANCY"
+  | "NO_METER"
+  | "NO_METER_READING"
+  | "MISSING_PREVIOUS_METER_INDEX"
+  | "ZERO_AMOUNT"
+  | "PENDING_IN_RUN";
+
+export type AccrualMissingUnitDto = {
+  unitId: string;
+  unitCode: string;
+  reasons: AccrualMissingUnitReason[];
+};
+
 export type AccrualRunCorrectionDto = {
   runId: string;
   canVoid: boolean;
@@ -277,6 +308,7 @@ export type AccrualRunCorrectionDto = {
   hasPayments: boolean;
   hasLateFees: boolean;
   missingUnitCount: number;
+  missingUnits: AccrualMissingUnitDto[];
   accruedUnitCount: number;
   totalUnitCount: number;
   supplementBlockedReason:
@@ -320,6 +352,7 @@ export type CreateDueDefinitionInput = DuesContext & {
   fixedAmount?: string | null;
   ratePerM2?: string | null;
   meterKind?: MeterKind | null;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
   autoAccrualMonthly?: boolean;
 };
 
@@ -330,6 +363,7 @@ export type UpdateDueDefinitionInput = DuesContext & {
   fixedAmount?: string | null;
   ratePerM2?: string | null;
   meterKind?: MeterKind | null;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
   autoAccrualMonthly?: boolean;
 };
 
@@ -355,6 +389,8 @@ export type GenerateAccrualInput = DuesContext & {
   month: number;
   totalBillAmount?: string | null;
   totalBillConsumptionM3?: string | null;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
+  supplierReference?: string | null;
 };
 
 export type RecalculateAccrualInput = DuesContext & {
@@ -366,6 +402,7 @@ export type RecalculateAccrualInput = DuesContext & {
 export type AccrualBillInput = {
   totalBillAmount?: string | null;
   totalBillConsumptionM3?: string | null;
+  supplierLateFeeAllocationMode?: SupplierLateFeeAllocationMode | null;
 };
 
 export type UpsertLateFeePolicyInput = DuesContext & {

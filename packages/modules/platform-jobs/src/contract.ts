@@ -10,6 +10,28 @@ export type RunLateFeeMonthlyInput = RunMonthlyJobInput;
 export type RunDueAccrualMonthlyInput = RunMonthlyJobInput;
 export type RunAccrualDraftReminderInput = RunMonthlyJobInput;
 
+export type RunAuditorQuarterReminderInput = {
+  year: number;
+  period: "Q1" | "Q2" | "Q3" | "Q4";
+  actorUserId?: string | null;
+};
+
+export type AuditorQuarterReminderAssignmentResult = {
+  organizationId: string;
+  propertyId: string;
+  assignmentId: string;
+  status: "SUCCEEDED" | "FAILED" | "SKIPPED";
+  enqueued?: number;
+  error?: string;
+};
+
+export type RunAuditorQuarterReminderResult = {
+  year: number;
+  period: "Q1" | "Q2" | "Q3" | "Q4";
+  assignments: AuditorQuarterReminderAssignmentResult[];
+  outbox: { processed: number; sent: number; failed: number };
+};
+
 export type AccrualReminderPropertyResult = {
   organizationId: string;
   propertyId: string;
@@ -69,4 +91,5 @@ export interface JobServiceContract {
   runLateFeeMonthly(input: RunLateFeeMonthlyInput): Promise<RunLateFeeMonthlyResult>;
   runDueAccrualMonthly(input: RunDueAccrualMonthlyInput): Promise<RunDueAccrualMonthlyResult>;
   runAccrualDraftReminders(input: RunAccrualDraftReminderInput): Promise<RunAccrualDraftReminderResult>;
+  runAuditorQuarterReminders(input: RunAuditorQuarterReminderInput): Promise<RunAuditorQuarterReminderResult>;
 }

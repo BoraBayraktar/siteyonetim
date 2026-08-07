@@ -1,4 +1,4 @@
-import { DocumentVisibility, prisma } from "@siteyonetim/db";
+import { DocumentCategory, DocumentVisibility, prisma } from "@siteyonetim/db";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
@@ -180,6 +180,36 @@ export class DocumentRepository {
       where: { propertyId, deleted: false, id: { in: unitIds } },
     });
     return count === unitIds.length;
+  }
+
+  async listBoardMinutesSummary(input: {
+    organizationId: string;
+    propertyId: string;
+    year: number;
+    limit?: number;
+  }) {
+    const start = new Date(input.year, 0, 1);
+    const end = new Date(input.year + 1, 0, 1);
+    const limit = Math.min(Math.max(input.limit ?? 20, 1), 20);
+    const where = {
+      organizationId: input.organizationId,
+      propertyId: input.propertyId,
+      category: DocumentCategory.BOARD_MINUTES,
+      deleted: false,
+      createdAt: { gte: start, lt: end },
+    };
+
+    const [items, count] = await Promise.all([
+      prisma.document.findMany({
+        where,
+        select: { title: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+      prisma.document.count({ where }),
+    ]);
+
+    return { count, items };
   }
 }
 

@@ -10,6 +10,7 @@ import type {
   ReportFilter,
   StandardReportKind,
 } from "./contract";
+import type { BankReconciliationSummaryDto } from "@siteyonetim/finance-banking";
 import { isAnnualReportKind } from "./contract";
 
 export function buildReportTableDocument(
@@ -22,6 +23,7 @@ export function buildReportTableDocument(
     cashbox?: CashboxSummaryReport;
     aging?: DebtAgingReport;
     annual?: AnnualIncomeExpenseReport;
+    bankReconciliation?: BankReconciliationSummaryDto;
   },
 ): ReportTableDocument {
   const period = isAnnualReportKind(kind)
@@ -104,6 +106,39 @@ export function buildReportTableDocument(
           r.totalDebt,
         ]),
         footer: ["", "", "", "", "", "total", report.totalDebt],
+        meta,
+      };
+    }
+    case "BANK_RECONCILIATION": {
+      const report = data.bankReconciliation ?? {
+        year: filter.year,
+        month: filter.month,
+        totalLines: 0,
+        matchedLines: 0,
+        unmatchedLines: 0,
+        ignoredLines: 0,
+        unmatchedAmountTotal: "0",
+        rows: [],
+      };
+      return {
+        title: `Bank reconciliation — ${period}`,
+        headers: ["date", "cashbox", "amount", "description", "status", "matchedTarget"],
+        rows: report.rows.map((r) => [
+          r.lineDate,
+          r.cashboxName,
+          r.amount,
+          r.description ?? "",
+          r.matchStatus,
+          r.matchedTarget ?? "",
+        ]),
+        footer: [
+          "summary",
+          `matched ${report.matchedLines}`,
+          `unmatched ${report.unmatchedLines}`,
+          report.unmatchedAmountTotal,
+          "",
+          "",
+        ],
         meta,
       };
     }

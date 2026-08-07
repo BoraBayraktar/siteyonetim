@@ -15,7 +15,8 @@
     "seed": "NODE_OPTIONS='--require ./load-env.cjs' tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0"
+    "@prisma/client": "^6.19.0",
+    "@siteyonetim/platform-auth": "*"
   },
   "devDependencies": {
     "bcryptjs": "^3.0.2",

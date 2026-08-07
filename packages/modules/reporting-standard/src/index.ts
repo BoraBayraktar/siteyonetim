@@ -27,4 +27,6 @@ export type {
   StandardReportingContract,
 } from "./contract";
 export { ANNUAL_REPORT_KINDS, isAnnualReportKind } from "./contract";
+export { parseReportQuarter, reportQuarterToMonthRange } from "./quarter-filter";
+export type { ReportQuarterScope } from "./quarter-filter";
 export { createStandardReportingService, StandardReportingService } from "./service";

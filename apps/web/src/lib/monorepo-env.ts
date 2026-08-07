@@ -59,6 +59,64 @@ let cachedWebRoot: string | null = null;
 let cachedRepoRoot: string | null = null;
 let loaded = false;
 
+const envLog = {
+  info: () => {},
+  error: (...args: unknown[]) => console.error(...args),
+};
+
+const isDev = process.env.NODE_ENV !== "production";
+
+function envSearchDirs(): string[] {
+  const webRoot = getWebAppRoot();
+  const repoRoot = getMonorepoRoot();
+  return [...new Set([repoRoot, webRoot, process.cwd()])];
+}
+
+function loadEnvDirs(forceReload: boolean): void {
+  for (const dir of envSearchDirs()) {
+    loadEnvConfig(dir, isDev, envLog, forceReload);
+  }
+}
+
+/** @next/env skips re-load when __NEXT_PROCESSED_ENV is set; read disk as last resort. */
+function hydrateAuthSecretsFromDisk(): void {
+  if (process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim()) {
+    return;
+  }
+
+  const envFiles = [".env.development.local", ".env.local", ".env.development", ".env"];
+  for (const dir of envSearchDirs()) {
+    for (const file of envFiles) {
+      const filePath = path.join(dir, file);
+      if (!fs.existsSync(filePath)) {
+        continue;
+      }
+      try {
+        const content = fs.readFileSync(filePath, "utf8");
+        for (const key of ["AUTH_SECRET", "NEXTAUTH_SECRET"] as const) {
+          const match = content.match(new RegExp(`^${key}\\s*=\\s*(.+)$`, "m"));
+          if (!match) {
+            continue;
+          }
+          let value = match[1]?.trim() ?? "";
+          if (
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))
+          ) {
+            value = value.slice(1, -1);
+          }
+          if (value) {
+            process.env.AUTH_SECRET = value;
+            return;
+          }
+        }
+      } catch {
+        /* ignore unreadable env files */
+      }
+    }
+  }
+}
+
 /** `apps/web` */
 export function getWebAppRoot(): string {
   if (!cachedWebRoot) {
@@ -85,11 +143,13 @@ export function loadMonorepoEnv(): void {
     return;
   }
 
-  const webRoot = getWebAppRoot();
-  const repoRoot = getMonorepoRoot();
+  loadEnvDirs(false);
 
-  for (const dir of [repoRoot, webRoot, process.cwd()]) {
-    loadEnvConfig(dir);
+  // Turbopack workers may process apps/web/.env.local first (no AUTH_SECRET) and set
+  // __NEXT_PROCESSED_ENV, which makes later @next/env calls a no-op.
+  if (!process.env.AUTH_SECRET?.trim() && !process.env.NEXTAUTH_SECRET?.trim()) {
+    loadEnvDirs(true);
+    hydrateAuthSecretsFromDisk();
   }
 
   loaded = true;

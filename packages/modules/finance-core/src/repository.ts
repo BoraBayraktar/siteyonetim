@@ -252,6 +252,9 @@ export class FinanceRepository {
         if (account.kind === "PARTY") {
           accountDelta =
             input.entryType === LedgerEntryType.INCOME ? amount.mul(-1) : amount;
+        } else if (account.kind === "STAFF") {
+          accountDelta =
+            input.entryType === LedgerEntryType.EXPENSE ? amount : amount.mul(-1);
         } else if (account.kind === "SUPPLIER") {
           accountDelta =
             input.entryType === LedgerEntryType.EXPENSE ? amount : amount.mul(-1);

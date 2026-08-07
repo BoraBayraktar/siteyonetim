@@ -1,8 +1,11 @@
 export type {
+  BoardMinutesSummaryDto,
+  BoardMinutesSummaryItemDto,
   CreateDocumentInput,
   DocumentDownloadPayload,
   DocumentDto,
   DocumentServiceContract,
+  ListBoardMinutesSummaryInput,
   ListDocumentsAdminInput,
   ListDocumentsPortalInput,
   OpenDocumentDownloadInput,

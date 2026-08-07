@@ -36,9 +36,29 @@ export type PeriodRegisterLineRow = {
   remaining: string;
   status: DueLineStatus;
   lineKind: DueAccrualLineKind;
+  supplierLateFeeAllocationMode: import("@siteyonetim/db").SupplierLateFeeAllocationMode | null;
+  supplierReference: string | null;
   lastDocumentNo: string | null;
   isOverdue: boolean;
 };
+
+export async function queryPeriodRegisterDefinitionIds(
+  input: Pick<ListPeriodRegisterInput, "propertyId" | "organizationId" | "year" | "month">,
+): Promise<string[]> {
+  const rows = await prisma.$queryRaw<Array<{ dueDefinitionId: string }>>`
+    SELECT DISTINCT ar."dueDefinitionId" AS "dueDefinitionId"
+    FROM "DueAccrualLine" l
+    INNER JOIN "DueAccrualRun" ar ON ar.id = l."accrualRunId"
+    WHERE l.deleted = false
+      AND ar.deleted = false
+      AND ar.status = ${DueAccrualStatus.POSTED}::"DueAccrualStatus"
+      AND ar."propertyId" = ${input.propertyId}
+      AND ar."organizationId" = ${input.organizationId}
+      AND ar.year = ${input.year}
+      AND ar.month = ${input.month}
+  `;
+  return rows.map((row) => row.dueDefinitionId);
+}
 
 export async function queryPeriodRegisterUnitsPaginated(
   input: ListPeriodRegisterInput & { dueDay: number },
@@ -233,6 +253,8 @@ export async function queryPeriodRegisterLinesForUnits(
       (l.amount - l."paidAmount")::text AS remaining,
       l.status AS status,
       l."lineKind" AS "lineKind",
+      ar."supplierLateFeeAllocationMode" AS "supplierLateFeeAllocationMode",
+      ar."supplierReference" AS "supplierReference",
       lp.last_document_no AS "lastDocumentNo",
       (
         (l.amount - l."paidAmount") > 0

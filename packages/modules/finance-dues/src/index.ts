@@ -2,6 +2,8 @@ export type {
   AccrualContextWarningDto,
   AccrualContextPreload,
   AccrualContextWarningsDto,
+  AccrualMissingUnitDto,
+  AccrualMissingUnitReason,
   AccrualRunCorrectionDto,
   AccrualWarningCode,
   DebtOverviewDto,
@@ -43,3 +45,10 @@ export type {
   UpsertLegalInterestRateInput,
 } from "./contract";
 export { createDuesService, DuesService } from "./service";
+export type { SupplierLateFeeAllocationMode } from "@siteyonetim/db";
+export {
+  countMissingPreviousIndex,
+  hasMeterRunMismatch,
+  isMeterDefinitionMode,
+  needsConsumptionRecalculate,
+} from "./accrual-context";

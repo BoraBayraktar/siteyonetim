@@ -7,6 +7,23 @@ export type ReportDocumentMeta = {
   periodLabel?: string;
   generatedAt?: string;
   subtitle?: string;
+  /** Official output profile for print-ready PDF layout (FAZ C4). */
+  documentKind?: "STANDARD" | "PERIOD_REGISTER" | "ATTENDANCE_REGISTER";
+  layout?: "portrait" | "landscape";
+};
+
+export type OfficialLetterhead = {
+  organizationLine: string;
+  propertyLine: string;
+  addressLine?: string;
+  periodLine?: string;
+  documentDateLine?: string;
+};
+
+export type OfficialSignatureSlot = {
+  roleLabel: string;
+  namePlaceholder: string;
+  datePlaceholder: string;
 };
 
 export type ReportTableDocument = {

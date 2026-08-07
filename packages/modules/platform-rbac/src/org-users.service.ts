@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { OrganizationRole } from "@siteyonetim/db";
+import { isSuperAdminEmail } from "@siteyonetim/platform-auth";
 import { createAuditService } from "@siteyonetim/platform-audit";
 
 import type {
@@ -54,6 +55,9 @@ export class OrgUsersService {
     const email = input.email.trim().toLowerCase();
     const name = input.name.trim();
     if (!email || !name) throw new Error("INVALID_INPUT");
+    if (isSuperAdminEmail(email)) {
+      throw new Error("SUPER_ADMIN_RESERVED");
+    }
 
     let user = await this.orgUsers.findUserByEmail(email);
     if (user) {
@@ -111,6 +115,9 @@ export class OrgUsersService {
     const membership = await this.orgUsers.findMembership(input.organizationId, input.userId);
     if (!membership || membership.user.deleted) {
       throw new Error("USER_NOT_FOUND");
+    }
+    if (membership.user.isSuperAdmin) {
+      throw new Error("SUPER_ADMIN_PROTECTED");
     }
 
     if (input.userId === input.actorUserId && membership.role === OrganizationRole.ORG_ADMIN) {
@@ -184,6 +191,9 @@ export class OrgUsersService {
     const membership = await this.orgUsers.findMembership(input.organizationId, input.userId);
     if (!membership || membership.user.deleted) {
       throw new Error("USER_NOT_FOUND");
+    }
+    if (membership.user.isSuperAdmin) {
+      throw new Error("SUPER_ADMIN_PROTECTED");
     }
 
     if (membership.role === OrganizationRole.ORG_ADMIN) {

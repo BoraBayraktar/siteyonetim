@@ -4,12 +4,15 @@ import { Secret } from "otpauth";
 
 import type { AuthSessionUserDto, AuthUserDto, ValidateCredentialsInput } from "./contract";
 import { AuthRepository } from "./repository";
+import { isSuperAdminUser } from "./super-admin";
 import {
   buildTotp,
   generateTotpSecret,
   getMaxTotpAttempts,
   LoginBootstrapStore,
+  LoginChallengeFailedError,
   LoginChallengeStore,
+  safeDecryptTotpSecret,
   verifyTotpToken,
 } from "./login-challenge";
 import { decryptTotpSecret, encryptTotpSecret } from "./totp-crypto";
@@ -51,6 +54,10 @@ export class TotpService {
     const user = await this.authRepository.validateAdminCredentials(input);
     if (!user) {
       return null;
+    }
+
+    if (user.isSuperAdmin) {
+      return { status: "direct" };
     }
 
     const totpUser = await this.totpRepository.findAdminUserById(user.id);
@@ -118,11 +125,13 @@ export class TotpService {
     if (!authUser) {
       return null;
     }
-    const dto = this.authRepository.toDto(authUser);
+    const dto = isSuperAdminUser(authUser)
+      ? await this.authRepository.toSuperAdminDto(authUser)
+      : this.authRepository.toDto(authUser);
     if (!dto || dto.sessionKind !== "ADMIN") {
       return null;
     }
-    return { ...dto, rememberMe: bootstrap.rememberMe };
+    return { ...dto, rememberMe: bootstrap.rememberMe, isSuperAdmin: dto.isSuperAdmin };
   }
 
   private async consumeLoginChallengeInternal(input: {
@@ -155,7 +164,12 @@ export class TotpService {
       }
       verified = await this.verifyBackupCode(user.id, user.totpBackupCodes, input.code);
     } else if (challenge.phase === "setup" && challenge.pendingSecretEnc) {
-      const secret = Secret.fromBase32(decryptTotpSecret(challenge.pendingSecretEnc));
+      const secretBase32 = safeDecryptTotpSecret(challenge.pendingSecretEnc);
+      if (!secretBase32) {
+        await this.challenges.delete(input.challengeId);
+        throw new Error("INVALID_TOTP_ENROLLMENT");
+      }
+      const secret = Secret.fromBase32(secretBase32);
       verified = verifyTotpToken(buildTotp(user.email, secret), input.code);
       if (verified) {
         setupBackupCodes = this.totpRepository.generateBackupCodes();
@@ -172,16 +186,21 @@ export class TotpService {
         });
       }
     } else if (user.totpSecretEnc) {
-      const secret = Secret.fromBase32(decryptTotpSecret(user.totpSecretEnc));
+      const secretBase32 = safeDecryptTotpSecret(user.totpSecretEnc);
+      if (!secretBase32) {
+        await this.challenges.delete(input.challengeId);
+        throw new Error("TOTP_SECRET_DECRYPT_FAILED");
+      }
+      const secret = Secret.fromBase32(secretBase32);
       verified = verifyTotpToken(buildTotp(user.email, secret), input.code);
     }
 
     if (!verified) {
-      await this.challenges.save(input.challengeId, {
+      const nextChallengeId = await this.challenges.save(input.challengeId, {
         ...challenge,
         attempts: challenge.attempts + 1,
       });
-      throw new Error("INVALID_TOTP_CODE");
+      throw new LoginChallengeFailedError("INVALID_TOTP_CODE", nextChallengeId);
     }
 
     await this.challenges.delete(input.challengeId);

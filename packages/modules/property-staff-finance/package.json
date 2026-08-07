@@ -1,0 +1,13 @@
+{
+  "name": "@siteyonetim/property-staff-finance",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@siteyonetim/db": "*",
+    "@siteyonetim/finance-core": "*",
+    "@siteyonetim/platform-audit": "*",
+    "exceljs": "^4.4.0"
+  }
+}
