@@ -5,6 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { DuesTabs } from "@/components/dues-tabs";
 import { Button } from "@/components/ui/button";
 import { getAdminSession } from "@/lib/cached-admin";
+import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
+import { isStaffRole } from "@/lib/auth-context";
 import { resolveDuesTab, shouldRedirectLegacyDuesTab } from "@/lib/dues-tab";
 import { parseAccrualFilters } from "@/lib/accrual-filters";
 import { resolveFinancePanelTab } from "@/lib/finance-tab";
@@ -44,6 +46,9 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
     redirect(`/${locale}/login`);
   }
 
+  const isStaffUser = isStaffRole(session.user.role);
+  await requireAdminPropertyScope(locale, propertyId, isStaffUser ? "meters" : undefined);
+
   const redirectTab = shouldRedirectLegacyDuesTab(sp.tab, sp.section ?? null);
   if (redirectTab) {
     const params = new URLSearchParams();
@@ -60,8 +65,12 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
   const property = await getPropertyService().getById(organizationId, propertyId);
   if (!property) notFound();
 
-  const ctx = { organizationId, propertyId, actorUserId: session.user.id };
   const activeTab = resolveDuesTab(sp.tab);
+  if (isStaffUser && activeTab !== "meters") {
+    redirect(`/${locale}/admin/properties/${propertyId}/dues?tab=meters`);
+  }
+
+  const ctx = { organizationId, propertyId, actorUserId: session.user.id };
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
 
   const now = new Date();
@@ -134,7 +143,9 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-            <Link href={`/${locale}/admin/properties/${propertyId}/dashboard`}>← {tCommon("back")}</Link>
+            <Link href={isStaffUser ? `/${locale}/admin/properties` : `/${locale}/admin/properties/${propertyId}/dashboard`}>
+              ← {tCommon("back")}
+            </Link>
           </Button>
           <h1 className="text-2xl font-semibold tracking-tight">
             {property.name} — {pageTitle}
@@ -173,6 +184,8 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
         initialRunId={sp.runId ?? null}
         accrualFilters={accrualFilters}
         accrualUnits={duesData.accrualUnits}
+        staffOperationsOnly={isStaffUser}
+        canManageMeters={!isStaffUser}
       />
     </div>
   );

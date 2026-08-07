@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { AdminLayoutChrome } from "@/components/admin-layout-chrome";
 import { signOut } from "@/auth";
 import { getAdminSession, listAdminPropertiesNav } from "@/lib/cached-admin";
+import { resolveAdminNavCapabilities } from "@/lib/admin-nav-capabilities";
 import { auditorPortalPath, canManageOrgUsers, isAuditorRole } from "@/lib/auth-context";
 
 type Props = {
@@ -30,6 +31,7 @@ export default async function AdminLayout({ children, params }: Props) {
   }
 
   const propertiesNav = await listAdminPropertiesNav(session.user.organizationId);
+  const navCapabilities = resolveAdminNavCapabilities(session.user.role, canManageOrgUsers(session));
 
   return (
     <AdminLayoutChrome
@@ -38,7 +40,8 @@ export default async function AdminLayout({ children, params }: Props) {
       userName={session.user.name ?? ""}
       logoutAction={logoutAction}
       propertiesNav={propertiesNav}
-      canManageOrgUsers={canManageOrgUsers(session)}
+      navCapabilities={navCapabilities}
+      userRole={session.user.role}
     >
       {children}
     </AdminLayoutChrome>

@@ -3,7 +3,10 @@
 import { MeterKind } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/auth";
+import {
+  adminPropertyMeterReadingContext,
+  adminPropertyMutateContext,
+} from "@/lib/admin-action-context";
 import { getMeterService } from "@/lib/services";
 
 export type MeterActionState = {
@@ -45,19 +48,17 @@ export async function upsertMeterAction(
   _prev: MeterActionState,
   formData: FormData,
 ): Promise<MeterActionState> {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return { error: "UNAUTHORIZED" };
-  }
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getMeterService().upsertMeter({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       unitId: String(formData.get("unitId") ?? ""),
       kind: String(formData.get("kind") ?? MeterKind.HOT_WATER) as MeterKind,
       serialNumber: String(formData.get("serialNumber") ?? "") || null,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateMeters(locale, propertyId);
     return {
@@ -79,18 +80,16 @@ export async function bulkUpsertMetersAction(
   _prev: BulkMeterActionState,
   formData: FormData,
 ): Promise<BulkMeterActionState> {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return { error: "UNAUTHORIZED" };
-  }
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     const kind = String(formData.get("kind") ?? MeterKind.HOT_WATER) as MeterKind;
     const result = await getMeterService().bulkUpsertMetersForKind({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       kind,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     if (result.total === 0) {
       return { error: "NO_UNITS" };
@@ -117,20 +116,18 @@ export async function recordMeterReadingAction(
   _prev: MeterActionState,
   formData: FormData,
 ): Promise<MeterActionState> {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return { error: "UNAUTHORIZED" };
-  }
+  const ctx = await adminPropertyMeterReadingContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getMeterService().recordReading({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       meterId: String(formData.get("meterId") ?? ""),
       year: Number(formData.get("year")),
       month: Number(formData.get("month")),
       readingValue: String(formData.get("readingValue") ?? ""),
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateMeters(locale, propertyId);
     return {
@@ -151,10 +148,8 @@ export async function bulkRecordMeterReadingsAction(
   _prev: BulkReadingActionState,
   formData: FormData,
 ): Promise<BulkReadingActionState> {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return { error: "UNAUTHORIZED" };
-  }
+  const ctx = await adminPropertyMeterReadingContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   const kind = String(formData.get("kind") ?? MeterKind.HOT_WATER) as MeterKind;
   const year = Number(formData.get("year"));
@@ -174,13 +169,13 @@ export async function bulkRecordMeterReadingsAction(
 
   try {
     const result = await getMeterService().bulkRecordReadings({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       kind,
       year,
       month,
       readings,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateMeters(locale, propertyId);
     return {
@@ -214,17 +209,15 @@ export async function deleteMeterReadingAction(
   _prev: MeterActionState,
   _formData: FormData,
 ): Promise<MeterActionState> {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return { error: "UNAUTHORIZED" };
-  }
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getMeterService().deleteReading({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       readingId,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateMeters(locale, propertyId);
     return { success: true };

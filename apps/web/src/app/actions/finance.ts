@@ -7,7 +7,7 @@ import {
 } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/auth";
+import { adminPropertyMutateContext } from "@/lib/admin-action-context";
 import { getFinanceService } from "@/lib/services";
 
 export type FinanceActionState = { error?: string; success?: boolean };
@@ -18,31 +18,23 @@ function revalidateFinance(locale: string, propertyId: string) {
   revalidatePath(`/${locale}/admin/properties/${propertyId}/dashboard`, "page");
 }
 
-async function adminContext() {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return null;
-  }
-  return session;
-}
-
 export async function createCategoryAction(
   locale: string,
   propertyId: string,
   _prev: FinanceActionState,
   formData: FormData,
 ): Promise<FinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   const type = String(formData.get("type") ?? FinanceCategoryType.EXPENSE) as FinanceCategoryType;
   try {
     await getFinanceService().createCategory({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       name: String(formData.get("name") ?? ""),
       type,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateFinance(locale, propertyId);
     return { success: true };
@@ -60,18 +52,18 @@ export async function createAccountAction(
   _prev: FinanceActionState,
   formData: FormData,
 ): Promise<FinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getFinanceService().createAccount({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       code: String(formData.get("code") ?? ""),
       name: String(formData.get("name") ?? ""),
       kind: String(formData.get("kind") ?? FinanceAccountKind.GENERAL) as FinanceAccountKind,
       partyId: String(formData.get("partyId") ?? "") || null,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateFinance(locale, propertyId);
     return { success: true };
@@ -89,15 +81,15 @@ export async function createCashboxAction(
   _prev: FinanceActionState,
   formData: FormData,
 ): Promise<FinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getFinanceService().createCashbox({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       name: String(formData.get("name") ?? ""),
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateFinance(locale, propertyId);
     return { success: true };
@@ -115,14 +107,14 @@ export async function createLedgerEntryAction(
   _prev: FinanceActionState,
   formData: FormData,
 ): Promise<FinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   const entryType = String(formData.get("entryType") ?? LedgerEntryType.EXPENSE) as LedgerEntryType;
   try {
     await getFinanceService().createLedgerEntry({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       entryType,
       categoryId: String(formData.get("categoryId") ?? ""),
       amount: String(formData.get("amount") ?? ""),
@@ -130,7 +122,7 @@ export async function createLedgerEntryAction(
       financeAccountId: String(formData.get("financeAccountId") ?? "") || null,
       documentNo: String(formData.get("documentNo") ?? "") || null,
       description: String(formData.get("description") ?? "") || null,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateFinance(locale, propertyId);
     return { success: true };
@@ -159,15 +151,15 @@ export async function closePeriodAction(
   propertyId: string,
   periodId: string,
 ): Promise<FinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getFinanceService().closePeriod(
       {
-        organizationId: session.user.organizationId,
-        propertyId,
-        actorUserId: session.user.id,
+        organizationId: ctx.organizationId,
+        propertyId: ctx.propertyId,
+        actorUserId: ctx.actorUserId,
       },
       periodId,
     );

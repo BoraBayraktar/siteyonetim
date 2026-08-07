@@ -114,9 +114,17 @@ type Props = {
   meters: UnitMeterDto[];
   units: UnitDto[];
   readingsByMeterId: Record<string, MeterReadingDto[]>;
+  canManageMeters?: boolean;
 };
 
-export function MetersAdminPanel({ locale, propertyId, meters, units, readingsByMeterId }: Props) {
+export function MetersAdminPanel({
+  locale,
+  propertyId,
+  meters,
+  units,
+  readingsByMeterId,
+  canManageMeters = true,
+}: Props) {
   const t = useTranslations("meters");
   const tCommon = useTranslations("common");
   const sortedUnits = useMemo(() => sortUnitsByCode(units), [units]);
@@ -163,6 +171,7 @@ export function MetersAdminPanel({ locale, propertyId, meters, units, readingsBy
               meters={meters}
               readingsByMeterId={readingsByMeterId}
             />
+            {canManageMeters ? (
             <FormDrawer
               triggerLabel={t("addMeter")}
               title={t("addMeter")}
@@ -299,6 +308,7 @@ export function MetersAdminPanel({ locale, propertyId, meters, units, readingsBy
               </TabsContent>
             </Tabs>
           </FormDrawer>
+            ) : null}
           </div>
         </CardHeader>
         <CardContent>
@@ -312,7 +322,9 @@ export function MetersAdminPanel({ locale, propertyId, meters, units, readingsBy
                   <TableHead>{t("kind")}</TableHead>
                   <TableHead>{t("serial")}</TableHead>
                   <TableHead>{t("readings")}</TableHead>
-                  <TableHead className="w-[1%] whitespace-nowrap">{tCommon("actions")}</TableHead>
+                  {canManageMeters ? (
+                    <TableHead className="w-[1%] whitespace-nowrap">{tCommon("actions")}</TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -327,11 +339,14 @@ export function MetersAdminPanel({ locale, propertyId, meters, units, readingsBy
                         propertyId={propertyId}
                         meter={m}
                         readings={readingsByMeterId[m.id] ?? []}
+                        canManageMeters={canManageMeters}
                       />
                     </TableCell>
-                    <TableCell>
-                      <EditMeterDrawer locale={locale} propertyId={propertyId} meter={m} t={t} />
-                    </TableCell>
+                    {canManageMeters ? (
+                      <TableCell>
+                        <EditMeterDrawer locale={locale} propertyId={propertyId} meter={m} t={t} />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

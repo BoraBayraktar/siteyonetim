@@ -33,6 +33,10 @@ export function isAuditorRole(role: string | null | undefined): boolean {
   return role === OrganizationRole.AUDITOR;
 }
 
+export function isStaffRole(role: string | null | undefined): boolean {
+  return role === OrganizationRole.STAFF;
+}
+
 export function isReadOnlyAdminRole(role: string | null | undefined): boolean {
   return role === OrganizationRole.AUDITOR || role === OrganizationRole.BOARD_MEMBER;
 }
@@ -55,7 +59,15 @@ export function canAccessReports(session: Session | null | undefined): boolean {
 export function canMutateAdminData(session: Session | null | undefined): boolean {
   if (!isAdminSession(session)) return false;
   if (isSuperAdminSession(session)) return true;
+  if (isStaffRole(session.user.role)) return false;
   return !isReadOnlyAdminRole(session.user.role);
+}
+
+export function canRecordMeterReadings(session: Session | null | undefined): boolean {
+  if (!isAdminSession(session)) return false;
+  if (isSuperAdminSession(session)) return true;
+  if (canMutateAdminData(session)) return true;
+  return isStaffRole(session.user.role);
 }
 
 export function canManageOrgUsers(session: Session | null | undefined): boolean {

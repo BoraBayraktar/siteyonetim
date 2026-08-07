@@ -26,6 +26,7 @@ type Props = {
   pageSize: number;
   total: number;
   units: UnitDto[];
+  canMutate?: boolean;
 };
 
 const initial: DocumentActionState = {};
@@ -36,7 +37,16 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function DocumentsAdminPanel({ locale, propertyId, items, page, pageSize, total, units }: Props) {
+export function DocumentsAdminPanel({
+  locale,
+  propertyId,
+  items,
+  page,
+  pageSize,
+  total,
+  units,
+  canMutate = true,
+}: Props) {
   const t = useTranslations("documents");
   const [state, action, pending] = useActionState(createDocumentAction.bind(null, locale, propertyId), initial);
   const [visibility, setVisibility] = useState<DocumentVisibility>(DocumentVisibility.PORTAL_SHARED);
@@ -53,6 +63,7 @@ export function DocumentsAdminPanel({ locale, propertyId, items, page, pageSize,
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("title")}</CardTitle>
+        {canMutate ? (
         <FormDrawer triggerLabel={t("uploadTitle")} title={t("uploadTitle")} success={state.success}>
           <form action={action} className="grid gap-4" encType="multipart/form-data">
             <input type="hidden" name="visibility" value={visibility} />
@@ -125,6 +136,7 @@ export function DocumentsAdminPanel({ locale, propertyId, items, page, pageSize,
             </Button>
           </form>
         </FormDrawer>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {items.length === 0 ? (

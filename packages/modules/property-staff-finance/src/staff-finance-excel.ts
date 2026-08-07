@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import type { StaffEmploymentStatus, StaffMovementType } from "@siteyonetim/db";
 
 import type { StaffAccountMovementDto, StaffProfileDto } from "./contract";
 
@@ -60,6 +61,40 @@ function formatDate(value: Date | null) {
   return value ? value.toISOString().slice(0, 10) : "";
 }
 
+export function movementTypeLabel(type: StaffMovementType, locale: string): string {
+  const en = locale.startsWith("en");
+  switch (type) {
+    case "SALARY_ACCRUAL":
+      return en ? "Salary accrual" : "Maaş tahakkuku";
+    case "ADVANCE":
+      return en ? "Advance" : "Avans";
+    case "PAYMENT":
+      return en ? "Payment" : "Ödeme";
+    case "ADVANCE_OFFSET":
+      return en ? "Advance offset" : "Avans mahsubu";
+    case "DEDUCTION":
+      return en ? "Deduction" : "Kesinti";
+    case "BONUS":
+      return en ? "Bonus" : "Prim";
+    case "MANUAL_ADJUSTMENT":
+      return en ? "Manual adjustment" : "Manuel düzeltme";
+    default:
+      return type;
+  }
+}
+
+export function employmentStatusLabel(status: StaffEmploymentStatus, locale: string): string {
+  const en = locale.startsWith("en");
+  switch (status) {
+    case "ACTIVE":
+      return en ? "Active" : "Aktif";
+    case "PASSIVE":
+      return en ? "Passive" : "Pasif";
+    default:
+      return status;
+  }
+}
+
 function applyHeaderStyle(sheet: ExcelJS.Worksheet, headerRow: number) {
   sheet.getRow(1).font = { bold: true, size: 12 };
   sheet.getRow(headerRow).font = { bold: true };
@@ -97,7 +132,7 @@ export async function buildStaffFinanceXlsxBuffer(input: {
       profile.title ?? "",
       profile.department ?? "",
       profile.financeAccountCode,
-      profile.status,
+      employmentStatusLabel(profile.status, input.locale),
       Number(profile.balance),
     ]);
   }
@@ -129,7 +164,7 @@ export async function buildStaffFinanceXlsxBuffer(input: {
       statementSheet.addRow([
         formatDate(movement.movementDate),
         `${movement.periodMonth}/${movement.periodYear}`,
-        movement.movementType,
+        movementTypeLabel(movement.movementType, input.locale),
         Number(movement.amount),
         movement.documentNo ?? "",
         movement.description ?? "",

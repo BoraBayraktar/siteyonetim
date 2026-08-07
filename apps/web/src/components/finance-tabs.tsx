@@ -500,12 +500,21 @@ function StaffMovementForm({
     }
   }, [matchingCategories, categoryId]);
 
+  const cashboxAllowed =
+    movementType === StaffMovementType.ADVANCE || movementType === StaffMovementType.PAYMENT;
+
+  useEffect(() => {
+    if (!cashboxAllowed) {
+      setCashboxId(NO_CASHBOX);
+    }
+  }, [cashboxAllowed]);
+
   return (
     <FormDrawer triggerLabel={t("addStaffMovement")} title={profile.partyName} success={state.success}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="movementType" value={movementType} />
         <input type="hidden" name="categoryId" value={categoryId} />
-        <input type="hidden" name="cashboxId" value={cashboxId === NO_CASHBOX ? "" : cashboxId} />
+        <input type="hidden" name="cashboxId" value={cashboxAllowed && cashboxId !== NO_CASHBOX ? cashboxId : ""} />
         <div className="grid gap-2">
           <Label>{t("staffMovementType")}</Label>
           <Select value={movementType} onValueChange={(v) => setMovementType(v as StaffMovementType)}>
@@ -540,22 +549,24 @@ function StaffMovementForm({
           <Label htmlFor={`staff-amount-${profile.id}`}>{t("amount")}</Label>
           <Input id={`staff-amount-${profile.id}`} name="amount" required />
         </div>
-        <div className="grid gap-2">
-          <Label>{t("cashbox")}</Label>
-          <Select value={cashboxId} onValueChange={setCashboxId}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("optional")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_CASHBOX}>{t("noneSelected")}</SelectItem>
-              {cashboxes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {cashboxAllowed ? (
+          <div className="grid gap-2">
+            <Label>{t("cashbox")}</Label>
+            <Select value={cashboxId} onValueChange={setCashboxId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("optional")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_CASHBOX}>{t("noneSelected")}</SelectItem>
+                {cashboxes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
         <div className="grid gap-2">
           <Label htmlFor={`staff-document-${profile.id}`}>{t("documentNo")}</Label>
           <Input id={`staff-document-${profile.id}`} name="documentNo" />

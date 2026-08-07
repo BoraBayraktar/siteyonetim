@@ -13,6 +13,7 @@ import { AuditorAssignmentPanel } from "@/components/auditor-assignment-panel";
 import { ReportsPanel } from "@/components/reports-panel";
 import { getAdminSession } from "@/lib/cached-admin";
 import { canManageAuditorAssignments, isAuditorRole } from "@/lib/auth-context";
+import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
 import { Button } from "@/components/ui/button";
 import {
   getAuditorReportService,
@@ -56,6 +57,7 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
   if (isAuditorRole(session.user.role)) {
     redirect(`/${locale}/auditor/properties/${propertyId}/reports?${new URLSearchParams(sp as Record<string, string>).toString()}`);
   }
+  resolveStaffPropertyAccess(locale, propertyId, session.user.role);
 
   const organizationId = session.user.organizationId;
   const property = await getPropertyService().getById(organizationId, propertyId);

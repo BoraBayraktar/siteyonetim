@@ -3,7 +3,7 @@
 import { DueCalculationMode, LateFeeRateKind, SupplierLateFeeAllocationMode } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
-import { adminPropertyActionContext } from "@/lib/admin-action-context";
+import { adminPropertyMutateContext } from "@/lib/admin-action-context";
 import { getDuesService } from "@/lib/services";
 
 export type DuesActionState = { error?: string; success?: boolean; advanceAmount?: string };
@@ -19,7 +19,7 @@ export async function createDueDefinitionAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   const mode = String(formData.get("calculationMode") ?? DueCalculationMode.FIXED) as DueCalculationMode;
@@ -64,7 +64,7 @@ export async function updateDueDefinitionAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   const mode = String(formData.get("calculationMode") ?? DueCalculationMode.FIXED) as DueCalculationMode;
@@ -112,7 +112,7 @@ export async function setDefinitionAutoAccrualAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
   const enabled = formData.get("autoAccrualMonthly") === "true";
   try {
@@ -142,7 +142,7 @@ export async function generateAccrualAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
@@ -194,7 +194,7 @@ export async function recalculateAccrualAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
@@ -236,7 +236,7 @@ export async function voidPostedAccrualAction(
   propertyId: string,
   runId: string,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
@@ -269,7 +269,7 @@ export async function supplementPostedAccrualAction(
   propertyId: string,
   runId: string,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
@@ -303,7 +303,7 @@ export async function supplementPostedAccrualAction(
 }
 
 export async function postAccrualAction(locale: string, propertyId: string, runId: string): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
@@ -345,7 +345,7 @@ export async function recordDuePaymentAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
@@ -409,7 +409,7 @@ export async function upsertLateFeePolicyAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
   try {
     const mode = String(formData.get("lateFeeMode") ?? "NONE");
@@ -443,7 +443,7 @@ export async function applyLateFeesAction(
   _prev: DuesActionState,
   formData: FormData,
 ): Promise<DuesActionState> {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return { error: "UNAUTHORIZED" };
   try {
     await getDuesService().applyLateFees({
@@ -465,7 +465,7 @@ export async function applyLateFeesAction(
 }
 
 export async function getUnitDebtDetailAction(propertyId: string, unitId: string) {
-  const ctx = await adminPropertyActionContext(propertyId);
+  const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return null;
 
   return getDuesService().getUnitDebtDetail(

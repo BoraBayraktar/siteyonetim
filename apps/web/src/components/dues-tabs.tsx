@@ -72,6 +72,8 @@ type Props = {
   initialStaffProfileId?: string | null;
   accrualFilters: AccrualFilters;
   accrualUnits: UnitDto[];
+  staffOperationsOnly?: boolean;
+  canManageMeters?: boolean;
 };
 
 function AutoAccrualToggle({
@@ -130,9 +132,24 @@ export function DuesTabs({
   initialStaffProfileId,
   accrualFilters,
   accrualUnits,
+  staffOperationsOnly = false,
+  canManageMeters = true,
 }: Props) {
   const t = useTranslations("dues");
   const activeTab: DuesTab = resolveDuesTab(initialTab);
+
+  if (staffOperationsOnly) {
+    return (
+      <DuesMetersPanel
+        locale={locale}
+        propertyId={propertyId}
+        meters={meters}
+        meterUnits={meterUnits}
+        readingsByMeterId={readingsByMeterId}
+        canManageMeters={canManageMeters}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -225,6 +242,7 @@ export function DuesTabs({
           meters={meters}
           meterUnits={meterUnits}
           readingsByMeterId={readingsByMeterId}
+          canManageMeters={canManageMeters}
         />
       ) : null}
 

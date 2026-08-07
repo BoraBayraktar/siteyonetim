@@ -4,13 +4,17 @@ import { DocumentCategory, DocumentVisibility } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
+import { canMutateAdminData } from "@/lib/auth-context";
 import { getDocumentService } from "@/lib/services";
 
 export type DocumentActionState = { error?: string; success?: boolean };
 
-async function requireAdmin() {
+async function requireAdminMutate() {
   const session = await auth();
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
+    return null;
+  }
+  if (!canMutateAdminData(session)) {
     return null;
   }
   return session;
@@ -22,7 +26,7 @@ export async function createDocumentAction(
   _prev: DocumentActionState,
   formData: FormData,
 ): Promise<DocumentActionState> {
-  const session = await requireAdmin();
+  const session = await requireAdminMutate();
   if (!session) {
     return { error: "UNAUTHORIZED" };
   }

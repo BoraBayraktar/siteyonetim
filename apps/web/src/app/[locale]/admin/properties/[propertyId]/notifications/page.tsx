@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
+import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
 import { NotificationsAdminPanel } from "@/components/notifications-admin-panel";
 import { PropertyWhatsAppPanel } from "@/components/property-whatsapp-panel";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export default async function PropertyNotificationsPage({ params, searchParams }
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     redirect(`/${locale}/login`);
   }
+  resolveStaffPropertyAccess(locale, propertyId, session.user.role);
 
   const organizationId = session.user.organizationId;
   const property = await getPropertyService().getById(organizationId, propertyId);

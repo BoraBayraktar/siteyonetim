@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { listApprovedReportsForMeeting } from "@/app/actions/governance";
 import { GovernanceMeetingDetailPanel } from "@/components/governance-meeting-detail-panel";
 import { getAdminSession } from "@/lib/cached-admin";
+import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
 import { Button } from "@/components/ui/button";
 import { getGovernanceService, getPropertyService, getUnitService } from "@/lib/services";
 
@@ -20,6 +21,7 @@ export default async function PropertyGovernanceMeetingPage({ params }: Props) {
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     redirect(`/${locale}/login`);
   }
+  resolveStaffPropertyAccess(locale, propertyId, session.user.role);
 
   const organizationId = session.user.organizationId;
   const property = await getPropertyService().getById(organizationId, propertyId);

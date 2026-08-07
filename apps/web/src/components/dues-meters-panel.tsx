@@ -12,9 +12,17 @@ type Props = {
   meters: UnitMeterDto[];
   meterUnits: UnitDto[];
   readingsByMeterId: Record<string, MeterReadingDto[]>;
+  canManageMeters?: boolean;
 };
 
-export function DuesMetersPanel({ locale, propertyId, meters, meterUnits, readingsByMeterId }: Props) {
+export function DuesMetersPanel({
+  locale,
+  propertyId,
+  meters,
+  meterUnits,
+  readingsByMeterId,
+  canManageMeters = true,
+}: Props) {
   const t = useTranslations("meters");
 
   return (
@@ -29,6 +37,7 @@ export function DuesMetersPanel({ locale, propertyId, meters, meterUnits, readin
         meters={meters}
         units={meterUnits}
         readingsByMeterId={readingsByMeterId}
+        canManageMeters={canManageMeters}
       />
     </div>
   );

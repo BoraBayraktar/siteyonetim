@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { canMutateAdminData } from "@/lib/auth-context";
 import { getPropertyService, getStaffFinanceService } from "@/lib/services";
 
 type Params = { params: Promise<{ propertyId: string }> };
@@ -9,6 +10,9 @@ export async function GET(request: Request, { params }: Params) {
   const { propertyId } = await params;
   const session = await auth();
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
+    return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
+  }
+  if (!canMutateAdminData(session)) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
 

@@ -3,6 +3,9 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
+import { canMutateAdminData, isStaffRole } from "@/lib/auth-context";
+import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
+import { staffMetersPath } from "@/lib/staff-admin-access";
 import { DocumentsAdminPanel } from "@/components/documents-admin-panel";
 import { Button } from "@/components/ui/button";
 import { getDocumentService, getPropertyService, getUnitService } from "@/lib/services";
@@ -24,6 +27,8 @@ export default async function PropertyDocumentsPage({ params, searchParams }: Pr
     redirect(`/${locale}/login`);
   }
 
+  await requireAdminPropertyScope(locale, propertyId, "communication");
+
   const organizationId = session.user.organizationId;
   const property = await getPropertyService().getById(organizationId, propertyId);
   if (!property) {
@@ -33,6 +38,9 @@ export default async function PropertyDocumentsPage({ params, searchParams }: Pr
   const page = Math.max(1, Number(pageParam ?? "1") || 1);
   const t = await getTranslations("documents");
   const tCommon = await getTranslations("common");
+  const backHref = isStaffRole(session.user.role)
+    ? staffMetersPath(locale, propertyId)
+    : `/${locale}/admin/properties/${propertyId}`;
 
   const [data, unitsPage] = await Promise.all([
     getDocumentService().listForAdmin({
@@ -48,7 +56,7 @@ export default async function PropertyDocumentsPage({ params, searchParams }: Pr
     <div className="space-y-6">
       <div>
         <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-          <Link href={`/${locale}/admin/properties/${propertyId}`}>← {tCommon("back")}</Link>
+          <Link href={backHref}>← {tCommon("back")}</Link>
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
         <p className="text-sm text-muted-foreground">{property.name}</p>
@@ -61,6 +69,7 @@ export default async function PropertyDocumentsPage({ params, searchParams }: Pr
         pageSize={data.pageSize}
         total={data.total}
         units={unitsPage.items}
+        canMutate={canMutateAdminData(session)}
       />
     </div>
   );

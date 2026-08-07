@@ -6,6 +6,7 @@ import { AdminNavProvider } from "@/components/admin-nav-provider";
 import { AdminShell } from "@/components/admin-shell";
 import type { AdminPropertyNavItem } from "@/lib/admin-property-nav";
 import { resolveAdminLandingPath } from "@/lib/admin-landing-path";
+import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities";
 
 type Props = {
   locale: string;
@@ -13,7 +14,8 @@ type Props = {
   userName: string;
   logoutAction: () => Promise<void>;
   propertiesNav: AdminPropertyNavItem[];
-  canManageOrgUsers?: boolean;
+  navCapabilities: AdminNavCapabilities;
+  userRole?: string | null;
   children: ReactNode;
 };
 
@@ -23,11 +25,12 @@ export async function AdminLayoutChrome({
   userName,
   logoutAction,
   propertiesNav,
-  canManageOrgUsers = false,
+  navCapabilities,
+  userRole = null,
   children,
 }: Props) {
   await getTranslations("nav");
-  const adminHomePath = resolveAdminLandingPath(locale, propertiesNav);
+  const adminHomePath = resolveAdminLandingPath(locale, propertiesNav, userRole);
 
   return (
     <AdminNavProvider>
@@ -41,7 +44,7 @@ export async function AdminLayoutChrome({
         <AdminShell
           locale={locale}
           propertiesNav={propertiesNav}
-          canManageOrgUsers={canManageOrgUsers}
+          navCapabilities={navCapabilities}
         >
           {children}
         </AdminShell>

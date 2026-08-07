@@ -4,7 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
-import { resolveAccessiblePropertyIds } from "@/lib/auth-context";
+import { isStaffRole, resolveAccessiblePropertyIds } from "@/lib/auth-context";
+import { staffMetersPath } from "@/lib/staff-admin-access";
 import { CreatePropertyForm } from "@/components/create-property-form";
 import { ServerPagination } from "@/components/server-pagination";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +37,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
     redirect(`/${locale}/login`);
   }
 
+  const isStaffUser = isStaffRole(session.user.role);
   const page = Math.max(1, Number(pageParam ?? "1") || 1);
   const t = await getTranslations("properties");
   const scope = await resolveAccessiblePropertyIds(session);
@@ -54,7 +56,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
           <CardTitle>{t("title")}</CardTitle>
           <CardDescription>{t("subtitle")}</CardDescription>
         </div>
-        <CreatePropertyForm />
+        {!isStaffUser ? <CreatePropertyForm /> : null}
       </CardHeader>
       <CardContent className="space-y-6">
           {data.items.length === 0 ? (
@@ -72,11 +74,16 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.items.map((property) => (
+                {data.items.map((property) => {
+                  const detailHref = isStaffUser
+                    ? staffMetersPath(locale, property.id)
+                    : `/${locale}/admin/properties/${property.id}/dashboard`;
+
+                  return (
                   <TableRow key={property.id}>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/${locale}/admin/properties/${property.id}/dashboard`}
+                        href={detailHref}
                         className="underline-offset-4 hover:underline"
                       >
                         {property.name}
@@ -88,11 +95,12 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
                     <TableCell className="text-right">{property.unitCount}</TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/${locale}/admin/properties/${property.id}/dashboard`}>{t("openDetail")}</Link>
+                        <Link href={detailHref}>{t("openDetail")}</Link>
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           )}

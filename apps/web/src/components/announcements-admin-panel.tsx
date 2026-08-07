@@ -35,6 +35,7 @@ type Props = {
   total: number;
   blocks: BlockDto[];
   units: UnitDto[];
+  canMutate?: boolean;
 };
 
 const initial: AnnouncementActionState = {};
@@ -65,6 +66,7 @@ export function AnnouncementsAdminPanel({
   total,
   blocks,
   units,
+  canMutate = true,
 }: Props) {
   const t = useTranslations("announcements");
   const [state, action, pending] = useActionState(
@@ -90,6 +92,7 @@ export function AnnouncementsAdminPanel({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("title")}</CardTitle>
+        {canMutate ? (
         <FormDrawer triggerLabel={t("createTitle")} title={t("createTitle")} success={state.success}>
           <form action={action} className="grid gap-4">
             <input type="hidden" name="audience" value={audience} />
@@ -200,6 +203,7 @@ export function AnnouncementsAdminPanel({
             </Button>
           </form>
         </FormDrawer>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {items.length === 0 ? (
@@ -229,7 +233,9 @@ export function AnnouncementsAdminPanel({
                 </div>
                 <h3 className="font-medium">{item.title}</h3>
                 <AnnouncementBodyContent body={item.body} bodyFormat={item.bodyFormat} className="mt-2" />
-                <AnnouncementNotifyForm locale={locale} propertyId={propertyId} announcementId={item.id} />
+                {canMutate ? (
+                  <AnnouncementNotifyForm locale={locale} propertyId={propertyId} announcementId={item.id} />
+                ) : null}
               </li>
             );
             })}

@@ -7,6 +7,7 @@ import { resolvePublishWindow } from "@siteyonetim/comm-announcements/publish-wi
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
+import { canMutateAdminData } from "@/lib/auth-context";
 import { getAnnouncementImageService, getAnnouncementService } from "@/lib/services";
 
 export type AnnouncementActionState = { error?: string; success?: boolean };
@@ -34,9 +35,12 @@ function mapAnnouncementActionError(error: Error): string {
   return "ANNOUNCEMENT_SAVE_FAILED";
 }
 
-async function requireAdmin() {
+async function requireAdminMutate() {
   const session = await auth();
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
+    return null;
+  }
+  if (!canMutateAdminData(session)) {
     return null;
   }
   return session;
@@ -48,7 +52,7 @@ export async function createAnnouncementAction(
   _prev: AnnouncementActionState,
   formData: FormData,
 ): Promise<AnnouncementActionState> {
-  const session = await requireAdmin();
+  const session = await requireAdminMutate();
   if (!session) {
     return { error: "UNAUTHORIZED" };
   }
@@ -106,7 +110,7 @@ export async function uploadAnnouncementImageAction(
   propertyId: string,
   formData: FormData,
 ): Promise<{ url?: string; error?: string }> {
-  const session = await requireAdmin();
+  const session = await requireAdminMutate();
   if (!session) {
     return { error: "UNAUTHORIZED" };
   }

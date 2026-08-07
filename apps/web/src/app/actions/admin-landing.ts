@@ -17,9 +17,10 @@ async function loadPropertiesNav(organizationId: string) {
 export async function getAdminLandingPathForOrganization(
   locale: string,
   organizationId: string,
+  role?: string | null,
 ): Promise<string> {
   const propertiesNav = await loadPropertiesNav(organizationId);
-  return resolveAdminLandingPath(locale, propertiesNav);
+  return resolveAdminLandingPath(locale, propertiesNav, role);
 }
 
 export async function resolveAdminLandingPathAction(locale: string): Promise<string> {
@@ -28,5 +29,5 @@ export async function resolveAdminLandingPathAction(locale: string): Promise<str
     return `/${locale}/admin/properties`;
   }
 
-  return getAdminLandingPathForOrganization(locale, session.user.organizationId);
+  return getAdminLandingPathForOrganization(locale, session.user.organizationId, session.user.role);
 }

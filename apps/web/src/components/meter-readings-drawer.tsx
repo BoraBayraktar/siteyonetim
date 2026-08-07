@@ -183,9 +183,16 @@ type Props = {
   propertyId: string;
   meter: UnitMeterDto;
   readings: MeterReadingDto[];
+  canManageMeters?: boolean;
 };
 
-export function MeterReadingsDrawer({ locale, propertyId, meter, readings }: Props) {
+export function MeterReadingsDrawer({
+  locale,
+  propertyId,
+  meter,
+  readings,
+  canManageMeters = true,
+}: Props) {
   const t = useTranslations("meters");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -237,7 +244,9 @@ export function MeterReadingsDrawer({ locale, propertyId, meter, readings }: Pro
                       <TableHead>{t("period")}</TableHead>
                       <TableHead>{t("readingValue")}</TableHead>
                       <TableHead>{t("consumption")}</TableHead>
-                      <TableHead className="w-[1%] whitespace-nowrap">{tCommon("actions")}</TableHead>
+                      {canManageMeters ? (
+                        <TableHead className="w-[1%] whitespace-nowrap">{tCommon("actions")}</TableHead>
+                      ) : null}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -246,21 +255,23 @@ export function MeterReadingsDrawer({ locale, propertyId, meter, readings }: Pro
                         <TableCell>{formatPeriod(row.month, row.year)}</TableCell>
                         <TableCell className="font-medium">{row.readingValue}</TableCell>
                         <TableCell>{row.consumption ?? t("consumptionNone")}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(row)}>
-                              {tCommon("edit")}
-                            </Button>
-                            <DeleteReadingButton
-                              locale={locale}
-                              propertyId={propertyId}
-                              readingId={row.id}
-                              onSuccess={refresh}
-                              t={t}
-                              tCommon={tCommon}
-                            />
-                          </div>
-                        </TableCell>
+                        {canManageMeters ? (
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(row)}>
+                                {tCommon("edit")}
+                              </Button>
+                              <DeleteReadingButton
+                                locale={locale}
+                                propertyId={propertyId}
+                                readingId={row.id}
+                                onSuccess={refresh}
+                                t={t}
+                                tCommon={tCommon}
+                              />
+                            </div>
+                          </TableCell>
+                        ) : null}
                       </TableRow>
                     ))}
                   </TableBody>

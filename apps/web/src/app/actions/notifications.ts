@@ -4,6 +4,7 @@ import { OutboxChannel } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
+import { canMutateAdminData } from "@/lib/auth-context";
 import { getNotificationService } from "@/lib/services";
 
 export type NotificationActionState = { error?: string; success?: boolean; enqueued?: number; processed?: number };
@@ -37,7 +38,7 @@ export async function enqueueAnnouncementNotificationsAction(
   formData: FormData,
 ): Promise<NotificationActionState> {
   const session = await requireAdmin();
-  if (!session) {
+  if (!session || !canMutateAdminData(session)) {
     return { error: "UNAUTHORIZED" };
   }
 

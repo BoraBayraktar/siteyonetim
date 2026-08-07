@@ -2,8 +2,10 @@ import { setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { AdminSecurityPanel } from "@/components/admin-security-panel";
-import { getAdminSession } from "@/lib/cached-admin";
+import { getAdminSession, listAdminPropertiesNav } from "@/lib/cached-admin";
+import { resolveAdminLandingPath } from "@/lib/admin-landing-path";
 import { canManageOrgUsers } from "@/lib/auth-context";
+import { redirectStaffFromOrgAdmin } from "@/lib/staff-admin-access";
 import { getAuthService } from "@/lib/services";
 
 type Props = {
@@ -18,6 +20,8 @@ export default async function AdminSecurityPage({ params }: Props) {
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     redirect(`/${locale}/login`);
   }
+  const propertiesNav = await listAdminPropertiesNav(session.user.organizationId);
+  redirectStaffFromOrgAdmin(locale, session.user.role, resolveAdminLandingPath(locale, propertiesNav, session.user.role));
 
   const status = await getAuthService().getTotpStatus(session.user.id, session.user.organizationId);
 

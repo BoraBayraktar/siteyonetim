@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { PropertyDetailTabs } from "@/components/property-detail-tabs";
 import { Button } from "@/components/ui/button";
 import { getAdminSession } from "@/lib/cached-admin";
+import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
 import { loadPropertyStructurePageData } from "@/lib/load-property-structure-data";
 import {
   propertyStructureNavKey,
@@ -28,6 +29,7 @@ export default async function PropertyDetailPage({ params, searchParams }: Props
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     redirect(`/${locale}/login`);
   }
+  resolveStaffPropertyAccess(locale, propertyId, session.user.role);
 
   const organizationId = session.user.organizationId;
   const property = await getPropertyService().getById(organizationId, propertyId);

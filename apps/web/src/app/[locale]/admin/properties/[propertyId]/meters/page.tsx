@@ -8,5 +8,5 @@ type Props = {
 export default async function PropertyMetersPage({ params }: Props) {
   const { locale, propertyId } = await params;
   setRequestLocale(locale);
-  redirect(`/${locale}/admin/properties/${propertyId}/dues?tab=accrual&section=meters`);
+  redirect(`/${locale}/admin/properties/${propertyId}/dues?tab=meters`);
 }

@@ -3,7 +3,7 @@
 import { StaffEmploymentStatus, StaffMovementType } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
-import { auth } from "@/auth";
+import { adminPropertyMutateContext } from "@/lib/admin-action-context";
 import { getStaffFinanceService } from "@/lib/services";
 
 export type StaffFinanceActionState = { error?: string; success?: boolean };
@@ -15,32 +15,24 @@ function revalidateStaffFinance(locale: string, propertyId: string) {
   revalidatePath(`/${locale}/admin/properties/${propertyId}/reports`, "page");
 }
 
-async function adminContext() {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return null;
-  }
-  return session;
-}
-
 export async function createStaffProfileAction(
   locale: string,
   propertyId: string,
   _prev: StaffFinanceActionState,
   formData: FormData,
 ): Promise<StaffFinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getStaffFinanceService().createStaffProfile({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       partyId: String(formData.get("partyId") ?? ""),
       staffNo: String(formData.get("staffNo") ?? "") || null,
       title: String(formData.get("title") ?? "") || null,
       department: String(formData.get("department") ?? "") || null,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateStaffFinance(locale, propertyId);
     return { success: true };
@@ -60,19 +52,19 @@ export async function updateStaffProfileAction(
   _prev: StaffFinanceActionState,
   formData: FormData,
 ): Promise<StaffFinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getStaffFinanceService().updateStaffProfile({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       staffProfileId,
       staffNo: String(formData.get("staffNo") ?? "") || null,
       title: String(formData.get("title") ?? "") || null,
       department: String(formData.get("department") ?? "") || null,
       status: String(formData.get("status") ?? StaffEmploymentStatus.ACTIVE) as StaffEmploymentStatus,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateStaffFinance(locale, propertyId);
     return { success: true };
@@ -91,13 +83,13 @@ export async function recordStaffMovementAction(
   _prev: StaffFinanceActionState,
   formData: FormData,
 ): Promise<StaffFinanceActionState> {
-  const session = await adminContext();
-  if (!session) return { error: "UNAUTHORIZED" };
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) return { error: "UNAUTHORIZED" };
 
   try {
     await getStaffFinanceService().recordMovement({
-      organizationId: session.user.organizationId,
-      propertyId,
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
       staffProfileId,
       movementType: String(formData.get("movementType") ?? StaffMovementType.SALARY_ACCRUAL) as StaffMovementType,
       categoryId: String(formData.get("categoryId") ?? ""),
@@ -105,7 +97,7 @@ export async function recordStaffMovementAction(
       amount: String(formData.get("amount") ?? ""),
       documentNo: String(formData.get("documentNo") ?? "") || null,
       description: String(formData.get("description") ?? "") || null,
-      actorUserId: session.user.id,
+      actorUserId: ctx.actorUserId,
     });
     revalidateStaffFinance(locale, propertyId);
     return { success: true };
