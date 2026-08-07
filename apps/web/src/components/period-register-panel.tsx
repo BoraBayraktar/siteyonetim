@@ -14,13 +14,14 @@ import { DueAccrualLineKind, DueCalculationMode } from "@siteyonetim/db";
 import { Download, Filter, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useActionState, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } from "react";
 
 import { getUnitDebtDetailAction, recordDuePaymentAction, type DuesActionState } from "@/app/actions/dues";
 import { debtUnitLabel, formatDebtMoney } from "@/components/debt-status-table";
 import { FormDrawer } from "@/components/form-drawer";
 import { ServerPagination } from "@/components/server-pagination";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,7 +72,11 @@ function cellSelectionKey(unitId: string, lineId: string) {
 }
 
 function sumRemaining(allocations: PaymentAllocationItem[]) {
-  return allocations.reduce((sum, item) => sum + Number(item.remaining), 0).toFixed(2);
+  const cents = allocations.reduce(
+    (sum, item) => sum + Math.round(Number(item.remaining) * 100),
+    0,
+  );
+  return (cents / 100).toFixed(2);
 }
 
 function todayInputValue() {
@@ -122,26 +127,28 @@ function cellTone(cell: PeriodRegisterCellDto) {
   return "bg-muted/50";
 }
 
+function isRegisterCellSelectable(cell: PeriodRegisterCellDto) {
+  return Boolean(cell.lineId) && Number(cell.remaining) > 0;
+}
+
 function RegisterCell({
   locale,
   cell,
   selected,
   bulkMode,
-  onToggleSelect,
+  interactive,
 }: {
   locale: string;
   cell: PeriodRegisterCellDto;
   selected: boolean;
   bulkMode: boolean;
-  onToggleSelect: () => void;
+  interactive: boolean;
 }) {
   const t = useTranslations("periodRegister");
 
   if (cell.status === "NONE" || Number(cell.amount) <= 0) {
     return <span className="text-muted-foreground">{t("cellNone")}</span>;
   }
-
-  const selectable = Boolean(cell.lineId) && Number(cell.remaining) > 0;
 
   const content = (
     <>
@@ -165,28 +172,25 @@ function RegisterCell({
     </>
   );
 
-  // Toplu seçimde hücre tıklaması seçimi değiştirir; normal modda satır tıklaması detayı açar.
-  if (bulkMode && selectable) {
-    return (
-      <button
-        type="button"
-        onClick={(event: MouseEvent<HTMLButtonElement>) => {
-          event.stopPropagation();
-          onToggleSelect();
-        }}
-        className={cn(
-          "w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors cursor-pointer hover:ring-2 hover:ring-primary/30",
-          cellTone(cell),
-          selected && "ring-2 ring-primary",
-        )}
-      >
-        {content}
-      </button>
-    );
-  }
-
+  // Toplu seçimde hücre tıklaması TableCell üzerinden yönetilir; satır detayı açılmaz.
   return (
-    <div className={cn("w-full rounded-md px-2 py-1.5 text-left text-xs", cellTone(cell))}>
+    <div
+      className={cn(
+        "relative w-full rounded-md px-2 py-1.5 text-left text-xs",
+        cellTone(cell),
+        bulkMode && interactive && "cursor-pointer hover:ring-2 hover:ring-primary/30",
+        bulkMode && interactive && selected && "ring-2 ring-primary",
+      )}
+      aria-selected={bulkMode && interactive ? selected : undefined}
+    >
+      {bulkMode && interactive ? (
+        <Checkbox
+          checked={selected}
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none absolute top-1.5 right-1.5 bg-background"
+        />
+      ) : null}
       {content}
     </div>
   );
@@ -249,6 +253,152 @@ function serializeExportParams(input: {
   return params.toString();
 }
 
+function RegisterPaymentForm({
+  locale,
+  propertyId,
+  paymentTarget,
+  cashboxes,
+  initialAmount,
+  initialPaymentDate,
+  onSuccess,
+}: {
+  locale: string;
+  propertyId: string;
+  paymentTarget: PaymentTarget;
+  cashboxes: CashboxDto[];
+  initialAmount: string;
+  initialPaymentDate: string;
+  onSuccess: (result: { advanceAmount?: string }) => void;
+}) {
+  const t = useTranslations("periodRegister");
+  const tDues = useTranslations("dues");
+  const [payState, payAction, payPending] = useActionState(
+    recordDuePaymentAction.bind(null, locale, propertyId),
+    initialPayState,
+  );
+  const [cashboxId, setCashboxId] = useState(cashboxes[0]?.id ?? "");
+  const [payAmount, setPayAmount] = useState(initialAmount);
+  const [paymentDate, setPaymentDate] = useState(initialPaymentDate);
+
+  useEffect(() => {
+    setPayAmount(initialAmount);
+    setPaymentDate(initialPaymentDate);
+  }, [initialAmount, initialPaymentDate]);
+
+  useEffect(() => {
+    if (cashboxes.length === 0) {
+      setCashboxId("");
+      return;
+    }
+    if (!cashboxes.some((cashbox) => cashbox.id === cashboxId)) {
+      setCashboxId(cashboxes[0]!.id);
+    }
+  }, [cashboxId, cashboxes]);
+
+  useEffect(() => {
+    if (!payState.success) {
+      return;
+    }
+    onSuccess({ advanceAmount: payState.advanceAmount });
+  }, [payState.success, payState.advanceAmount, onSuccess]);
+
+  const paymentAllocationsJson =
+    paymentTarget.allocations.length > 0
+      ? JSON.stringify(
+          paymentTarget.allocations.map((item) => ({
+            dueAccrualLineId: item.lineId,
+            amount: item.remaining,
+          })),
+        )
+      : "";
+
+  const canRecordPayment = cashboxes.length > 0 && Boolean(paymentTarget.partyId);
+
+  return (
+    <form action={payAction} className="grid gap-3">
+      <input type="hidden" name="cashboxId" value={cashboxId} />
+      <input type="hidden" name="partyId" value={paymentTarget.partyId} />
+      <input type="hidden" name="unitId" value={paymentTarget.unitId} />
+      {paymentAllocationsJson ? (
+        <>
+          <input type="hidden" name="allocationsJson" value={paymentAllocationsJson} />
+          <input type="hidden" name="autoAllocate" value="off" />
+        </>
+      ) : (
+        <input type="hidden" name="allowAdvance" value="on" />
+      )}
+      <div className="grid gap-1 text-sm">
+        <p className="font-medium">{debtUnitLabel(paymentTarget)}</p>
+        <p className="text-muted-foreground">{paymentTarget.partyName ?? "—"}</p>
+        {paymentTarget.allocations.length > 0 ? (
+          <ul className="space-y-1 text-muted-foreground">
+            {paymentTarget.allocations.map((item) => (
+              <li key={item.lineId}>
+                {item.definitionName}: {formatDebtMoney(item.remaining, locale)}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="text-muted-foreground">
+          {tDues("unitOpenDebt", { amount: formatDebtMoney(payAmount, locale) })}
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label>{tDues("cashbox")}</Label>
+        <Select value={cashboxId} onValueChange={setCashboxId}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {cashboxes.map((cashbox) => (
+              <SelectItem key={cashbox.id} value={cashbox.id}>
+                {cashbox.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="register-pay-amount">{tDues("amount")}</Label>
+        <Input
+          id="register-pay-amount"
+          name="amount"
+          required
+          value={payAmount}
+          onChange={(event) => setPayAmount(event.target.value)}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="register-pay-date">{t("paymentDate")}</Label>
+        <Input
+          id="register-pay-date"
+          name="paymentDate"
+          type="date"
+          value={paymentDate}
+          onChange={(event) => setPaymentDate(event.target.value)}
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="register-pay-doc">{tDues("documentNo")}</Label>
+        <Input id="register-pay-doc" name="documentNo" />
+      </div>
+      {payState.success ? (
+        <p className="text-xs text-muted-foreground">
+          {payState.advanceAmount
+            ? tDues("paymentAdvanceSuccess", { amount: formatDebtMoney(payState.advanceAmount, locale) })
+            : tDues("paymentSuccess")}
+        </p>
+      ) : null}
+      {payState.error ? (
+        <p className="text-sm text-destructive">{tDues(`errors.${payState.error}` as "errors.AMOUNT_INVALID")}</p>
+      ) : null}
+      <Button type="submit" disabled={payPending || !canRecordPayment} className="w-full sm:w-auto">
+        {tDues("recordPayment")}
+      </Button>
+    </form>
+  );
+}
+
 export function PeriodRegisterPanel({
   locale,
   propertyId,
@@ -266,10 +416,6 @@ export function PeriodRegisterPanel({
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
-  const [payState, payAction, payPending] = useActionState(
-    recordDuePaymentAction.bind(null, locale, propertyId),
-    initialPayState,
-  );
 
   const [q, setQ] = useState(filters.q);
   const [blockId, setBlockId] = useState(filters.blockId ?? "all");
@@ -278,11 +424,11 @@ export function PeriodRegisterPanel({
   const [year, setYear] = useState(String(filters.year));
   const [month, setMonth] = useState(String(filters.month));
 
-  const [cashboxId, setCashboxId] = useState(cashboxes[0]?.id ?? "");
-  const [payAmount, setPayAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState(todayInputValue());
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
+  const [paymentFormKey, setPaymentFormKey] = useState(0);
+  const [paymentInitialAmount, setPaymentInitialAmount] = useState("");
+  const [paymentInitialDate, setPaymentInitialDate] = useState(todayInputValue());
 
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedCells, setSelectedCells] = useState<
@@ -331,38 +477,6 @@ export function PeriodRegisterPanel({
     setYear(String(filters.year));
     setMonth(String(filters.month));
   }, [filters]);
-
-  useEffect(() => {
-    if (cashboxes.length === 0) {
-      setCashboxId("");
-      return;
-    }
-    if (!cashboxes.some((cashbox) => cashbox.id === cashboxId)) {
-      setCashboxId(cashboxes[0]!.id);
-    }
-  }, [cashboxId, cashboxes]);
-
-  useEffect(() => {
-    if (!payState.success) {
-      return;
-    }
-    setPaymentOpen(false);
-    setPaymentTarget(null);
-    setSelectedCells({});
-    setBulkMode(false);
-    router.refresh();
-    const openUnitId = detailOpenRef.current ? detailUnitIdRef.current : null;
-    if (openUnitId) {
-      void refreshDetail(openUnitId);
-    }
-  }, [payState.success, router]);
-
-  useEffect(() => {
-    if (!initialUnitId) {
-      return;
-    }
-    void openDetail(initialUnitId);
-  }, [initialUnitId]);
 
   function pushFilters(
     overrides: Partial<{
@@ -419,7 +533,10 @@ export function PeriodRegisterPanel({
       setDetail(null);
     }
     try {
-      const result = await getUnitDebtDetailAction(propertyId, unitId);
+      const result = await getUnitDebtDetailAction(propertyId, unitId, {
+        year: filters.year,
+        month: filters.month,
+      });
       setDetail(result);
     } catch {
       setDetail(null);
@@ -438,21 +555,53 @@ export function PeriodRegisterPanel({
 
   function openPaymentTarget(target: PaymentTarget, amount: string) {
     setPaymentTarget(target);
-    setPayAmount(amount);
-    setPaymentDate(todayInputValue());
+    setPaymentInitialAmount(amount);
+    setPaymentInitialDate(todayInputValue());
+    setPaymentFormKey((key) => key + 1);
     setPaymentOpen(true);
   }
+
+  const handlePaymentSuccess = useCallback(() => {
+    setPaymentOpen(false);
+    setPaymentTarget(null);
+    setSelectedCells({});
+    setBulkMode(false);
+    router.refresh();
+    const openUnitId = detailOpenRef.current ? detailUnitIdRef.current : null;
+    if (openUnitId) {
+      void loadDetail(openUnitId, false);
+    }
+  }, [router, propertyId, filters.year, filters.month]);
+
+  useEffect(() => {
+    if (!initialUnitId) {
+      return;
+    }
+    void openDetail(initialUnitId);
+  }, [initialUnitId]);
+
+  useEffect(() => {
+    if (!detailOpen || !detailUnitId) {
+      return;
+    }
+    void refreshDetail(detailUnitId);
+  }, [filters.year, filters.month]);
 
   function toggleCellSelection(
     row: PeriodRegisterRowDto,
     column: PeriodRegisterColumnDto,
     cell: PeriodRegisterCellDto,
   ) {
-    if (!cell.lineId || !row.partyId || Number(cell.remaining) <= 0) {
+    if (!isRegisterCellSelectable(cell)) {
       return;
     }
 
-    const key = cellSelectionKey(row.unitId, cell.lineId);
+    const partyId = row.partyId;
+    if (!partyId) {
+      return;
+    }
+
+    const key = cellSelectionKey(row.unitId, cell.lineId!);
     setSelectedCells((current) => {
       if (current[key]) {
         const next = { ...current };
@@ -514,21 +663,33 @@ export function PeriodRegisterPanel({
     );
   }
 
-  function openRowPayment(row: Pick<PeriodRegisterRowDto, "unitId" | "unitCode" | "blockName" | "totalOpenDebt">) {
-    if (!detailParty?.partyId) {
-      return;
-    }
+  function openRowPayment(
+    row: Pick<PeriodRegisterRowDto, "unitId" | "unitCode" | "blockName" | "totalOpenDebt">,
+    party: { partyId: string; partyName: string | null },
+  ) {
     openPaymentTarget(
       {
         unitId: row.unitId,
         unitCode: row.unitCode,
         blockName: row.blockName,
-        partyId: detailParty.partyId,
-        partyName: detailParty.partyName,
+        partyId: party.partyId,
+        partyName: party.partyName,
         allocations: [],
       },
       row.totalOpenDebt,
     );
+  }
+
+  function detailExportHref() {
+    if (!detailUnitId) {
+      return "#";
+    }
+    const params = new URLSearchParams();
+    params.set("year", String(filters.year));
+    params.set("month", String(filters.month));
+    params.set("format", "xlsx");
+    params.set("locale", locale);
+    return `/api/properties/${propertyId}/units/${detailUnitId}/debt-detail/export?${params.toString()}`;
   }
 
   function exportHref(format: "csv" | "xlsx" | "pdf") {
@@ -552,17 +713,6 @@ export function PeriodRegisterPanel({
             : debtUnitLabel(paymentTarget),
         })
       : tDues("recordPayment");
-
-  const canRecordPayment = cashboxes.length > 0 && Boolean(paymentTarget?.partyId);
-  const paymentAllocationsJson =
-    paymentTarget && paymentTarget.allocations.length > 0
-      ? JSON.stringify(
-          paymentTarget.allocations.map((item) => ({
-            dueAccrualLineId: item.lineId,
-            amount: item.remaining,
-          })),
-        )
-      : "";
 
   return (
     <>
@@ -682,11 +832,18 @@ export function PeriodRegisterPanel({
                 setSelectedCells({});
               }}
             >
-              {t("bulkMode")}
+              {bulkMode ? t("bulkModeExit") : t("bulkMode")}
             </Button>
-            {bulkMode && selectedCellList.length > 0 ? (
-              <Button type="button" size="sm" onClick={openBulkPayment} disabled={cashboxes.length === 0}>
-                {t("collectSelected", { count: selectedCellList.length })}
+            {bulkMode ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={openBulkPayment}
+                disabled={selectedCellList.length === 0 || cashboxes.length === 0}
+              >
+                {selectedCellList.length > 0
+                  ? t("collectSelected", { count: selectedCellList.length })
+                  : t("bulkModeCollect")}
               </Button>
             ) : null}
             <Button type="button" variant="outline" size="sm" asChild>
@@ -703,6 +860,23 @@ export function PeriodRegisterPanel({
             </Button>
           </div>
         </div>
+
+        {bulkMode ? (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+            <p className="font-medium">{t("bulkModeActiveTitle")}</p>
+            <p className="mt-1 text-muted-foreground">{t("bulkModeActiveHint")}</p>
+            {selectedCellList.length > 0 ? (
+              <p className="mt-2 font-medium tabular-nums">
+                {t("bulkModeSelectedSummary", {
+                  count: selectedCellList.length,
+                  amount: formatDebtMoney(selectedTotal, locale),
+                })}
+              </p>
+            ) : (
+              <p className="mt-2 text-muted-foreground">{t("bulkModeNoneSelected")}</p>
+            )}
+          </div>
+        ) : null}
 
         <div className="w-full overflow-x-auto rounded-xl border bg-card">
           <table className="w-full caption-bottom text-sm">
@@ -739,8 +913,14 @@ export function PeriodRegisterPanel({
                 registerPage.rows.map((row) => (
                   <TableRow
                     key={row.unitId}
-                    className="cursor-pointer hover:bg-muted/40"
+                    className={cn(
+                      "hover:bg-muted/40",
+                      bulkMode ? "cursor-default" : "cursor-pointer",
+                    )}
                     onClick={() => {
+                      if (bulkMode) {
+                        return;
+                      }
                       void openDetail(row.unitId);
                     }}
                   >
@@ -769,7 +949,20 @@ export function PeriodRegisterPanel({
                         );
                       }
                       return (
-                        <TableCell key={column.id}>
+                        <TableCell
+                          key={column.id}
+                          className={cn(
+                            bulkMode && isRegisterCellSelectable(cell) && "cursor-pointer",
+                          )}
+                          onClick={
+                            bulkMode && isRegisterCellSelectable(cell)
+                              ? (event: MouseEvent<HTMLTableCellElement>) => {
+                                  event.stopPropagation();
+                                  toggleCellSelection(row, column, cell);
+                                }
+                              : undefined
+                          }
+                        >
                           <RegisterCell
                             locale={locale}
                             cell={cell}
@@ -777,7 +970,7 @@ export function PeriodRegisterPanel({
                             selected={Boolean(
                               cell.lineId && selectedCells[cellSelectionKey(row.unitId, cell.lineId)],
                             )}
-                            onToggleSelect={() => toggleCellSelection(row, column, cell)}
+                            interactive={bulkMode && isRegisterCellSelectable(cell)}
                           />
                         </TableCell>
                       );
@@ -831,10 +1024,71 @@ export function PeriodRegisterPanel({
                 <div className="space-y-1">
                   <p className="text-lg font-semibold">{debtUnitLabel(detail.row)}</p>
                   <p className="text-sm text-muted-foreground">{detailParty?.partyName ?? "—"}</p>
-                  <p className="text-2xl font-semibold tracking-tight tabular-nums">
-                    {formatDebtMoney(detail.row.totalDebt, locale)}
-                  </p>
+                  {detail.period ? (
+                    <>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {t("columnPeriodRemaining")}
+                      </p>
+                      <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                        {formatDebtMoney(detail.period.periodRemaining, locale)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {t("columnTotalOpen")}: {formatDebtMoney(detail.row.totalDebt, locale)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                      {formatDebtMoney(detail.row.totalDebt, locale)}
+                    </p>
+                  )}
                 </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    disabled={!detailParty?.partyId || cashboxes.length === 0}
+                    onClick={() => {
+                      if (!detailParty?.partyId || !detail) {
+                        return;
+                      }
+                      const partyId = detailParty.partyId;
+                      const allocations = detail.openLines.map((line) => ({
+                        lineId: line.id,
+                        remaining: line.remaining,
+                        definitionName: formatOpenDebtLineLabel(line),
+                      }));
+                      const paymentAmount =
+                        allocations.length > 0
+                          ? sumRemaining(allocations)
+                          : detail.period?.periodRemaining ?? detail.row.totalDebt;
+                      openPaymentTarget(
+                        {
+                          unitId: detail.row.unitId,
+                          unitCode: detail.row.unitCode,
+                          blockName: detail.row.blockName,
+                          partyId,
+                          partyName: detailParty.partyName,
+                          allocations,
+                        },
+                        paymentAmount,
+                      );
+                    }}
+                  >
+                    {tDebt("recordPayment")}
+                  </Button>
+                  <Button type="button" variant="outline" className="flex-1 gap-2" asChild>
+                    <a href={detailExportHref()}>
+                      <Download className="size-4" aria-hidden />
+                      {t("detailExportExcel")}
+                    </a>
+                  </Button>
+                </div>
+                {!detailParty?.partyId ? (
+                  <p className="text-sm text-muted-foreground">{tDebt("paymentBlockedNoParty")}</p>
+                ) : cashboxes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{tDebt("paymentBlockedNoCashbox")}</p>
+                ) : null}
 
                 <div>
                   <h3 className="mb-2 text-sm font-medium">{tDebt("openLinesTitle")}</h3>
@@ -933,22 +1187,6 @@ export function PeriodRegisterPanel({
                     </div>
                   </div>
                 ) : null}
-
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={!detailParty?.partyId || cashboxes.length === 0}
-                  onClick={() =>
-                    openRowPayment({
-                      unitId: detail.row.unitId,
-                      unitCode: detail.row.unitCode,
-                      blockName: detail.row.blockName,
-                      totalOpenDebt: detail.row.totalDebt,
-                    })
-                  }
-                >
-                  {tDebt("recordPayment")}
-                </Button>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">{tDebt("detailNotFound")}</p>
@@ -961,93 +1199,21 @@ export function PeriodRegisterPanel({
         <FormDrawer
           triggerLabel={tDebt("recordPayment")}
           title={paymentDrawerTitle}
-          success={payState.success}
-          disabled={!canRecordPayment}
+          disabled={cashboxes.length === 0 || !paymentTarget.partyId}
           open={paymentOpen}
           onOpenChange={setPaymentOpen}
           hideTrigger
         >
-          <form action={payAction} className="grid gap-3">
-            <input type="hidden" name="cashboxId" value={cashboxId} />
-            <input type="hidden" name="partyId" value={paymentTarget.partyId} />
-            <input type="hidden" name="unitId" value={paymentTarget.unitId} />
-            {paymentAllocationsJson ? (
-              <>
-                <input type="hidden" name="allocationsJson" value={paymentAllocationsJson} />
-                <input type="hidden" name="autoAllocate" value="off" />
-              </>
-            ) : (
-              <input type="hidden" name="allowAdvance" value="on" />
-            )}
-            <div className="grid gap-1 text-sm">
-              <p className="font-medium">{debtUnitLabel(paymentTarget)}</p>
-              <p className="text-muted-foreground">{paymentTarget.partyName ?? "—"}</p>
-              {paymentTarget.allocations.length > 0 ? (
-                <ul className="space-y-1 text-muted-foreground">
-                  {paymentTarget.allocations.map((item) => (
-                    <li key={item.lineId}>
-                      {item.definitionName}: {formatDebtMoney(item.remaining, locale)}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <p className="text-muted-foreground">
-                {tDues("unitOpenDebt", { amount: formatDebtMoney(payAmount, locale) })}
-              </p>
-            </div>
-            <div className="grid gap-2">
-              <Label>{tDues("cashbox")}</Label>
-              <Select value={cashboxId} onValueChange={setCashboxId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {cashboxes.map((cashbox) => (
-                    <SelectItem key={cashbox.id} value={cashbox.id}>
-                      {cashbox.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="register-pay-amount">{tDues("amount")}</Label>
-              <Input
-                id="register-pay-amount"
-                name="amount"
-                required
-                value={payAmount}
-                onChange={(event) => setPayAmount(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="register-pay-date">{t("paymentDate")}</Label>
-              <Input
-                id="register-pay-date"
-                name="paymentDate"
-                type="date"
-                value={paymentDate}
-                onChange={(event) => setPaymentDate(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="register-pay-doc">{tDues("documentNo")}</Label>
-              <Input id="register-pay-doc" name="documentNo" />
-            </div>
-            {payState.success ? (
-              <p className="text-xs text-muted-foreground">
-                {payState.advanceAmount
-                  ? tDues("paymentAdvanceSuccess", { amount: formatDebtMoney(payState.advanceAmount, locale) })
-                  : tDues("paymentSuccess")}
-              </p>
-            ) : null}
-            {payState.error ? (
-              <p className="text-sm text-destructive">{tDues(`errors.${payState.error}` as "errors.AMOUNT_INVALID")}</p>
-            ) : null}
-            <Button type="submit" disabled={payPending || !canRecordPayment} className="w-full sm:w-auto">
-              {tDues("recordPayment")}
-            </Button>
-          </form>
+          <RegisterPaymentForm
+            key={paymentFormKey}
+            locale={locale}
+            propertyId={propertyId}
+            paymentTarget={paymentTarget}
+            cashboxes={cashboxes}
+            initialAmount={paymentInitialAmount}
+            initialPaymentDate={paymentInitialDate}
+            onSuccess={handlePaymentSuccess}
+          />
         </FormDrawer>
       ) : null}
     </>

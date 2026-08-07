@@ -20,7 +20,7 @@ export default async function LoginPage({ params }: Props) {
     if (isAuditorRole(session.user.role)) {
       redirect(auditorPortalPath(locale));
     }
-    redirect(await getAdminLandingPathForOrganization(locale, session.user.organizationId));
+    redirect(await getAdminLandingPathForOrganization(locale, session.user.organizationId, session.user.role));
   }
   if (session?.user?.sessionKind === "PORTAL") {
     redirect(`/${locale}/portal`);

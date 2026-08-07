@@ -3,9 +3,9 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
-import { canMutateAdminData, isStaffRole } from "@/lib/auth-context";
+import { canMutateAdminData, canPublishAnnouncements, isStaffRole } from "@/lib/auth-context";
 import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
-import { staffMetersPath } from "@/lib/staff-admin-access";
+import { staffPropertyHomePath } from "@/lib/staff-admin-access";
 import { AnnouncementsAdminPanel } from "@/components/announcements-admin-panel";
 import { Button } from "@/components/ui/button";
 import { getAnnouncementService, getBlockService, getPropertyService, getUnitService } from "@/lib/services";
@@ -39,7 +39,7 @@ export default async function PropertyAnnouncementsPage({ params, searchParams }
   const t = await getTranslations("announcements");
   const tCommon = await getTranslations("common");
   const backHref = isStaffRole(session.user.role)
-    ? staffMetersPath(locale, propertyId)
+    ? staffPropertyHomePath(locale, propertyId)
     : `/${locale}/admin/properties/${propertyId}`;
 
   const [data, blocksPage, unitsPage] = await Promise.all([
@@ -71,7 +71,8 @@ export default async function PropertyAnnouncementsPage({ params, searchParams }
         total={data.total}
         blocks={blocksPage.items}
         units={unitsPage.items}
-        canMutate={canMutateAdminData(session)}
+        canCreatePublished={canMutateAdminData(session)}
+        canPublish={canPublishAnnouncements(session)}
       />
     </div>
   );

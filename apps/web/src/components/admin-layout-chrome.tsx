@@ -6,7 +6,7 @@ import { AdminNavProvider } from "@/components/admin-nav-provider";
 import { AdminShell } from "@/components/admin-shell";
 import type { AdminPropertyNavItem } from "@/lib/admin-property-nav";
 import { resolveAdminLandingPath } from "@/lib/admin-landing-path";
-import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities";
+import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities-types";
 
 type Props = {
   locale: string;

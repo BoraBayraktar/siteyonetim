@@ -39,6 +39,7 @@ export default async function PropertyDashboardPage({ params }: Props) {
       showAnnouncements: true,
       showDocuments: true,
       showStatement: true,
+      showIncidents: true,
     };
 
   const now = new Date();

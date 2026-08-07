@@ -5,8 +5,10 @@ import {
   canMutateAdminData,
   canRecordMeterReadings,
   isAdminSession,
+  isSuperAdminSession,
   resolveAdminOrganizationId,
 } from "@/lib/auth-context";
+import { resolveStaffPropertyCapabilities } from "@/lib/staff-property-capabilities";
 
 export type AdminActionContext = {
   organizationId: string;
@@ -61,4 +63,27 @@ export async function adminPropertyMeterReadingContext(propertyId: string): Prom
   }
 
   return buildPropertyContext(session, propertyId);
+}
+
+export async function adminPropertyIncidentContext(propertyId: string): Promise<AdminActionContext | null> {
+  const session = await auth();
+  if (!isAdminSession(session)) {
+    return null;
+  }
+
+  const ctx = await buildPropertyContext(session, propertyId);
+  if (!ctx) {
+    return null;
+  }
+
+  if (isSuperAdminSession(session) || canMutateAdminData(session)) {
+    return ctx;
+  }
+
+  const caps = await resolveStaffPropertyCapabilities(session, ctx.organizationId, propertyId);
+  if (!caps.canManageIncidents) {
+    return null;
+  }
+
+  return ctx;
 }

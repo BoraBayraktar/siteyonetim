@@ -137,6 +137,7 @@
     "announcementsModule": "Announcements",
     "notificationsModule": "SMS / email",
     "documentsModule": "Archive",
+    "incidentsModule": "Incidents",
     "legalInterestModule": "Legal interest rates",
     "usersModule": "Users & roles",
     "securityModule": "Security",
@@ -211,6 +212,8 @@
     "noOpenLines": "No open debt.",
     "statementTitle": "Account statement",
     "recordPayment": "Record payment",
+    "paymentBlockedNoParty": "Assign an owner or tenant to this property before recording a payment.",
+    "paymentBlockedNoCashbox": "Define at least one cashbox under Settings → Cashboxes & banks.",
     "columnStatus": "Status",
     "columnActions": "Actions",
     "viewDetail": "View detail",
@@ -240,11 +243,18 @@
       "DELINQUENT_EQUAL": "Delinquent only (equal)"
     },
     "bulkMode": "Bulk collection",
+    "bulkModeExit": "Exit selection",
+    "bulkModeCollect": "Collect selected",
+    "bulkModeActiveTitle": "Bulk collection mode is on",
+    "bulkModeActiveHint": "Click debt cells to select them. You can select multiple items from the same property.",
+    "bulkModeNoneSelected": "No items selected yet.",
+    "bulkModeSelectedSummary": "{count} items selected · total {amount}",
     "collectSelected": "Collect {count} lines",
     "paymentDate": "Payment date",
     "exportCsv": "Download CSV",
     "exportExcel": "Download Excel",
-    "exportPdf": "Download PDF"
+    "exportPdf": "Download PDF",
+    "detailExportExcel": "Download Excel"
   },
   "setup": {
     "title": "Setup checklist",
@@ -406,6 +416,18 @@
     "utilityNotes": "Notes",
     "utilitySave": "Save",
     "utilitySaved": "Utility profile updated.",
+    "staffOpsTitle": "Staff permissions",
+    "staffOpsDescription": "Configure what on-site staff can do in the portal for this property.",
+    "staffOpsAllowAnnouncementDraft": "Create announcement drafts",
+    "staffOpsAllowAnnouncementDraftHint": "Staff can save announcement drafts; managers publish them.",
+    "staffOpsAllowDocumentUpload": "Upload documents",
+    "staffOpsAllowDocumentUploadHint": "Staff can upload shared portal documents.",
+    "staffOpsAllowIncidents": "Incident reporting",
+    "staffOpsAllowIncidentsHint": "Staff can create incidents and update their status.",
+    "staffOpsStaffCanViewPartyPhone": "View member phone numbers",
+    "staffOpsStaffCanViewPartyPhoneHint": "Staff can see member phone numbers.",
+    "staffOpsSave": "Save",
+    "staffOpsSaved": "Staff permissions updated.",
     "openMeters": "Meter readings",
     "heating": {
       "NONE": "None / unspecified",
@@ -542,7 +564,11 @@
     "memberDebtAging30": "0–30 days",
     "memberDebtAging60": "31–60 days",
     "memberDebtAging61": "61+ days",
-    "memberDebtEmpty": "No open debt to display."
+    "memberDebtEmpty": "No open debt to display.",
+    "incidentsTitle": "My incident reports",
+    "incidentsSubtitle": "Issues you reported and their status",
+    "incidentsEmpty": "You have not reported any incidents yet.",
+    "incidentsCreateFor": "Report incident — {property}"
   },
   "propertyTenant": {
     "tenantTitle": "Property tenant",
@@ -561,6 +587,7 @@
     "showDocuments": "Documents",
     "showIncomeExpenseReport": "Income/expense report",
     "showMemberDebtSummary": "Other units debt summary",
+    "showIncidents": "Incident reporting",
     "saveSettings": "Save settings",
     "isolationTitle": "Database isolation",
     "isolationSubtitle": "Shared schema or dedicated database per site (Neon branch)",
@@ -618,15 +645,17 @@
       "ACCOUNTANT": "Accountant",
       "AUDITOR": "Auditor",
       "BOARD_MEMBER": "Board member",
-      "STAFF": "Staff"
+      "STAFF": "Site staff"
     },
     "portals": {
       "ADMIN": "Admin portal",
-      "AUDITOR": "Auditor portal"
+      "AUDITOR": "Auditor portal",
+      "STAFF": "Staff workspace"
     },
     "portalHint": {
       "ADMIN": "This role signs in through the admin portal.",
-      "AUDITOR": "Auditor role is routed to the auditor portal."
+      "AUDITOR": "Auditor role is routed to the auditor portal.",
+      "STAFF": "Site staff are redirected to the staff workspace (/staff); they can submit announcement drafts and upload shared documents."
     },
     "errors": {
       "UNAUTHORIZED": "You are not allowed to perform this action.",
@@ -1027,6 +1056,9 @@
       "CASHBOX_NOT_FOUND": "Cashbox not found.",
       "PARTY_NOT_FOUND": "Member not found.",
       "UNALLOCATED_AMOUNT": "Could not allocate full amount to open debt.",
+      "ALLOCATION_SUM_MISMATCH": "Payment amount does not match selected debt lines.",
+      "LINE_NOT_FOUND": "Debt line not found.",
+      "ALLOCATION_EXCEEDS_REMAINING": "Allocation exceeds remaining debt on a line.",
       "RUN_NOT_FOUND": "Billing run not found.",
       "SHARE_POOL_REQUIRED": "Total pool amount is required.",
       "METER_KIND_REQUIRED": "Select meter type.",
@@ -1170,6 +1202,29 @@
     "propertiesEmpty": "No properties found in this organization.",
     "openReports": "View reports",
     "readOnlyNotice": "Auditor accounts can only view and export reports."
+  },
+  "staffPortal": {
+    "title": "Staff workspace",
+    "navLabel": "Staff menu",
+    "navHome": "Home",
+    "navMeters": "Meters",
+    "navIncidents": "Incidents",
+    "navAnnouncements": "Announcements",
+    "navDocuments": "Archive",
+    "homeTitle": "Tasks",
+    "homeSubtitle": "Quick access to field operations",
+    "open": "Open",
+    "switchProperty": "Select property",
+    "propertiesEmptyTitle": "No accessible properties",
+    "propertiesEmpty": "No properties are assigned to your account. Contact your administrator.",
+    "cardMetersTitle": "Meter readings",
+    "cardMetersDescription": "Enter water, gas, and other meter readings.",
+    "cardIncidentsTitle": "Incident reports",
+    "cardIncidentsDescription": "Report issues, update status, and track progress.",
+    "cardAnnouncementsTitle": "Announcements",
+    "cardAnnouncementsDescription": "View published announcements or create a draft.",
+    "cardDocumentsTitle": "Archive",
+    "cardDocumentsDescription": "View and upload shared documents."
   },
   "auditorReport": {
     "assignmentsTitle": "Auditor assignments",
@@ -1333,6 +1388,12 @@
   "announcements": {
     "title": "Announcements",
     "createTitle": "Publish announcement",
+    "createDraftTitle": "Announcement draft",
+    "saveDraft": "Save draft",
+    "draftSubmitHint": "Drafts are published after manager approval.",
+    "statusDraft": "Draft",
+    "approvePublish": "Publish",
+    "publishing": "Publishing…",
     "fieldTitle": "Title",
     "fieldBody": "Body",
     "fieldAudience": "Audience",
@@ -1383,7 +1444,9 @@
       "PROPERTY_NOT_FOUND": "Property not found.",
       "UNAUTHORIZED": "Unauthorized.",
       "ANNOUNCEMENT_SAVE_FAILED": "Could not save the announcement. Please try again.",
-      "ANNOUNCEMENT_SCHEMA_OUTDATED": "The database client is out of date. Stop the dev server and restart with `npm run dev`."
+      "ANNOUNCEMENT_SCHEMA_OUTDATED": "The database client is out of date. Stop the dev server and restart with `npm run dev`.",
+      "ANNOUNCEMENT_NOT_FOUND": "Announcement not found.",
+      "ANNOUNCEMENT_ALREADY_PUBLISHED": "Announcement is already published."
     }
   },
   "notifications": {
@@ -1428,6 +1491,60 @@
       "UNAUTHORIZED": "Unauthorized."
     }
   },
+  "incidents": {
+    "title": "Incidents",
+    "createTitle": "Report incident",
+    "fieldTitle": "Title",
+    "fieldDescription": "Description",
+    "fieldCategory": "Category",
+    "fieldPriority": "Priority",
+    "fieldUnit": "Property",
+    "fieldUnitOptional": "Property (optional)",
+    "noUnit": "Unspecified / common area",
+    "submitCreate": "Save",
+    "empty": "No incident reports yet.",
+    "reportedBy": "Reported by: {name}",
+    "actionStart": "Start work",
+    "actionClose": "Close",
+    "closeWithExpense": "Close + record expense",
+    "closeWithExpenseTitle": "Close incident and record expense",
+    "closeWithExpenseSubmit": "Close and save",
+    "closeWithExpenseDescriptionPlaceholder": "Incident title is used if left blank",
+    "linkedExpense": "Linked expense: {amount} — {category}",
+    "status": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In progress",
+      "CLOSED": "Closed"
+    },
+    "priority": {
+      "LOW": "Low",
+      "NORMAL": "Normal",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
+    "category": {
+      "ELEVATOR": "Elevator",
+      "PLUMBING": "Plumbing",
+      "ELECTRICAL": "Electrical",
+      "COMMON_AREA": "Common area",
+      "SECURITY": "Security",
+      "OTHER": "Other"
+    },
+    "errors": {
+      "UNAUTHORIZED": "Unauthorized.",
+      "INCIDENT_TITLE_REQUIRED": "Title is required.",
+      "INCIDENT_DESCRIPTION_REQUIRED": "Description is required.",
+      "INCIDENT_UNIT_INVALID": "Selected property is invalid.",
+      "PROPERTY_NOT_FOUND": "Property not found.",
+      "INCIDENT_NOT_FOUND": "Incident not found.",
+      "INCIDENT_STATUS_TRANSITION_DENIED": "This status change is not allowed.",
+      "INCIDENT_ALREADY_CLOSED": "Incident is already closed.",
+      "INCIDENT_EXPENSE_ALREADY_LINKED": "An expense is already linked to this incident.",
+      "INCIDENT_PORTAL_DISABLED": "Owner incident reporting is disabled for this property.",
+      "INCIDENT_SAVE_FAILED": "Save failed. Please try again."
+    },
+    "portalCreateSuccess": "Your incident report has been submitted."
+  },
   "documents": {
     "title": "Archive",
     "uploadTitle": "Upload document",
@@ -1438,6 +1555,7 @@
     "fieldFile": "File",
     "fileHint": "PDF, image, or Word — max 10 MB.",
     "uploadSubmit": "Upload",
+    "staffUploadHint": "Uploaded files are added to the shared archive visible to residents.",
     "empty": "No documents yet.",
     "download": "Download",
     "category": {

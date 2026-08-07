@@ -26,6 +26,7 @@
     "@siteyonetim/finance-banking": "*",
     "@siteyonetim/property-governance": "*",
     "@siteyonetim/finance-dues": "*",
+    "@siteyonetim/itsm-incidents": "*",
     "@siteyonetim/platform-auth": "*",
     "@siteyonetim/platform-files": "*",
     "@siteyonetim/platform-jobs": "*",

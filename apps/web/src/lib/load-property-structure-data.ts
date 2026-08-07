@@ -1,7 +1,7 @@
 import type { BlockDto } from "@siteyonetim/property-core";
 import type { UnitOccupancyBoardRowDto } from "@siteyonetim/property-occupancy";
 import type { PartyDto } from "@siteyonetim/property-parties";
-import type { PropertyUtilityProfileDto } from "@siteyonetim/property-settings";
+import type { PropertyStaffOpsProfileDto, PropertyUtilityProfileDto } from "@siteyonetim/property-settings";
 
 import {
   resolvePropertyStructureTab,
@@ -29,6 +29,7 @@ export type PropertyStructurePageData = {
   propertyParties: PartyDto[];
   orgParties: PartyDto[];
   utilityProfile: PropertyUtilityProfileDto | null;
+  staffOpsProfile: PropertyStaffOpsProfileDto | null;
 };
 
 function emptyStructureData(): PropertyStructurePageData {
@@ -38,6 +39,7 @@ function emptyStructureData(): PropertyStructurePageData {
     propertyParties: [],
     orgParties: [],
     utilityProfile: null,
+    staffOpsProfile: null,
   };
 }
 
@@ -68,7 +70,7 @@ export async function loadPropertyStructurePageData(
     return emptyStructureData();
   }
 
-  const [blocksPage, unitBoardPage, propertyPartiesPage, orgPartiesPage, utilityProfile] = await Promise.all([
+  const [blocksPage, unitBoardPage, propertyPartiesPage, orgPartiesPage, utilityProfile, staffOpsProfile] = await Promise.all([
     needsBlocks(outerTab, section)
       ? getBlockService().list({ ...ctx, page: 1, pageSize: LIST_SIZE })
       : Promise.resolve(null),
@@ -84,6 +86,9 @@ export async function loadPropertyStructurePageData(
     needsUtilityProfile(outerTab)
       ? getPropertySettingsService().getUtilityProfile(ctx.organizationId, ctx.propertyId)
       : Promise.resolve(null),
+    needsUtilityProfile(outerTab)
+      ? getPropertySettingsService().getStaffOpsProfile(ctx.organizationId, ctx.propertyId)
+      : Promise.resolve(null),
   ]);
 
   return {
@@ -92,5 +97,6 @@ export async function loadPropertyStructurePageData(
     propertyParties: propertyPartiesPage?.items ?? [],
     orgParties: orgPartiesPage?.items ?? [],
     utilityProfile,
+    staffOpsProfile,
   };
 }

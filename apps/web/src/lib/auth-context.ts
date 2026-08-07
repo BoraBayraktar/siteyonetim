@@ -2,12 +2,27 @@ import { OrganizationRole } from "@siteyonetim/db";
 
 import type { Session } from "next-auth";
 
+import {
+  adminLoginRedirectPath,
+  auditorPortalPath,
+  isAuditorRole,
+  isReadOnlyAdminRole,
+  isStaffRole,
+} from "@/lib/organization-roles";
 import { getPropertyService, getPropertyRbacService } from "@/lib/services";
 
 export type PropertyAccessClaim = {
   propertyId: string;
   role: string;
 };
+
+export {
+  adminLoginRedirectPath,
+  auditorPortalPath,
+  isAuditorRole,
+  isReadOnlyAdminRole,
+  isStaffRole,
+} from "@/lib/organization-roles";
 
 export function isSuperAdminSession(session: Session | null | undefined): boolean {
   return Boolean(isAdminSession(session) && session.user.isSuperAdmin === true);
@@ -27,18 +42,6 @@ export function isPortalSession(session: Session | null | undefined): session is
 
 export function isUnitPortalSession(session: Session | null | undefined): boolean {
   return isPortalSession(session) && session.user.portalAuthKind === "UNIT";
-}
-
-export function isAuditorRole(role: string | null | undefined): boolean {
-  return role === OrganizationRole.AUDITOR;
-}
-
-export function isStaffRole(role: string | null | undefined): boolean {
-  return role === OrganizationRole.STAFF;
-}
-
-export function isReadOnlyAdminRole(role: string | null | undefined): boolean {
-  return role === OrganizationRole.AUDITOR || role === OrganizationRole.BOARD_MEMBER;
 }
 
 export function canAccessReports(session: Session | null | undefined): boolean {
@@ -70,6 +73,30 @@ export function canRecordMeterReadings(session: Session | null | undefined): boo
   return isStaffRole(session.user.role);
 }
 
+export function canCreateAnnouncementDraft(session: Session | null | undefined): boolean {
+  if (!isAdminSession(session)) return false;
+  if (isSuperAdminSession(session)) return false;
+  return isStaffRole(session.user.role);
+}
+
+export function canPublishAnnouncements(session: Session | null | undefined): boolean {
+  return canMutateAdminData(session);
+}
+
+export function canUploadDocuments(session: Session | null | undefined): boolean {
+  if (!isAdminSession(session)) return false;
+  if (isSuperAdminSession(session)) return true;
+  if (canMutateAdminData(session)) return true;
+  return isStaffRole(session.user.role);
+}
+
+export function canManagePropertyIncidents(session: Session | null | undefined): boolean {
+  if (!isAdminSession(session)) return false;
+  if (isSuperAdminSession(session)) return true;
+  if (canMutateAdminData(session)) return true;
+  return isStaffRole(session.user.role);
+}
+
 export function canManageOrgUsers(session: Session | null | undefined): boolean {
   if (!isAdminSession(session)) return false;
   if (isSuperAdminSession(session)) return true;
@@ -81,19 +108,6 @@ export function canManageAuditorAssignments(session: Session | null | undefined)
   if (isSuperAdminSession(session)) return true;
   const role = session.user.role;
   return role === OrganizationRole.ORG_ADMIN || role === OrganizationRole.PROPERTY_MANAGER;
-}
-
-export function auditorPortalPath(locale: string): string {
-  return `/${locale}/auditor`;
-}
-
-export function adminLoginRedirectPath(
-  locale: string,
-  role: string | null | undefined,
-  isSuperAdmin?: boolean,
-): "auditor" | "admin" {
-  if (isSuperAdmin) return "admin";
-  return isAuditorRole(role) ? "auditor" : "admin";
 }
 
 export function sessionHasPropertyAccess(

@@ -2,6 +2,7 @@ import { OccupancyRole } from "@siteyonetim/db";
 import type { AnnouncementDto } from "@siteyonetim/comm-announcements";
 import type { DocumentDto } from "@siteyonetim/document-management";
 import type { PortalMemberDebtSummaryDto, PortalOpenDebtLineDto, StatementLineDto } from "@siteyonetim/finance-dues";
+import type { IncidentDto } from "@siteyonetim/itsm-incidents";
 import type { PortalOccupancyDto } from "@siteyonetim/property-occupancy";
 import type { PortalIncomeExpenseSummaryDto } from "@siteyonetim/reporting-standard";
 import { Building2, FileText, Megaphone, Receipt, Wallet } from "lucide-react";
@@ -9,6 +10,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PortalAnnouncementsList } from "@/components/portal-announcements-list";
 import { PortalDocumentsList } from "@/components/portal-documents-list";
+import { PortalIncidentsSection } from "@/components/portal-incidents-section";
 import { PortalIncomeExpenseSection } from "@/components/portal-income-expense-section";
 import { PortalMemberDebtSection } from "@/components/portal-member-debt-section";
 import { PortalOpenDebtSection } from "@/components/portal-open-debt-section";
@@ -22,6 +24,7 @@ type PortalSettingsFlags = {
   showStatement: boolean;
   showAnnouncements: boolean;
   showDocuments: boolean;
+  showIncidents: boolean;
 };
 
 type Props = {
@@ -33,9 +36,14 @@ type Props = {
   statement: StatementLineDto[];
   announcements: AnnouncementDto[];
   documents: DocumentDto[];
+  incidents: IncidentDto[];
+  propertyNames: Record<string, string>;
   incomeExpenseReports: PortalIncomeExpenseSummaryDto[];
   memberDebtSummaries: PortalMemberDebtSummaryDto[];
   primarySettings: PortalSettingsFlags | null;
+  showIncidentsSection: boolean;
+  fixedPropertyId?: string;
+  fixedUnitId?: string;
 };
 
 function money(value: string, locale: string) {
@@ -62,9 +70,14 @@ export async function PortalDashboard({
   statement,
   announcements,
   documents,
+  incidents,
+  propertyNames,
   incomeExpenseReports,
   memberDebtSummaries,
   primarySettings,
+  showIncidentsSection,
+  fixedPropertyId,
+  fixedUnitId,
 }: Props) {
   const t = await getTranslations("portal");
   const unreadAnnouncements = announcements.filter((item) => !item.readByUser).length;
@@ -214,6 +227,18 @@ export async function PortalDashboard({
           </CardContent>
         </Card>
       </section>
+
+      {showIncidentsSection ? (
+        <PortalIncidentsSection
+          locale={locale}
+          items={incidents}
+          units={units}
+          propertyNames={propertyNames}
+          canCreate={showIncidentsSection}
+          fixedPropertyId={fixedPropertyId}
+          fixedUnitId={fixedUnitId}
+        />
+      ) : null}
 
       <PortalIncomeExpenseSection locale={locale} reports={incomeExpenseReports} />
       <PortalMemberDebtSection locale={locale} summaries={memberDebtSummaries} />

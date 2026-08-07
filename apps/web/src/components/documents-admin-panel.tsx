@@ -26,7 +26,11 @@ type Props = {
   pageSize: number;
   total: number;
   units: UnitDto[];
+  /** @deprecated Use canUpload */
   canMutate?: boolean;
+  canUpload?: boolean;
+  staffUploadMode?: boolean;
+  listBasePath?: string;
 };
 
 const initial: DocumentActionState = {};
@@ -46,12 +50,18 @@ export function DocumentsAdminPanel({
   total,
   units,
   canMutate = true,
+  canUpload = canMutate,
+  staffUploadMode = false,
+  listBasePath,
 }: Props) {
   const t = useTranslations("documents");
   const [state, action, pending] = useActionState(createDocumentAction.bind(null, locale, propertyId), initial);
-  const [visibility, setVisibility] = useState<DocumentVisibility>(DocumentVisibility.PORTAL_SHARED);
+  const [visibility, setVisibility] = useState<DocumentVisibility>(
+    staffUploadMode ? DocumentVisibility.PORTAL_SHARED : DocumentVisibility.PORTAL_SHARED,
+  );
   const [category, setCategory] = useState<DocumentCategory>(DocumentCategory.OTHER);
   const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const paginationBasePath = listBasePath ?? `/admin/properties/${propertyId}/documents`;
 
   const unitIdsValue = useMemo(() => selectedUnits.join(","), [selectedUnits]);
 
@@ -63,12 +73,15 @@ export function DocumentsAdminPanel({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("title")}</CardTitle>
-        {canMutate ? (
+        {canUpload ? (
         <FormDrawer triggerLabel={t("uploadTitle")} title={t("uploadTitle")} success={state.success}>
           <form action={action} className="grid gap-4" encType="multipart/form-data">
-            <input type="hidden" name="visibility" value={visibility} />
+            <input type="hidden" name="visibility" value={staffUploadMode ? DocumentVisibility.PORTAL_SHARED : visibility} />
             <input type="hidden" name="category" value={category} />
             <input type="hidden" name="unitIds" value={unitIdsValue} />
+            {staffUploadMode ? (
+              <p className="text-xs text-muted-foreground">{t("staffUploadHint")}</p>
+            ) : null}
             <div className="grid gap-2">
               <Label htmlFor="doc-title">{t("fieldTitle")}</Label>
               <Input id="doc-title" name="title" required />
@@ -88,6 +101,7 @@ export function DocumentsAdminPanel({
                 </SelectContent>
               </Select>
             </div>
+            {!staffUploadMode ? (
             <div className="grid gap-2">
               <Label>{t("fieldVisibility")}</Label>
               <Select value={visibility} onValueChange={(v) => setVisibility(v as DocumentVisibility)}>
@@ -103,7 +117,8 @@ export function DocumentsAdminPanel({
                 </SelectContent>
               </Select>
             </div>
-            {visibility === DocumentVisibility.UNIT_SPECIFIC ? (
+            ) : null}
+            {!staffUploadMode && visibility === DocumentVisibility.UNIT_SPECIFIC ? (
               <div className="grid gap-2">
                 <Label>{t("fieldUnits")}</Label>
                 <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
@@ -168,7 +183,7 @@ export function DocumentsAdminPanel({
           page={page}
           pageSize={pageSize}
           total={total}
-          basePath={`/admin/properties/${propertyId}/documents`}
+          basePath={paginationBasePath}
           locale={locale}
         />
       </CardContent>

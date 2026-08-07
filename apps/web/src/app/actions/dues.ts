@@ -464,7 +464,11 @@ export async function applyLateFeesAction(
   }
 }
 
-export async function getUnitDebtDetailAction(propertyId: string, unitId: string) {
+export async function getUnitDebtDetailAction(
+  propertyId: string,
+  unitId: string,
+  period?: { year: number; month: number },
+) {
   const ctx = await adminPropertyMutateContext(propertyId);
   if (!ctx) return null;
 
@@ -475,5 +479,6 @@ export async function getUnitDebtDetailAction(propertyId: string, unitId: string
       actorUserId: ctx.actorUserId,
     },
     unitId,
+    period,
   );
 }

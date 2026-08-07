@@ -4,7 +4,7 @@ import { PartyType } from "@siteyonetim/db";
 import type { BlockDto, UnitDto } from "@siteyonetim/property-core";
 import type { PartyDto } from "@siteyonetim/property-parties";
 import type { UnitOccupancyBoardRowDto } from "@siteyonetim/property-occupancy";
-import type { PropertyUtilityProfileDto } from "@siteyonetim/property-settings";
+import type { PropertyStaffOpsProfileDto, PropertyUtilityProfileDto } from "@siteyonetim/property-settings";
 import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
@@ -25,6 +25,7 @@ import {
 } from "@/app/actions/property-detail";
 import { FormDrawer } from "@/components/form-drawer";
 import { PartyCombobox } from "@/components/party-combobox";
+import { PropertyStaffOpsPanel } from "@/components/property-staff-ops-panel";
 import { PropertyUtilityPanel } from "@/components/property-utility-panel";
 import { UnitsOccupancyPanel } from "@/components/units-occupancy-panel";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,6 +47,7 @@ type Props = {
   propertyParties: PartyDto[];
   orgParties: PartyDto[];
   utilityProfile: PropertyUtilityProfileDto | null;
+  staffOpsProfile: PropertyStaffOpsProfileDto | null;
 };
 
 const initial: ActionState = {};
@@ -64,6 +66,7 @@ export function PropertyDetailTabs({
   propertyParties,
   orgParties,
   utilityProfile,
+  staffOpsProfile,
 }: Props) {
   const t = useTranslations("propertyDetail");
   const outerTab = useMemo(() => resolvePropertyStructureTab(defaultTab), [defaultTab]);
@@ -196,7 +199,12 @@ export function PropertyDetailTabs({
       ) : null}
 
       {outerTab === "utility" ? (
-        <PropertyUtilityPanel locale={locale} propertyId={propertyId} profile={utilityProfile} />
+        <div className="space-y-4">
+          <PropertyUtilityPanel locale={locale} propertyId={propertyId} profile={utilityProfile} />
+          {staffOpsProfile ? (
+            <PropertyStaffOpsPanel locale={locale} propertyId={propertyId} profile={staffOpsProfile} />
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

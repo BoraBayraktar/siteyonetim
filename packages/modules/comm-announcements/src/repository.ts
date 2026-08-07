@@ -1,4 +1,4 @@
-import { AnnouncementAudience, AnnouncementBodyFormat, prisma } from "@siteyonetim/db";
+import { AnnouncementAudience, AnnouncementBodyFormat, AnnouncementWorkflowStatus, prisma } from "@siteyonetim/db";
 
 import type {
   AnnouncementDto,
@@ -6,6 +6,7 @@ import type {
   ListAnnouncementsAdminInput,
   ListAnnouncementsPortalInput,
   PortalAnnouncementScope,
+  PublishAnnouncementInput,
 } from "./contract";
 import { ANNOUNCEMENT_BODY_FORMAT, type AnnouncementBodyFormatValue } from "./body-format";
 import { portalVisibilityFilter } from "./publish-window";
@@ -26,6 +27,8 @@ type AnnouncementRow = {
   publishedAt: Date;
   publishStartAt: Date;
   publishEndAt: Date;
+  workflowStatus: AnnouncementWorkflowStatus;
+  createdByUserId: string | null;
   block: { name: string } | null;
   unitTargets: { unitId: string }[];
   reads: { userId: string }[];
@@ -46,6 +49,8 @@ function toDto(row: AnnouncementRow, userId?: string): AnnouncementDto {
     publishStartAt: row.publishStartAt,
     publishEndAt: row.publishEndAt,
     unitIds: row.unitTargets.map((t) => t.unitId),
+    workflowStatus: row.workflowStatus,
+    createdByUserId: row.createdByUserId,
     readByUser: userId ? row.reads.some((r) => r.userId === userId) : false,
   };
 }
@@ -56,8 +61,32 @@ const include = (userId?: string) => ({
   reads: userId ? { where: { userId }, select: { userId: true } } : { select: { userId: true }, take: 0 },
 });
 
+function buildAdminListWhere(input: ListAnnouncementsAdminInput) {
+  const base = {
+    organizationId: input.organizationId,
+    propertyId: input.propertyId,
+    deleted: false,
+  };
+
+  if (!input.staffViewerId) {
+    return base;
+  }
+
+  return {
+    ...base,
+    OR: [
+      { workflowStatus: AnnouncementWorkflowStatus.PUBLISHED },
+      {
+        workflowStatus: AnnouncementWorkflowStatus.DRAFT,
+        createdByUserId: input.staffViewerId,
+      },
+    ],
+  };
+}
+
 export class AnnouncementRepository {
   async create(input: CreateAnnouncementInput): Promise<AnnouncementDto> {
+    const workflowStatus = input.workflowStatus ?? AnnouncementWorkflowStatus.PUBLISHED;
     const created = await prisma.announcement.create({
       data: {
         organizationId: input.organizationId,
@@ -70,22 +99,45 @@ export class AnnouncementRepository {
         isPinned: input.isPinned ?? false,
         publishStartAt: input.publishStartAt,
         publishEndAt: input.publishEndAt,
-        unitTargets:
-          input.audience === AnnouncementAudience.UNITS && input.unitIds?.length
-            ? { create: input.unitIds.map((unitId) => ({ unitId })) }
-            : undefined,
+        workflowStatus,
+        createdByUserId: input.createdByUserId ?? input.actorUserId ?? null,
+        publishedAt: workflowStatus === AnnouncementWorkflowStatus.PUBLISHED ? new Date() : new Date(),
       },
       include: include(),
     });
     return toDto(created as AnnouncementRow);
   }
 
+  async publish(input: PublishAnnouncementInput): Promise<AnnouncementDto | null> {
+    const existing = await prisma.announcement.findFirst({
+      where: {
+        id: input.announcementId,
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        deleted: false,
+      },
+      select: { id: true, workflowStatus: true },
+    });
+    if (!existing) {
+      return null;
+    }
+    if (existing.workflowStatus === AnnouncementWorkflowStatus.PUBLISHED) {
+      throw new Error("ANNOUNCEMENT_ALREADY_PUBLISHED");
+    }
+
+    const updated = await prisma.announcement.update({
+      where: { id: existing.id },
+      data: {
+        workflowStatus: AnnouncementWorkflowStatus.PUBLISHED,
+        publishedAt: new Date(),
+      },
+      include: include(),
+    });
+    return toDto(updated as AnnouncementRow);
+  }
+
   async listForAdmin(input: ListAnnouncementsAdminInput) {
-    const where = {
-      organizationId: input.organizationId,
-      propertyId: input.propertyId,
-      deleted: false,
-    };
+    const where = buildAdminListWhere(input);
     const [rows, total] = await Promise.all([
       prisma.announcement.findMany({
         where,
@@ -143,6 +195,7 @@ export class AnnouncementRepository {
       organizationId: input.organizationId,
       propertyId: { in: propertyIds },
       deleted: false,
+      workflowStatus: AnnouncementWorkflowStatus.PUBLISHED,
       ...portalVisibilityFilter(now),
       OR: scopeFilters,
     };
@@ -173,6 +226,7 @@ export class AnnouncementRepository {
         organizationId,
         propertyId: { in: propertyIds },
         deleted: false,
+        workflowStatus: AnnouncementWorkflowStatus.PUBLISHED,
         ...portalVisibilityFilter(now),
       },
       include: include(userId),

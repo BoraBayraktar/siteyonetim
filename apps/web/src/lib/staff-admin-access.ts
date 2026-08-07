@@ -1,15 +1,21 @@
 import { redirect } from "next/navigation";
 
-import { isStaffRole } from "@/lib/auth-context";
+import { isStaffRole } from "@/lib/organization-roles";
+import {
+  resolveStaffLandingPath,
+  staffAnnouncementsPath,
+  staffDocumentsPath,
+  staffIncidentsPath,
+  staffMetersPath,
+  staffPropertyPath,
+} from "@/lib/staff-landing-path";
 
 export type StaffPropertyAccess = "meters" | "communication";
 
-export function staffMetersPath(locale: string, propertyId: string): string {
-  return `/${locale}/admin/properties/${propertyId}/dues?tab=meters`;
-}
+export { staffAnnouncementsPath, staffDocumentsPath, staffIncidentsPath, staffMetersPath, staffPropertyPath };
 
 export function staffPropertyHomePath(locale: string, propertyId: string): string {
-  return staffMetersPath(locale, propertyId);
+  return staffPropertyPath(locale, propertyId);
 }
 
 export function redirectStaffFromOrgAdmin(locale: string, role: string | null | undefined, fallbackPath: string) {
@@ -30,5 +36,12 @@ export function resolveStaffPropertyAccess(
   if (allowed) {
     return;
   }
-  redirect(staffMetersPath(locale, propertyId));
+  redirect(staffPropertyHomePath(locale, propertyId));
+}
+
+export function resolveStaffOrgLandingPath(
+  locale: string,
+  propertiesNav: { id: string; name: string }[],
+): string {
+  return resolveStaffLandingPath(locale, propertiesNav);
 }

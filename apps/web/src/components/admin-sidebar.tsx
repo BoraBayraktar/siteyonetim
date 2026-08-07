@@ -20,6 +20,7 @@ import {
   UserRound,
   Users,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -31,10 +32,9 @@ import { useAdminNav } from "@/components/admin-nav-provider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useClientSearchParams } from "@/hooks/use-client-search-params";
-import { isPilotSinglePropertyMode } from "@/lib/admin-landing-path";
-import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities";
-import { hasPropertyNavModule } from "@/lib/admin-nav-capabilities";
-import type { AdminPropertyNavItem } from "@/lib/admin-property-nav";
+import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities-types";
+import { hasPropertyNavModule } from "@/lib/admin-nav-capabilities-types";
+import { isPilotSinglePropertyMode, type AdminPropertyNavItem } from "@/lib/admin-property-nav";
 import { resolveDuesTab } from "@/lib/dues-tab";
 import { isPropertyStructurePath } from "@/lib/property-nav-paths";
 import { resolvePropertyStructureTab, resolveStructureSection } from "@/lib/property-structure-tab";
@@ -215,6 +215,15 @@ function buildStaffFlatPropertyLinks({
       label: t("documentsModule"),
       icon: FileText,
       active: pathname.includes("/documents"),
+    });
+  }
+  if (hasPropertyNavModule(capabilities, "incidents")) {
+    links.push({
+      kind: "link",
+      href: `${propertyBase}/incidents`,
+      label: t("incidentsModule"),
+      icon: Wrench,
+      active: pathname.includes("/incidents"),
     });
   }
 
@@ -462,6 +471,15 @@ function buildPropertyModuleLinks({
       active: pathname.includes("/documents"),
     });
   }
+  if (hasPropertyNavModule(capabilities, "incidents")) {
+    communicationChildren.push({
+      kind: "link",
+      href: `${propertyBase}/incidents`,
+      label: t("incidentsModule"),
+      icon: Wrench,
+      active: pathname.includes("/incidents"),
+    });
+  }
   if (communicationChildren.length > 0) {
     nodes.push({
       kind: "group",
@@ -592,7 +610,8 @@ function AdminNavPanel({
             propertyId === p.id &&
             (pathname.includes("/dues") ||
               pathname.includes("/announcements") ||
-              pathname.includes("/documents")),
+              pathname.includes("/documents") ||
+              pathname.includes("/incidents")),
         })),
       };
 

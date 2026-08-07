@@ -1,35 +1,8 @@
-import { isStaffRole } from "@/lib/auth-context";
+import type { AdminNavCapabilities, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
+import { isStaffRole } from "@/lib/organization-roles";
 
-export type PropertyNavModule =
-  | "dashboard"
-  | "financeRegister"
-  | "financeExpenses"
-  | "financeAccrual"
-  | "financeLateFee"
-  | "reports"
-  | "governance"
-  | "structureBlocks"
-  | "structureUnits"
-  | "structureParties"
-  | "structureUtility"
-  | "settingsCashboxes"
-  | "settingsAccounts"
-  | "settingsStaffAccounts"
-  | "settingsCategories"
-  | "settingsMeters"
-  | "settingsDefinitions"
-  | "announcements"
-  | "notifications"
-  | "documents";
-
-export type AdminNavCapabilities = {
-  isStaffRestricted: boolean;
-  showOrgSecurity: boolean;
-  showOrgLegalInterest: boolean;
-  showOrgUsers: boolean;
-  showPropertiesList: boolean;
-  propertyModules: ReadonlySet<PropertyNavModule>;
-};
+export type { AdminNavCapabilities, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
+export { hasPropertyNavModule } from "@/lib/admin-nav-capabilities-types";
 
 const FULL_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "dashboard",
@@ -52,12 +25,14 @@ const FULL_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "announcements",
   "notifications",
   "documents",
+  "incidents",
 ]);
 
 const STAFF_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "settingsMeters",
   "announcements",
   "documents",
+  "incidents",
 ]);
 
 export function resolveAdminNavCapabilities(
@@ -83,11 +58,4 @@ export function resolveAdminNavCapabilities(
     showPropertiesList: true,
     propertyModules: FULL_PROPERTY_MODULES,
   };
-}
-
-export function hasPropertyNavModule(
-  capabilities: AdminNavCapabilities,
-  module: PropertyNavModule,
-): boolean {
-  return capabilities.propertyModules.has(module);
 }

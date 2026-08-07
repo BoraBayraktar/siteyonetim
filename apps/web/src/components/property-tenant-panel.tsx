@@ -63,6 +63,7 @@ function PortalSettingsForm({
     portalSettings.showIncomeExpenseReport,
   );
   const [showMemberDebtSummary, setShowMemberDebtSummary] = useState(portalSettings.showMemberDebtSummary);
+  const [showIncidents, setShowIncidents] = useState(portalSettings.showIncidents);
 
   useEffect(() => {
     setShowStatement(portalSettings.showStatement);
@@ -70,6 +71,7 @@ function PortalSettingsForm({
     setShowDocuments(portalSettings.showDocuments);
     setShowIncomeExpenseReport(portalSettings.showIncomeExpenseReport);
     setShowMemberDebtSummary(portalSettings.showMemberDebtSummary);
+    setShowIncidents(portalSettings.showIncidents);
   }, [portalSettings]);
 
   useEffect(() => {
@@ -87,6 +89,7 @@ function PortalSettingsForm({
       <input type="hidden" name="showDocuments" value={showDocuments ? "on" : "off"} />
       <input type="hidden" name="showIncomeExpenseReport" value={showIncomeExpenseReport ? "on" : "off"} />
       <input type="hidden" name="showMemberDebtSummary" value={showMemberDebtSummary ? "on" : "off"} />
+      <input type="hidden" name="showIncidents" value={showIncidents ? "on" : "off"} />
       <label className="flex items-center gap-2 text-sm">
         <Checkbox
           checked={showStatement}
@@ -126,6 +129,14 @@ function PortalSettingsForm({
           disabled={!canMutate}
         />
         {t("showMemberDebtSummary")}
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={showIncidents}
+          onCheckedChange={(value) => setShowIncidents(value === true)}
+          disabled={!canMutate}
+        />
+        {t("showIncidents")}
       </label>
       {canMutate ? (
         <Button type="submit" size="sm" disabled={pending}>

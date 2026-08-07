@@ -122,7 +122,17 @@ function OrgUserFormFields({
           </SelectContent>
         </Select>
         <input type="hidden" name="organizationRole" value={defaultRole} />
-        <p className="text-xs text-muted-foreground">{t(`portalHint.${defaultRole === OrganizationRole.AUDITOR ? "AUDITOR" : "ADMIN"}`)}</p>
+        <p className="text-xs text-muted-foreground">
+          {t(
+            `portalHint.${
+              defaultRole === OrganizationRole.AUDITOR
+                ? "AUDITOR"
+                : defaultRole === OrganizationRole.STAFF
+                  ? "STAFF"
+                  : "ADMIN"
+            }`,
+          )}
+        </p>
       </div>
 
       {needsPropertyScope ? (

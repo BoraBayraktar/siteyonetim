@@ -12,7 +12,7 @@ import {
   resolveAdminOrganizationId,
 } from "@/lib/auth-context";
 import type { StaffPropertyAccess } from "@/lib/staff-admin-access";
-import { staffMetersPath } from "@/lib/staff-admin-access";
+import { staffPropertyHomePath } from "@/lib/staff-admin-access";
 import { getPropertyService } from "@/lib/services";
 
 export type AdminPropertyScope = {
@@ -34,7 +34,7 @@ export async function requireAdminPropertyScope(
   }
 
   if (isStaffRole(session.user.role) && !staffAccess) {
-    redirect(staffMetersPath(locale, propertyId));
+    redirect(staffPropertyHomePath(locale, propertyId));
   }
 
   try {

@@ -4,20 +4,16 @@ import { DocumentCategory, DocumentVisibility } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { canMutateAdminData } from "@/lib/auth-context";
+import { canMutateAdminData, isStaffRole } from "@/lib/auth-context";
+import { resolveStaffPropertyCapabilities } from "@/lib/staff-property-capabilities";
 import { getDocumentService } from "@/lib/services";
 
 export type DocumentActionState = { error?: string; success?: boolean };
 
-async function requireAdminMutate() {
-  const session = await auth();
-  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
-    return null;
-  }
-  if (!canMutateAdminData(session)) {
-    return null;
-  }
-  return session;
+function revalidateDocumentPaths(locale: string, propertyId: string) {
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/documents`, "page");
+  revalidatePath(`/${locale}/staff/properties/${propertyId}/documents`, "page");
+  revalidatePath(`/${locale}/portal`, "page");
 }
 
 export async function createDocumentAction(
@@ -26,13 +22,31 @@ export async function createDocumentAction(
   _prev: DocumentActionState,
   formData: FormData,
 ): Promise<DocumentActionState> {
-  const session = await requireAdminMutate();
-  if (!session) {
+  const session = await auth();
+  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     return { error: "UNAUTHORIZED" };
   }
 
-  const visibility = String(formData.get("visibility") ?? DocumentVisibility.ADMIN_ONLY) as DocumentVisibility;
-  const category = String(formData.get("category") ?? DocumentCategory.OTHER) as DocumentCategory;
+  const caps = await resolveStaffPropertyCapabilities(
+    session,
+    session.user.organizationId,
+    propertyId,
+  );
+  if (!canMutateAdminData(session) && !caps.canUploadDocuments) {
+    return { error: "UNAUTHORIZED" };
+  }
+
+  const isStaffUpload = isStaffRole(session.user.role);
+  let visibility = String(formData.get("visibility") ?? DocumentVisibility.ADMIN_ONLY) as DocumentVisibility;
+  let category = String(formData.get("category") ?? DocumentCategory.OTHER) as DocumentCategory;
+
+  if (isStaffUpload) {
+    visibility = DocumentVisibility.PORTAL_SHARED;
+    if (!Object.values(DocumentCategory).includes(category)) {
+      category = DocumentCategory.OTHER;
+    }
+  }
+
   const unitIdsRaw = String(formData.get("unitIds") ?? "");
   const unitIds = unitIdsRaw
     .split(",")
@@ -59,8 +73,7 @@ export async function createDocumentAction(
       unitIds,
       actorUserId: session.user.id,
     });
-    revalidatePath(`/${locale}/admin/properties/${propertyId}/documents`, "page");
-    revalidatePath(`/${locale}/portal`, "page");
+    revalidateDocumentPaths(locale, propertyId);
     return { success: true };
   } catch (error) {
     if (error instanceof Error) {

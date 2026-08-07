@@ -7,7 +7,8 @@ import { AdminLayoutChrome } from "@/components/admin-layout-chrome";
 import { signOut } from "@/auth";
 import { getAdminSession, listAdminPropertiesNav } from "@/lib/cached-admin";
 import { resolveAdminNavCapabilities } from "@/lib/admin-nav-capabilities";
-import { auditorPortalPath, canManageOrgUsers, isAuditorRole } from "@/lib/auth-context";
+import { auditorPortalPath, canManageOrgUsers, isAuditorRole, isStaffRole } from "@/lib/auth-context";
+import { resolveStaffLandingPath } from "@/lib/staff-landing-path";
 
 type Props = {
   children: React.ReactNode;
@@ -23,6 +24,10 @@ export default async function AdminLayout({ children, params }: Props) {
   }
   if (isAuditorRole(session.user.role)) {
     redirect(auditorPortalPath(locale));
+  }
+  if (isStaffRole(session.user.role)) {
+    const propertiesNav = await listAdminPropertiesNav(session.user.organizationId);
+    redirect(resolveStaffLandingPath(locale, propertiesNav));
   }
 
   async function logoutAction() {

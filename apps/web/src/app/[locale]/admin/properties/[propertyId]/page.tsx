@@ -84,6 +84,7 @@ export default async function PropertyDetailPage({ params, searchParams }: Props
         propertyParties={structureData.propertyParties}
         orgParties={structureData.orgParties}
         utilityProfile={structureData.utilityProfile}
+        staffOpsProfile={structureData.staffOpsProfile}
       />
     </div>
   );

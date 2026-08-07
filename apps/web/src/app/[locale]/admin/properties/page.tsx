@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
 import { isStaffRole, resolveAccessiblePropertyIds } from "@/lib/auth-context";
-import { staffMetersPath } from "@/lib/staff-admin-access";
+import { staffPropertyHomePath } from "@/lib/staff-admin-access";
 import { CreatePropertyForm } from "@/components/create-property-form";
 import { ServerPagination } from "@/components/server-pagination";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +76,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
               <TableBody>
                 {data.items.map((property) => {
                   const detailHref = isStaffUser
-                    ? staffMetersPath(locale, property.id)
+                    ? staffPropertyHomePath(locale, property.id)
                     : `/${locale}/admin/properties/${property.id}/dashboard`;
 
                   return (

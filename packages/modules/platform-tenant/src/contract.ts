@@ -26,6 +26,7 @@ export type PropertyPortalSettingsDto = {
   showAnnouncements: boolean;
   showDocuments: boolean;
   showStatement: boolean;
+  showIncidents: boolean;
 };
 
 export type ProvisionPropertyTenantInput = {
@@ -63,6 +64,7 @@ export type UpsertPortalSettingsInput = {
   showAnnouncements: boolean;
   showDocuments: boolean;
   showStatement: boolean;
+  showIncidents: boolean;
   actorUserId: string;
 };
 

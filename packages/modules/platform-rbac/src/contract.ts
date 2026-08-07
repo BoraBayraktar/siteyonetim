@@ -6,7 +6,7 @@ export type PropertyAccessEntryDto = {
   role: PropertyAccessRole;
 };
 
-export type AdminPortalKind = "ADMIN" | "AUDITOR";
+export type AdminPortalKind = "ADMIN" | "AUDITOR" | "STAFF";
 
 export type OrgUserDto = {
   userId: string;
@@ -102,7 +102,13 @@ export interface PropertyRbacServiceContract {
 }
 
 export function portalKindForOrganizationRole(role: OrganizationRole): AdminPortalKind {
-  return role === OrganizationRole.AUDITOR ? "AUDITOR" : "ADMIN";
+  if (role === OrganizationRole.AUDITOR) {
+    return "AUDITOR";
+  }
+  if (role === OrganizationRole.STAFF) {
+    return "STAFF";
+  }
+  return "ADMIN";
 }
 
 export function organizationRoleToPropertyAccessRole(role: OrganizationRole): PropertyAccessRole {

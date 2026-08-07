@@ -33,6 +33,7 @@ import type {
   DuesContext,
   DuesServiceContract,
   ExportPeriodRegisterInput,
+  ExportUnitDebtDetailInput,
   ExportedPeriodRegisterFile,
   GenerateAccrualInput,
   ListDebtRowsInput,
@@ -45,6 +46,7 @@ import type {
   PortalMemberDebtSummaryDto,
   PortalMemberDebtSummaryInput,
   PortalOpenDebtLineDto,
+  PaymentAllocationInput,
   RecalculateAccrualInput,
   RecordPaymentInput,
   StatementLineDto,
@@ -70,6 +72,7 @@ import {
   buildPeriodRegisterDocument,
   PERIOD_REGISTER_EXPORT_PAGE_SIZE,
 } from "./period-register-export";
+import { buildUnitDebtDetailDocument } from "./unit-debt-detail-export";
 
 function mapDefinition(d: {
   id: string;
@@ -1710,28 +1713,137 @@ export class DuesService implements DuesServiceContract {
     };
   }
 
-  async getUnitDebtDetail(ctx: DuesContext, unitId: string): Promise<UnitDebtDetailDto | null> {
+  async getUnitDebtDetail(
+    ctx: DuesContext,
+    unitId: string,
+    period?: { year: number; month: number },
+  ): Promise<UnitDebtDetailDto | null> {
     await this.assertCtx(ctx);
     const policy = await this.repository.getLateFeePolicy(ctx);
     const dueDay = policy?.dueDayOfMonth ?? 1;
     const lines = await this.repository.listDebtLines(ctx);
-    const row = aggregateDebtRows(lines, dueDay).find((item) => item.unitId === unitId);
+    let row = aggregateDebtRows(lines, dueDay).find((item) => item.unitId === unitId) ?? null;
+
+    if (!row && period) {
+      const unitMeta = await this.repository.getUnitDebtDetailMeta(ctx, unitId);
+      if (!unitMeta) {
+        return null;
+      }
+      const party = unitMeta.occupancies[0]?.party;
+      row = {
+        unitId: unitMeta.id,
+        unitCode: unitMeta.code,
+        blockId: unitMeta.blockId,
+        blockName: unitMeta.block?.name ?? null,
+        partyId: party?.id ?? null,
+        partyName: party?.displayName ?? null,
+        totalDebt: "0",
+        aging0To30: "0",
+        aging31To60: "0",
+        aging61Plus: "0",
+      };
+    }
+
     if (!row) {
       return null;
     }
 
     const openLineRows = await this.repository.listOpenLinesByUnit(ctx, unitId);
-    const openLines = openLineRows.map(mapOpenLine);
+    const scopedOpenLineRows = period
+      ? openLineRows.filter(
+          (line) => line.accrualRun.year === period.year && line.accrualRun.month === period.month,
+        )
+      : openLineRows;
+    const openLines = scopedOpenLineRows.map(mapOpenLine);
 
     let partyId = row.partyId;
+    let partyName = row.partyName;
     if (!partyId) {
-      const partyByUnit = await this.repository.getActivePartyMapByUnit(ctx);
-      partyId = partyByUnit.get(unitId)?.partyId ?? null;
+      const activeParty = await this.repository.getActivePartyByUnit(ctx, unitId);
+      partyId = activeParty?.partyId ?? null;
+      partyName = activeParty?.partyName ?? partyName;
+    }
+    if (!partyId) {
+      const fromOpenLine = openLines.find((line) => line.partyId);
+      partyId = fromOpenLine?.partyId ?? null;
+      partyName = fromOpenLine?.partyName ?? partyName;
     }
 
-    const statement = partyId ? await this.getPartyStatement(ctx, partyId) : [];
+    const enrichedRow =
+      partyId && partyId !== row.partyId
+        ? { ...row, partyId, partyName: partyName ?? row.partyName }
+        : row;
 
-    return { row, openLines, statement };
+    let periodSummary: UnitDebtDetailDto["period"];
+    let statement: StatementLineDto[];
+
+    if (period) {
+      const periodLines = await this.repository.getUnitPeriodAccrualLines(ctx, unitId, period);
+      const periodDebt = periodLines.reduce(
+        (sum, line) => sum.add(line.amount),
+        new Prisma.Decimal(0),
+      );
+      const periodPaid = periodLines.reduce(
+        (sum, line) => sum.add(line.paidAmount),
+        new Prisma.Decimal(0),
+      );
+      periodSummary = {
+        year: period.year,
+        month: period.month,
+        periodDebt: periodDebt.toFixed(2),
+        periodPaid: periodPaid.toFixed(2),
+        periodRemaining: periodDebt.sub(periodPaid).toFixed(2),
+      };
+      statement = await this.buildUnitStatementForPeriod(ctx, unitId, period);
+    } else {
+      statement = partyId ? await this.getPartyStatement(ctx, partyId) : [];
+    }
+
+    return { row: enrichedRow, openLines, statement, period: periodSummary };
+  }
+
+  async exportUnitDebtDetail(input: ExportUnitDebtDetailInput): Promise<ExportedPeriodRegisterFile> {
+    await this.assertCtx(input);
+    const detail = await this.getUnitDebtDetail(
+      input,
+      input.unitId,
+      { year: input.year, month: input.month },
+    );
+    if (!detail) {
+      throw new Error("UNIT_NOT_FOUND");
+    }
+
+    const periodLabel = `${input.month}/${input.year}`;
+    const letterhead = await this.repository.getExportLetterheadMeta(input.organizationId, input.propertyId);
+    const unitLabel = detail.row.blockName
+      ? `${detail.row.blockName} / ${detail.row.unitCode}`
+      : detail.row.unitCode;
+    const document = buildUnitDebtDetailDocument(detail, periodLabel, {
+      locale: input.locale,
+      propertyName: letterhead?.propertyName,
+      organizationName: letterhead?.organizationName,
+      address: letterhead?.address,
+      unitLabel,
+      partyName: detail.row.partyName,
+    });
+    const reportingCore = createReportingCoreService();
+    const rendered = await reportingCore.render(input.format, document);
+
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "dues.unitDebtDetail.export",
+      entityType: "Unit",
+      entityId: input.unitId,
+      metadata: {
+        format: input.format,
+        year: input.year,
+        month: input.month,
+        propertyId: input.propertyId,
+      },
+    });
+
+    return rendered;
   }
 
   async getAccrualContextWarnings(
@@ -1914,7 +2026,25 @@ export class DuesService implements DuesServiceContract {
     let allocations = input.allocations ?? [];
     const manualAllocations = allocations.length > 0 && input.autoAllocate === false;
 
-    if (!manualAllocations && (input.autoAllocate || allocations.length === 0)) {
+    if (manualAllocations) {
+      let left = amount;
+      const adjusted: PaymentAllocationInput[] = [];
+      for (const alloc of allocations) {
+        if (left.lte(0)) break;
+        const cap = new Prisma.Decimal(alloc.amount.replace(",", "."));
+        const slice = minDecimal(left, cap);
+        if (slice.lte(0)) continue;
+        adjusted.push({ dueAccrualLineId: alloc.dueAccrualLineId, amount: slice.toString() });
+        left = left.sub(slice);
+      }
+      if (adjusted.length === 0) {
+        throw new Error("ALLOCATION_SUM_MISMATCH");
+      }
+      if (left.gt(0) && !allowAdvance) {
+        throw new Error("UNALLOCATED_AMOUNT");
+      }
+      allocations = adjusted;
+    } else if (input.autoAllocate || allocations.length === 0) {
       const openLines = await this.repository.fetchOpenLinesForParty(
         input,
         input.partyId,
@@ -1936,14 +2066,11 @@ export class DuesService implements DuesServiceContract {
     }
 
     const allocatedSum = allocations.reduce(
-      (acc, a) => acc.add(new Prisma.Decimal(a.amount)),
+      (acc, a) => acc.add(new Prisma.Decimal(a.amount.replace(",", "."))),
       new Prisma.Decimal(0),
     );
-    if (manualAllocations && !allocatedSum.eq(amount)) {
-      throw new Error("ALLOCATION_SUM_MISMATCH");
-    }
 
-    const allowPartial = !manualAllocations && allowAdvance;
+    const allowPartial = (!manualAllocations && allowAdvance) || (manualAllocations && allowAdvance);
     const payment = await this.repository.recordPaymentTx(input, allocations, amount, allowPartial);
     const advanceAmount = amount.sub(allocatedSum);
 
@@ -2065,6 +2192,59 @@ export class DuesService implements DuesServiceContract {
       rows,
       totalDebt: totalDebt.toString(),
     };
+  }
+
+  private async buildUnitStatementForPeriod(
+    ctx: DuesContext,
+    unitId: string,
+    period: { year: number; month: number },
+  ): Promise<StatementLineDto[]> {
+    const { lines, payments } = await this.repository.getUnitStatementDataForPeriod(ctx, unitId, period);
+    type Event = { date: Date; sort: number; line: StatementLineDto };
+    const events: Event[] = [];
+
+    for (const line of lines) {
+      events.push({
+        date: line.createdAt,
+        sort: 1,
+        line: {
+          kind: "ACCRUAL",
+          date: line.createdAt,
+          label: formatStatementAccrualLabel(line),
+          debit: line.amount.toString(),
+          credit: "0",
+          balance: "0",
+        },
+      });
+    }
+
+    for (const payment of payments) {
+      const allocated = payment.allocations.reduce(
+        (acc, allocation) => acc.add(allocation.amount),
+        new Prisma.Decimal(0),
+      );
+      if (allocated.lte(0)) continue;
+      events.push({
+        date: payment.paymentDate,
+        sort: 2,
+        line: {
+          kind: "PAYMENT",
+          date: payment.paymentDate,
+          label: formatStatementPaymentLabel(payment),
+          debit: "0",
+          credit: allocated.toString(),
+          balance: "0",
+        },
+      });
+    }
+
+    events.sort((a, b) => a.date.getTime() - b.date.getTime() || a.sort - b.sort);
+
+    let balance = new Prisma.Decimal(0);
+    return events.map((event) => {
+      balance = balance.add(event.line.debit).sub(event.line.credit);
+      return { ...event.line, balance: balance.toString() };
+    });
   }
 
   private async buildUnitStatement(ctx: DuesContext, unitId: string): Promise<StatementLineDto[]> {

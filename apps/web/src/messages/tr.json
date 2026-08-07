@@ -137,6 +137,7 @@
     "announcementsModule": "Duyurular",
     "notificationsModule": "SMS / e-posta",
     "documentsModule": "Arşiv",
+    "incidentsModule": "Arızalar",
     "legalInterestModule": "Kanuni faiz",
     "usersModule": "Kullanıcılar & roller",
     "securityModule": "Güvenlik",
@@ -211,6 +212,8 @@
     "noOpenLines": "Açık borç yok.",
     "statementTitle": "Hesap dökümü",
     "recordPayment": "Tahsilat gir",
+    "paymentBlockedNoParty": "Tahsilat için bu taşınmaza malik veya kiracı atanmalı.",
+    "paymentBlockedNoCashbox": "Tahsilat için Tanımlar → Kasa ve banka bölümünden en az bir kasa tanımlayın.",
     "columnStatus": "Durum",
     "columnActions": "İşlemler",
     "viewDetail": "Detayı gör",
@@ -240,11 +243,18 @@
       "DELINQUENT_EQUAL": "Yalnızca borçlular (eşit)"
     },
     "bulkMode": "Toplu tahsilat",
+    "bulkModeExit": "Seçimi kapat",
+    "bulkModeCollect": "Seçilenleri tahsil et",
+    "bulkModeActiveTitle": "Toplu tahsilat modu açık",
+    "bulkModeActiveHint": "Tahsil etmek istediğiniz borç hücrelerine tıklayın. Aynı taşınmazdan birden fazla kalem seçebilirsiniz.",
+    "bulkModeNoneSelected": "Henüz seçim yapılmadı.",
+    "bulkModeSelectedSummary": "{count} kalem seçildi · toplam {amount}",
     "collectSelected": "{count} satırı tahsil et",
     "paymentDate": "Ödeme tarihi",
     "exportCsv": "CSV indir",
     "exportExcel": "Excel indir",
-    "exportPdf": "PDF indir"
+    "exportPdf": "PDF indir",
+    "detailExportExcel": "Excel indir"
   },
   "setup": {
     "title": "Kurulum rehberi",
@@ -406,6 +416,18 @@
     "utilityNotes": "Not",
     "utilitySave": "Kaydet",
     "utilitySaved": "Tesisat profili güncellendi.",
+    "staffOpsTitle": "Görevli yetkileri",
+    "staffOpsDescription": "Bu apartmandaki site görevlisinin portalda yapabileceklerini belirleyin.",
+    "staffOpsAllowAnnouncementDraft": "Duyuru taslağı oluşturma",
+    "staffOpsAllowAnnouncementDraftHint": "Görevli duyuru taslağı kaydedebilir; yönetici yayınlar.",
+    "staffOpsAllowDocumentUpload": "Belge yükleme",
+    "staffOpsAllowDocumentUploadHint": "Görevli paylaşımlı belge yükleyebilir.",
+    "staffOpsAllowIncidents": "Arıza kaydı",
+    "staffOpsAllowIncidentsHint": "Görevli arıza oluşturup durum güncelleyebilir.",
+    "staffOpsStaffCanViewPartyPhone": "Üye telefonu görme",
+    "staffOpsStaffCanViewPartyPhoneHint": "Görevli üye telefon numaralarını görebilir.",
+    "staffOpsSave": "Kaydet",
+    "staffOpsSaved": "Görevli yetkileri güncellendi.",
     "openMeters": "Sayaç endeksleri",
     "heating": {
       "NONE": "Yok / belirtilmedi",
@@ -542,7 +564,11 @@
     "memberDebtAging30": "0–30 gün",
     "memberDebtAging60": "31–60 gün",
     "memberDebtAging61": "61+ gün",
-    "memberDebtEmpty": "Gösterilecek açık borç yok."
+    "memberDebtEmpty": "Gösterilecek açık borç yok.",
+    "incidentsTitle": "Arıza bildirimlerim",
+    "incidentsSubtitle": "Siteye ilettiğiniz arıza kayıtları ve durumları",
+    "incidentsEmpty": "Henüz arıza bildiriminiz yok.",
+    "incidentsCreateFor": "{property} — arıza bildir"
   },
   "propertyTenant": {
     "tenantTitle": "Site kiracısı (tenant)",
@@ -561,6 +587,7 @@
     "showDocuments": "Arşiv",
     "showIncomeExpenseReport": "Gelir-gider raporu",
     "showMemberDebtSummary": "Diğer daire borç özeti",
+    "showIncidents": "Arıza bildirimi",
     "saveSettings": "Ayarları kaydet",
     "isolationTitle": "Veritabanı izolasyonu",
     "isolationSubtitle": "Paylaşımlı şema veya site başına ayrı veritabanı (Neon branch)",
@@ -618,15 +645,17 @@
       "ACCOUNTANT": "Muhasebe",
       "AUDITOR": "Denetçi",
       "BOARD_MEMBER": "Yönetim kurulu",
-      "STAFF": "Personel"
+      "STAFF": "Site görevlisi"
     },
     "portals": {
       "ADMIN": "Yönetim portalı",
-      "AUDITOR": "Denetçi portalı"
+      "AUDITOR": "Denetçi portalı",
+      "STAFF": "Görevli alanı"
     },
     "portalHint": {
       "ADMIN": "Bu rol yönetim portalından giriş yapar.",
-      "AUDITOR": "Denetçi rolü denetçi portalına yönlendirilir."
+      "AUDITOR": "Denetçi rolü denetçi portalına yönlendirilir.",
+      "STAFF": "Site görevlisi görevli alanına (/staff) yönlendirilir; duyuru taslağı ve arşiv yükleme yapabilir."
     },
     "errors": {
       "UNAUTHORIZED": "Bu işlem için yetkiniz yok.",
@@ -1027,6 +1056,9 @@
       "CASHBOX_NOT_FOUND": "Kasa bulunamadı.",
       "PARTY_NOT_FOUND": "Üye bulunamadı.",
       "UNALLOCATED_AMOUNT": "Açık borca mahsup edilemeyen tutar kaldı.",
+      "ALLOCATION_SUM_MISMATCH": "Tahsilat tutarı ile seçilen borç kalemleri uyuşmuyor.",
+      "LINE_NOT_FOUND": "Borç satırı bulunamadı.",
+      "ALLOCATION_EXCEEDS_REMAINING": "Tahsilat tutarı borç satırının kalanından fazla.",
       "RUN_NOT_FOUND": "Borçlandırma bulunamadı.",
       "SHARE_POOL_REQUIRED": "Paylaştırma için toplam tutar gerekli.",
       "METER_KIND_REQUIRED": "Sayaç türü seçin.",
@@ -1170,6 +1202,29 @@
     "propertiesEmpty": "Bu organizasyonda apartman bulunamadı.",
     "openReports": "Raporları görüntüle",
     "readOnlyNotice": "Denetçi hesabı yalnızca rapor görüntüleme ve dışa aktarma yapabilir."
+  },
+  "staffPortal": {
+    "title": "Görevli alanı",
+    "navLabel": "Görevli menüsü",
+    "navHome": "Ana sayfa",
+    "navMeters": "Sayaçlar",
+    "navIncidents": "Arızalar",
+    "navAnnouncements": "Duyurular",
+    "navDocuments": "Arşiv",
+    "homeTitle": "Görevler",
+    "homeSubtitle": "Saha işlemlerine hızlı erişim",
+    "open": "Aç",
+    "switchProperty": "Apartman seç",
+    "propertiesEmptyTitle": "Erişilebilir apartman yok",
+    "propertiesEmpty": "Hesabınıza atanmış apartman bulunmuyor. Yöneticinizle iletişime geçin.",
+    "cardMetersTitle": "Sayaç endeksleri",
+    "cardMetersDescription": "Su, doğalgaz ve diğer sayaç okumalarını girin.",
+    "cardIncidentsTitle": "Arıza kayıtları",
+    "cardIncidentsDescription": "Arıza bildir, durumu güncelle ve takip et.",
+    "cardAnnouncementsTitle": "Duyurular",
+    "cardAnnouncementsDescription": "Yayınlanmış duyuruları görüntüleyin veya taslak oluşturun.",
+    "cardDocumentsTitle": "Arşiv",
+    "cardDocumentsDescription": "Paylaşılan evrakları görüntüleyin ve yükleyin."
   },
   "auditorReport": {
     "assignmentsTitle": "Denetçi atamaları",
@@ -1333,6 +1388,12 @@
   "announcements": {
     "title": "Duyurular",
     "createTitle": "Duyuru yayınla",
+    "createDraftTitle": "Duyuru taslağı",
+    "saveDraft": "Taslak kaydet",
+    "draftSubmitHint": "Taslak yönetici onayından sonra yayınlanır.",
+    "statusDraft": "Taslak",
+    "approvePublish": "Yayınla",
+    "publishing": "Yayınlanıyor…",
     "fieldTitle": "Başlık",
     "fieldBody": "Metin",
     "fieldAudience": "Hedef kitle",
@@ -1383,7 +1444,9 @@
       "PROPERTY_NOT_FOUND": "Apartman bulunamadı.",
       "UNAUTHORIZED": "Yetkisiz işlem.",
       "ANNOUNCEMENT_SAVE_FAILED": "Duyuru kaydedilemedi. Lütfen tekrar deneyin.",
-      "ANNOUNCEMENT_SCHEMA_OUTDATED": "Veritabanı istemcisi güncel değil. Geliştirme sunucusunu durdurup `npm run dev` ile yeniden başlatın."
+      "ANNOUNCEMENT_SCHEMA_OUTDATED": "Veritabanı istemcisi güncel değil. Geliştirme sunucusunu durdurup `npm run dev` ile yeniden başlatın.",
+      "ANNOUNCEMENT_NOT_FOUND": "Duyuru bulunamadı.",
+      "ANNOUNCEMENT_ALREADY_PUBLISHED": "Duyuru zaten yayında."
     }
   },
   "notifications": {
@@ -1428,6 +1491,60 @@
       "UNAUTHORIZED": "Yetkisiz işlem."
     }
   },
+  "incidents": {
+    "title": "Arızalar",
+    "createTitle": "Arıza bildir",
+    "fieldTitle": "Başlık",
+    "fieldDescription": "Açıklama",
+    "fieldCategory": "Kategori",
+    "fieldPriority": "Öncelik",
+    "fieldUnit": "Taşınmaz",
+    "fieldUnitOptional": "Taşınmaz (opsiyonel)",
+    "noUnit": "Belirtilmedi / ortak alan",
+    "submitCreate": "Kaydet",
+    "empty": "Açık arıza kaydı yok.",
+    "reportedBy": "Bildiren: {name}",
+    "actionStart": "İşleme al",
+    "actionClose": "Kapat",
+    "closeWithExpense": "Kapat + gider kaydet",
+    "closeWithExpenseTitle": "Arızayı kapat ve gider kaydet",
+    "closeWithExpenseSubmit": "Kapat ve kaydet",
+    "closeWithExpenseDescriptionPlaceholder": "Boş bırakılırsa arıza başlığı kullanılır",
+    "linkedExpense": "Bağlı gider: {amount} — {category}",
+    "status": {
+      "OPEN": "Açık",
+      "IN_PROGRESS": "Devam ediyor",
+      "CLOSED": "Kapalı"
+    },
+    "priority": {
+      "LOW": "Düşük",
+      "NORMAL": "Normal",
+      "HIGH": "Yüksek",
+      "URGENT": "Acil"
+    },
+    "category": {
+      "ELEVATOR": "Asansör",
+      "PLUMBING": "Tesisat",
+      "ELECTRICAL": "Elektrik",
+      "COMMON_AREA": "Ortak alan",
+      "SECURITY": "Güvenlik",
+      "OTHER": "Diğer"
+    },
+    "errors": {
+      "UNAUTHORIZED": "Yetkisiz işlem.",
+      "INCIDENT_TITLE_REQUIRED": "Başlık zorunlu.",
+      "INCIDENT_DESCRIPTION_REQUIRED": "Açıklama zorunlu.",
+      "INCIDENT_UNIT_INVALID": "Seçilen taşınmaz geçersiz.",
+      "PROPERTY_NOT_FOUND": "Apartman bulunamadı.",
+      "INCIDENT_NOT_FOUND": "Arıza kaydı bulunamadı.",
+      "INCIDENT_STATUS_TRANSITION_DENIED": "Bu durum geçişine izin yok.",
+      "INCIDENT_ALREADY_CLOSED": "Arıza zaten kapalı.",
+      "INCIDENT_EXPENSE_ALREADY_LINKED": "Bu arızaya zaten gider bağlı.",
+      "INCIDENT_PORTAL_DISABLED": "Bu sitede malik arıza bildirimi kapalı.",
+      "INCIDENT_SAVE_FAILED": "Kayıt başarısız. Lütfen tekrar deneyin."
+    },
+    "portalCreateSuccess": "Arıza bildiriminiz alındı."
+  },
   "documents": {
     "title": "Arşiv",
     "uploadTitle": "Belge yükle",
@@ -1438,6 +1555,7 @@
     "fieldFile": "Dosya",
     "fileHint": "PDF, görsel veya Word — en fazla 10 MB.",
     "uploadSubmit": "Yükle",
+    "staffUploadHint": "Yüklenen belgeler apartman sakinleriyle paylaşılan arşive eklenir.",
     "empty": "Henüz belge yok.",
     "download": "İndir",
     "category": {

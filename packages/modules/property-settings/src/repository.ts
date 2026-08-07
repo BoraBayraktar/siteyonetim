@@ -1,6 +1,7 @@
 import { prisma } from "@siteyonetim/db";
 
-import type { PropertyUtilityProfileDto, PropertyWhatsAppProfileDto, UpsertUtilityProfileInput } from "./contract";
+import type { PropertyUtilityProfileDto, PropertyWhatsAppProfileDto, PropertyStaffOpsProfileDto, UpsertUtilityProfileInput, UpsertStaffOpsProfileInput } from "./contract";
+import { DEFAULT_STAFF_OPS_PROFILE } from "./contract";
 
 const notDeleted = { deleted: false };
 
@@ -100,6 +101,52 @@ export class PropertySettingsRepository {
       phoneNumberId: row.phoneNumberId,
       templateName: row.templateName,
       templateLanguage: row.templateLanguage,
+    };
+  }
+
+  async getStaffOpsProfile(organizationId: string, propertyId: string): Promise<PropertyStaffOpsProfileDto> {
+    const row = await prisma.propertyStaffOpsProfile.findFirst({
+      where: { propertyId, organizationId, ...notDeleted },
+    });
+    if (!row) {
+      return { propertyId, ...DEFAULT_STAFF_OPS_PROFILE };
+    }
+    return {
+      propertyId: row.propertyId,
+      allowAnnouncementDraft: row.allowAnnouncementDraft,
+      allowDocumentUpload: row.allowDocumentUpload,
+      allowIncidents: row.allowIncidents,
+      staffCanViewPartyPhone: row.staffCanViewPartyPhone,
+    };
+  }
+
+  async upsertStaffOpsProfile(input: UpsertStaffOpsProfileInput): Promise<PropertyStaffOpsProfileDto> {
+    const row = await prisma.propertyStaffOpsProfile.upsert({
+      where: { propertyId: input.propertyId },
+      create: {
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        allowAnnouncementDraft: input.allowAnnouncementDraft,
+        allowDocumentUpload: input.allowDocumentUpload,
+        allowIncidents: input.allowIncidents,
+        staffCanViewPartyPhone: input.staffCanViewPartyPhone,
+      },
+      update: {
+        allowAnnouncementDraft: input.allowAnnouncementDraft,
+        allowDocumentUpload: input.allowDocumentUpload,
+        allowIncidents: input.allowIncidents,
+        staffCanViewPartyPhone: input.staffCanViewPartyPhone,
+        deleted: false,
+        deletedDate: null,
+        deletedUserId: null,
+      },
+    });
+    return {
+      propertyId: row.propertyId,
+      allowAnnouncementDraft: row.allowAnnouncementDraft,
+      allowDocumentUpload: row.allowDocumentUpload,
+      allowIncidents: row.allowIncidents,
+      staffCanViewPartyPhone: row.staffCanViewPartyPhone,
     };
   }
 }

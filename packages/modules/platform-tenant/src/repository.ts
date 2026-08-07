@@ -162,6 +162,7 @@ export class PropertyTenantRepository {
       showAnnouncements: s.showAnnouncements,
       showDocuments: s.showDocuments,
       showStatement: s.showStatement,
+      showIncidents: s.showIncidents,
     };
   }
 
@@ -181,6 +182,7 @@ export class PropertyTenantRepository {
         showAnnouncements: input.showAnnouncements,
         showDocuments: input.showDocuments,
         showStatement: input.showStatement,
+        showIncidents: input.showIncidents,
       },
       update: {
         showIncomeExpenseReport: input.showIncomeExpenseReport,
@@ -189,6 +191,7 @@ export class PropertyTenantRepository {
         showAnnouncements: input.showAnnouncements,
         showDocuments: input.showDocuments,
         showStatement: input.showStatement,
+        showIncidents: input.showIncidents,
         deleted: false,
         deletedDate: null,
         deletedUserId: null,
@@ -204,6 +207,7 @@ export class PropertyTenantRepository {
       showAnnouncements: saved.showAnnouncements,
       showDocuments: saved.showDocuments,
       showStatement: saved.showStatement,
+      showIncidents: saved.showIncidents,
     };
   }
 

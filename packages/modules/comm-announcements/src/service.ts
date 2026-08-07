@@ -1,4 +1,4 @@
-import { AnnouncementAudience } from "@siteyonetim/db";
+import { AnnouncementAudience, AnnouncementWorkflowStatus } from "@siteyonetim/db";
 import { createAuditService } from "@siteyonetim/platform-audit";
 
 import type {
@@ -9,6 +9,7 @@ import type {
   ListAnnouncementsAdminInput,
   ListAnnouncementsPortalInput,
   PaginatedAnnouncements,
+  PublishAnnouncementInput,
 } from "./contract";
 import {
   ANNOUNCEMENT_BODY_FORMAT,
@@ -74,18 +75,46 @@ export class AnnouncementService implements AnnouncementServiceContract {
       title,
       body,
       bodyFormat,
+      workflowStatus: input.workflowStatus ?? AnnouncementWorkflowStatus.PUBLISHED,
+      createdByUserId: input.createdByUserId ?? input.actorUserId ?? null,
     });
 
     await this.audit.record({
       organizationId: input.organizationId,
       userId: input.actorUserId,
-      action: "announcement.create",
+      action:
+        (input.workflowStatus ?? AnnouncementWorkflowStatus.PUBLISHED) === AnnouncementWorkflowStatus.DRAFT
+          ? "announcement.draft.create"
+          : "announcement.create",
       entityType: "Announcement",
       entityId: created.id,
-      metadata: { propertyId: input.propertyId, audience: input.audience, title },
+      metadata: {
+        propertyId: input.propertyId,
+        audience: input.audience,
+        title,
+        workflowStatus: created.workflowStatus,
+      },
     });
 
     return created;
+  }
+
+  async publish(input: PublishAnnouncementInput): Promise<AnnouncementDto> {
+    const published = await this.repository.publish(input);
+    if (!published) {
+      throw new Error("ANNOUNCEMENT_NOT_FOUND");
+    }
+
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "announcement.publish",
+      entityType: "Announcement",
+      entityId: published.id,
+      metadata: { propertyId: input.propertyId, title: published.title },
+    });
+
+    return published;
   }
 
   async getById(input: GetAnnouncementInput): Promise<AnnouncementDto | null> {
@@ -109,6 +138,8 @@ export class AnnouncementService implements AnnouncementServiceContract {
         publishStartAt: row.publishStartAt,
         publishEndAt: row.publishEndAt,
         unitIds: row.unitTargets.map((t) => t.unitId),
+        workflowStatus: row.workflowStatus,
+        createdByUserId: row.createdByUserId,
         readByUser: false,
       })),
       total,
@@ -134,6 +165,8 @@ export class AnnouncementService implements AnnouncementServiceContract {
         publishStartAt: row.publishStartAt,
         publishEndAt: row.publishEndAt,
         unitIds: row.unitTargets.map((t) => t.unitId),
+        workflowStatus: row.workflowStatus,
+        createdByUserId: row.createdByUserId,
         readByUser: row.reads.some((r) => r.userId === input.userId),
       })),
       total,

@@ -268,10 +268,27 @@ export type AccrualContextPreload = {
   runCorrections?: Record<string, AccrualRunCorrectionDto>;
 };
 
+export type UnitDebtDetailPeriodDto = {
+  year: number;
+  month: number;
+  periodDebt: string;
+  periodPaid: string;
+  periodRemaining: string;
+};
+
 export type UnitDebtDetailDto = {
   row: DebtRowDto;
   openLines: DueAccrualLineDto[];
   statement: StatementLineDto[];
+  period?: UnitDebtDetailPeriodDto;
+};
+
+export type ExportUnitDebtDetailInput = DuesContext & {
+  unitId: string;
+  year: number;
+  month: number;
+  format: ReportExportFormat;
+  locale?: string;
 };
 
 export type AccrualWarningCode =
@@ -477,7 +494,12 @@ export interface DuesServiceContract {
   listPeriodRegister(input: ListPeriodRegisterInput): Promise<PeriodRegisterPageDto>;
   exportPeriodRegister(input: ExportPeriodRegisterInput): Promise<ExportedPeriodRegisterFile>;
   listDebtOverview(input: ListDebtRowsInput): Promise<DebtOverviewDto>;
-  getUnitDebtDetail(ctx: DuesContext, unitId: string): Promise<UnitDebtDetailDto | null>;
+  getUnitDebtDetail(
+    ctx: DuesContext,
+    unitId: string,
+    period?: { year: number; month: number },
+  ): Promise<UnitDebtDetailDto | null>;
+  exportUnitDebtDetail(input: ExportUnitDebtDetailInput): Promise<ExportedPeriodRegisterFile>;
   getAccrualContextWarnings(
     ctx: DuesContext,
     period: { year: number; month: number },

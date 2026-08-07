@@ -1,4 +1,4 @@
-import type { AnnouncementAudience } from "@siteyonetim/db";
+import type { AnnouncementAudience, AnnouncementWorkflowStatus } from "@siteyonetim/db";
 
 import type { AnnouncementBodyFormatValue } from "./body-format";
 
@@ -16,6 +16,8 @@ export type AnnouncementDto = {
   publishStartAt: Date;
   publishEndAt: Date;
   unitIds: string[];
+  workflowStatus: AnnouncementWorkflowStatus;
+  createdByUserId: string | null;
   readByUser: boolean;
 };
 
@@ -31,6 +33,8 @@ export type CreateAnnouncementInput = {
   isPinned?: boolean;
   publishStartAt: Date;
   publishEndAt: Date;
+  workflowStatus?: AnnouncementWorkflowStatus;
+  createdByUserId?: string | null;
   actorUserId?: string | null;
 };
 
@@ -39,6 +43,15 @@ export type ListAnnouncementsAdminInput = {
   propertyId: string;
   page: number;
   pageSize: number;
+  /** When set, include published items and drafts created by this user. */
+  staffViewerId?: string;
+};
+
+export type PublishAnnouncementInput = {
+  organizationId: string;
+  propertyId: string;
+  announcementId: string;
+  actorUserId?: string | null;
 };
 
 export type PaginatedAnnouncements = {
@@ -70,6 +83,7 @@ export type GetAnnouncementInput = {
 
 export interface AnnouncementServiceContract {
   create(input: CreateAnnouncementInput): Promise<AnnouncementDto>;
+  publish(input: PublishAnnouncementInput): Promise<AnnouncementDto>;
   getById(input: GetAnnouncementInput): Promise<AnnouncementDto | null>;
   listForAdmin(input: ListAnnouncementsAdminInput): Promise<PaginatedAnnouncements>;
   listForPortal(input: ListAnnouncementsPortalInput): Promise<PaginatedAnnouncements>;

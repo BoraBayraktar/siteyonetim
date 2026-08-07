@@ -4,6 +4,7 @@ import { createPartyService } from "@siteyonetim/property-parties";
 import { createStaffFinanceService } from "@siteyonetim/property-staff-finance";
 import { createAnnouncementService, createAnnouncementImageService } from "@siteyonetim/comm-announcements";
 import { createNotificationService } from "@siteyonetim/comm-notifications";
+import { createIncidentService } from "@siteyonetim/itsm-incidents";
 import { createDocumentService } from "@siteyonetim/document-management";
 import { createPropertySettingsService } from "@siteyonetim/property-settings";
 import { createGovernanceService } from "@siteyonetim/property-governance";
@@ -99,4 +100,8 @@ export function getBankingService() {
 
 export function getGovernanceService() {
   return createGovernanceService();
+}
+
+export function getIncidentService() {
+  return createIncidentService();
 }

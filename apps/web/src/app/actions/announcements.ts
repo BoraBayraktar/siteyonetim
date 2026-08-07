@@ -1,13 +1,16 @@
 "use server";
 
-import { AnnouncementAudience } from "@siteyonetim/db";
+import { AnnouncementAudience, AnnouncementWorkflowStatus } from "@siteyonetim/db";
 import { resolveAnnouncementBodyFormat } from "@siteyonetim/comm-announcements";
 import { ANNOUNCEMENT_BODY_FORMAT } from "@siteyonetim/comm-announcements/body-format";
 import { resolvePublishWindow } from "@siteyonetim/comm-announcements/publish-window";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { canMutateAdminData } from "@/lib/auth-context";
+import {
+  canPublishAnnouncements,
+} from "@/lib/auth-context";
+import { resolveStaffPropertyCapabilities } from "@/lib/staff-property-capabilities";
 import { getAnnouncementImageService, getAnnouncementService } from "@/lib/services";
 
 export type AnnouncementActionState = { error?: string; success?: boolean };
@@ -23,6 +26,8 @@ const KNOWN_ANNOUNCEMENT_ERRORS = new Set([
   "PROPERTY_NOT_FOUND",
   "ANNOUNCEMENT_PUBLISH_DATES_REQUIRED",
   "ANNOUNCEMENT_PUBLISH_END_BEFORE_START",
+  "ANNOUNCEMENT_NOT_FOUND",
+  "ANNOUNCEMENT_ALREADY_PUBLISHED",
 ]);
 
 function mapAnnouncementActionError(error: Error): string {
@@ -35,12 +40,47 @@ function mapAnnouncementActionError(error: Error): string {
   return "ANNOUNCEMENT_SAVE_FAILED";
 }
 
-async function requireAdminMutate() {
+function revalidateAnnouncementPaths(locale: string, propertyId: string) {
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/announcements`, "page");
+  revalidatePath(`/${locale}/staff/properties/${propertyId}/announcements`, "page");
+  revalidatePath(`/${locale}/portal`, "page");
+}
+
+async function requireAnnouncementWrite(propertyId: string, saveMode: "draft" | "publish") {
   const session = await auth();
   if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
     return null;
   }
-  if (!canMutateAdminData(session)) {
+  if (saveMode === "publish" && !canPublishAnnouncements(session)) {
+    return null;
+  }
+  if (saveMode === "draft") {
+    const caps = await resolveStaffPropertyCapabilities(
+      session,
+      session.user.organizationId,
+      propertyId,
+    );
+    if (!caps.canCreateAnnouncementDraft) {
+      return null;
+    }
+  }
+  return session;
+}
+
+async function requireAnnouncementImageUpload(propertyId: string) {
+  const session = await auth();
+  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
+    return null;
+  }
+  if (canPublishAnnouncements(session)) {
+    return session;
+  }
+  const caps = await resolveStaffPropertyCapabilities(
+    session,
+    session.user.organizationId,
+    propertyId,
+  );
+  if (!caps.canCreateAnnouncementDraft) {
     return null;
   }
   return session;
@@ -52,7 +92,8 @@ export async function createAnnouncementAction(
   _prev: AnnouncementActionState,
   formData: FormData,
 ): Promise<AnnouncementActionState> {
-  const session = await requireAdminMutate();
+  const saveMode = formData.get("saveMode") === "draft" ? "draft" : "publish";
+  const session = await requireAnnouncementWrite(propertyId, saveMode);
   if (!session) {
     return { error: "UNAUTHORIZED" };
   }
@@ -83,14 +124,46 @@ export async function createAnnouncementAction(
       isPinned: formData.get("isPinned") === "on",
       publishStartAt,
       publishEndAt,
+      workflowStatus:
+        saveMode === "draft" ? AnnouncementWorkflowStatus.DRAFT : AnnouncementWorkflowStatus.PUBLISHED,
+      createdByUserId: session.user.id,
       actorUserId: session.user.id,
     });
-    revalidatePath(`/${locale}/admin/properties/${propertyId}/announcements`, "page");
-    revalidatePath(`/${locale}/portal`, "page");
+    revalidateAnnouncementPaths(locale, propertyId);
     return { success: true };
   } catch (error) {
     if (error instanceof Error) {
       console.error("createAnnouncementAction failed:", error.message);
+      return { error: mapAnnouncementActionError(error) };
+    }
+    throw error;
+  }
+}
+
+export async function publishAnnouncementAction(
+  locale: string,
+  propertyId: string,
+  announcementId: string,
+): Promise<AnnouncementActionState> {
+  const session = await auth();
+  if (!session?.user?.organizationId || session.user.sessionKind !== "ADMIN") {
+    return { error: "UNAUTHORIZED" };
+  }
+  if (!canPublishAnnouncements(session)) {
+    return { error: "UNAUTHORIZED" };
+  }
+
+  try {
+    await getAnnouncementService().publish({
+      organizationId: session.user.organizationId,
+      propertyId,
+      announcementId,
+      actorUserId: session.user.id,
+    });
+    revalidateAnnouncementPaths(locale, propertyId);
+    return { success: true };
+  } catch (error) {
+    if (error instanceof Error) {
       return { error: mapAnnouncementActionError(error) };
     }
     throw error;
@@ -110,7 +183,7 @@ export async function uploadAnnouncementImageAction(
   propertyId: string,
   formData: FormData,
 ): Promise<{ url?: string; error?: string }> {
-  const session = await requireAdminMutate();
+  const session = await requireAnnouncementImageUpload(propertyId);
   if (!session) {
     return { error: "UNAUTHORIZED" };
   }

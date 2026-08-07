@@ -3,9 +3,9 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
-import { canMutateAdminData, isStaffRole } from "@/lib/auth-context";
+import { canMutateAdminData, canUploadDocuments, isStaffRole } from "@/lib/auth-context";
 import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
-import { staffMetersPath } from "@/lib/staff-admin-access";
+import { staffPropertyHomePath } from "@/lib/staff-admin-access";
 import { DocumentsAdminPanel } from "@/components/documents-admin-panel";
 import { Button } from "@/components/ui/button";
 import { getDocumentService, getPropertyService, getUnitService } from "@/lib/services";
@@ -39,7 +39,7 @@ export default async function PropertyDocumentsPage({ params, searchParams }: Pr
   const t = await getTranslations("documents");
   const tCommon = await getTranslations("common");
   const backHref = isStaffRole(session.user.role)
-    ? staffMetersPath(locale, propertyId)
+    ? staffPropertyHomePath(locale, propertyId)
     : `/${locale}/admin/properties/${propertyId}`;
 
   const [data, unitsPage] = await Promise.all([
@@ -69,6 +69,7 @@ export default async function PropertyDocumentsPage({ params, searchParams }: Pr
         pageSize={data.pageSize}
         total={data.total}
         units={unitsPage.items}
+        canUpload={canUploadDocuments(session)}
         canMutate={canMutateAdminData(session)}
       />
     </div>

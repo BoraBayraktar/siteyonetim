@@ -211,6 +211,33 @@ enum AnnouncementBodyFormat {
   HTML
 }
 
+enum AnnouncementWorkflowStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum IncidentPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum IncidentCategory {
+  ELEVATOR
+  PLUMBING
+  ELECTRICAL
+  COMMON_AREA
+  SECURITY
+  OTHER
+}
+
 enum OutboxChannel {
   EMAIL
   SMS
@@ -324,6 +351,7 @@ model Organization {
   announcements    Announcement[]
   outboxMessages   OutboxMessage[]
   documents        Document[]
+  incidents        Incident[]
   bankStatementImports BankStatementImport[]
 }
 
@@ -353,6 +381,8 @@ model User {
   portalParty        Party?           @relation("PortalUser")
   announcementReads  AnnouncementRead[]
   uploadedDocuments  Document[]
+  createdAnnouncements Announcement[] @relation("AnnouncementCreatedBy")
+  reportedIncidents    Incident[]       @relation("IncidentReportedBy")
 }
 
 model UserOrganization {
@@ -431,6 +461,8 @@ model Property {
   bankStatementImports BankStatementImport[]
   bankWebhookProfile PropertyBankWebhookProfile?
   generalAssemblyMeetings GeneralAssemblyMeeting[]
+  incidents               Incident[]
+  staffOpsProfile         PropertyStaffOpsProfile?
 
   @@index([organizationId, deleted])
 }
@@ -470,6 +502,7 @@ model PropertyPortalSettings {
   showAnnouncements       Boolean  @default(true)
   showDocuments           Boolean  @default(true)
   showStatement           Boolean  @default(true)
+  showIncidents           Boolean  @default(true)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
@@ -519,6 +552,7 @@ model PortalUnitCredential {
   propertyTenant PropertyTenant @relation(fields: [propertyTenantId], references: [id])
   property       Property       @relation(fields: [propertyId], references: [id])
   unit           Unit           @relation(fields: [unitId], references: [id])
+  incidents      Incident[]
 
   @@index([propertyId, deleted])
   @@index([propertyTenantId, deleted])
@@ -605,6 +639,7 @@ model Unit {
   unitMeters            UnitMeter[]
   portalCredential      PortalUnitCredential?
   assemblyAttendances   AssemblyAttendance[]
+  incidents             Incident[]
 
   @@unique([propertyId, code])
   @@index([propertyId, deleted])
@@ -892,6 +927,7 @@ model LedgerEntry {
   cashbox       Cashbox?        @relation(fields: [cashboxId], references: [id])
   cashboxMovement CashboxMovement?
   staffMovements StaffAccountMovement[]
+  linkedIncident  Incident?
 
   @@index([propertyId, entryDate])
   @@index([financePeriodId])
@@ -1052,6 +1088,8 @@ model Announcement {
   publishedAt    DateTime             @default(now())
   publishStartAt DateTime
   publishEndAt   DateTime
+  workflowStatus AnnouncementWorkflowStatus @default(PUBLISHED)
+  createdByUserId String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
@@ -1062,11 +1100,13 @@ model Announcement {
   organization Organization             @relation(fields: [organizationId], references: [id])
   property     Property                 @relation(fields: [propertyId], references: [id])
   block        Block?                   @relation(fields: [blockId], references: [id])
+  createdBy    User?                    @relation("AnnouncementCreatedBy", fields: [createdByUserId], references: [id])
   unitTargets  AnnouncementUnitTarget[]
   reads        AnnouncementRead[]
 
   @@index([organizationId, propertyId, deleted, publishedAt])
   @@index([organizationId, propertyId, deleted, publishStartAt, publishEndAt])
+  @@index([organizationId, propertyId, deleted, workflowStatus])
   @@index([blockId])
 }
 
@@ -1093,6 +1133,41 @@ model AnnouncementRead {
 
   @@unique([announcementId, userId])
   @@index([userId])
+}
+
+model Incident {
+  id               String           @id @default(cuid())
+  organizationId   String
+  propertyId       String
+  title            String
+  description      String           @db.Text
+  status           IncidentStatus   @default(OPEN)
+  priority         IncidentPriority @default(NORMAL)
+  category         IncidentCategory @default(OTHER)
+  unitId                   String?
+  reportedByUserId         String?
+  reportedByCredentialId   String?
+  reporterDisplayName      String
+  ledgerEntryId            String?          @unique
+  closedAt                 DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  property     Property     @relation(fields: [propertyId], references: [id])
+  unit         Unit?                 @relation(fields: [unitId], references: [id])
+  reportedBy   User?                 @relation("IncidentReportedBy", fields: [reportedByUserId], references: [id])
+  reportedByCredential PortalUnitCredential? @relation(fields: [reportedByCredentialId], references: [id])
+  ledgerEntry          LedgerEntry?          @relation(fields: [ledgerEntryId], references: [id])
+
+  @@index([organizationId, propertyId, deleted, status, createdAt])
+  @@index([unitId])
+  @@index([reportedByUserId])
+  @@index([reportedByCredentialId])
 }
 
 model OutboxMessage {
@@ -1174,6 +1249,26 @@ model PropertyUtilityProfile {
   notes            String?            @db.Text
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model PropertyStaffOpsProfile {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  propertyId             String   @unique
+  allowAnnouncementDraft Boolean  @default(true)
+  allowDocumentUpload    Boolean  @default(true)
+  allowIncidents         Boolean  @default(true)
+  staffCanViewPartyPhone Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   deleted       Boolean   @default(false)
   deletedDate   DateTime?

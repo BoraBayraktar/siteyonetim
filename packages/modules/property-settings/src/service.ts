@@ -2,8 +2,10 @@ import { createAuditService } from "@siteyonetim/platform-audit";
 
 import type {
   PropertySettingsServiceContract,
+  PropertyStaffOpsProfileDto,
   PropertyUtilityProfileDto,
   PropertyWhatsAppProfileDto,
+  UpsertStaffOpsProfileInput,
   UpsertUtilityProfileInput,
   UpsertWhatsAppProfileInput,
 } from "./contract";
@@ -77,6 +79,31 @@ export class PropertySettingsService implements PropertySettingsServiceContract 
       return envDefault;
     }
     return null;
+  }
+
+  async getStaffOpsProfile(organizationId: string, propertyId: string): Promise<PropertyStaffOpsProfileDto> {
+    return this.repository.getStaffOpsProfile(organizationId, propertyId);
+  }
+
+  async upsertStaffOpsProfile(input: UpsertStaffOpsProfileInput): Promise<PropertyStaffOpsProfileDto> {
+    const ok = await this.repository.propertyExists(input.organizationId, input.propertyId);
+    if (!ok) throw new Error("PROPERTY_NOT_FOUND");
+
+    const saved = await this.repository.upsertStaffOpsProfile(input);
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "property.staffOpsProfile.upsert",
+      entityType: "PropertyStaffOpsProfile",
+      entityId: input.propertyId,
+      metadata: {
+        allowAnnouncementDraft: input.allowAnnouncementDraft,
+        allowDocumentUpload: input.allowDocumentUpload,
+        allowIncidents: input.allowIncidents,
+        staffCanViewPartyPhone: input.staffCanViewPartyPhone,
+      },
+    });
+    return saved;
   }
 }
 

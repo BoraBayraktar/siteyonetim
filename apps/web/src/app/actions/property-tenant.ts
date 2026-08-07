@@ -41,6 +41,7 @@ export async function updatePortalSettingsAction(
       showAnnouncements: formData.get("showAnnouncements") === "on",
       showDocuments: formData.get("showDocuments") === "on",
       showStatement: formData.get("showStatement") === "on",
+      showIncidents: formData.get("showIncidents") === "on",
       actorUserId: session.user.id,
     });
 

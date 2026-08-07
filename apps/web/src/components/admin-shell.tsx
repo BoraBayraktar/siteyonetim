@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { AdminSidebar } from "@/components/admin-sidebar";
 import type { AdminPropertyNavItem } from "@/lib/admin-property-nav";
-import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities";
+import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities-types";
 
 type Props = {
   locale: string;

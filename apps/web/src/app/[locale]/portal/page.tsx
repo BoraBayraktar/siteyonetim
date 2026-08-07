@@ -11,6 +11,7 @@ import {
   getAnnouncementService,
   getDocumentService,
   getDuesService,
+  getIncidentService,
   getOccupancyService,
   getPropertyTenantService,
   getReportingService,
@@ -29,7 +30,7 @@ export default async function PortalPage({ params }: Props) {
     redirect(`/${locale}/portal/login`);
   }
   if (session.user.sessionKind !== "PORTAL") {
-    redirect(await getAdminLandingPathForOrganization(locale, session.user.organizationId));
+    redirect(await getAdminLandingPathForOrganization(locale, session.user.organizationId, session.user.role));
   }
 
   const dues = getDuesService();
@@ -78,7 +79,15 @@ export default async function PortalPage({ params }: Props) {
     .filter(([, context]) => context.settings?.showMemberDebtSummary === true)
     .map(([id]) => id);
 
-  const [openDebt, openDebtLines, statement, announcements, documents, incomeExpenseReports, memberDebtSummaries] =
+  const incidentPropertyIds = [...propertyContexts.entries()]
+    .filter(([, context]) => context.settings?.showIncidents !== false)
+    .map(([id]) => id);
+
+  const propertyNames = Object.fromEntries(
+    units.map((unit) => [unit.propertyId, unit.propertyName]),
+  );
+
+  const [openDebt, openDebtLines, statement, announcements, documents, incomeExpenseReports, memberDebtSummaries, incidentsData] =
     await Promise.all([
       unitPortal && propertyId && unitId
         ? dues.getPortalOpenDebtForUnit(propertyId, unitId)
@@ -126,6 +135,16 @@ export default async function PortalPage({ params }: Props) {
           });
         }),
       ),
+      incidentPropertyIds.length > 0
+        ? getIncidentService().listForPortal({
+            organizationId: session.user.organizationId,
+            reporterUserId: isUnitPortalSession(session) ? null : session.user.id,
+            reporterCredentialId: session.user.credentialId ?? null,
+            propertyIds: incidentPropertyIds,
+            page: 1,
+            pageSize: 20,
+          })
+        : Promise.resolve({ items: [], total: 0, page: 1, pageSize: 20 }),
     ]);
 
   return (
@@ -144,14 +163,20 @@ export default async function PortalPage({ params }: Props) {
         statement={statement}
         announcements={announcements.items}
         documents={documents.items}
+        incidents={incidentsData.items}
+        propertyNames={propertyNames}
         incomeExpenseReports={incomeExpenseReports}
         memberDebtSummaries={memberDebtSummaries}
+        fixedPropertyId={unitPortal && propertyId ? propertyId : undefined}
+        fixedUnitId={unitPortal && unitId ? unitId : undefined}
+        showIncidentsSection={incidentPropertyIds.length > 0}
         primarySettings={
           primarySettings
             ? {
                 showStatement: primarySettings.showStatement,
                 showAnnouncements: primarySettings.showAnnouncements,
                 showDocuments: primarySettings.showDocuments,
+                showIncidents: primarySettings.showIncidents,
               }
             : null
         }
