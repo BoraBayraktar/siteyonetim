@@ -48,6 +48,11 @@ export type PaginatedStaffStatement = {
   pageSize: number;
 };
 
+export type StaffFinanceSummaryDto = {
+  activeCount: number;
+  totalPayable: string;
+};
+
 export type ListStaffProfilesInput = StaffFinanceContext & {
   page: number;
   pageSize: number;
@@ -103,6 +108,7 @@ export type ExportStaffAccountsResult = {
 
 export interface StaffFinanceServiceContract {
   listStaffProfiles(input: ListStaffProfilesInput): Promise<PaginatedStaffProfiles>;
+  getStaffSummary(input: StaffFinanceContext): Promise<StaffFinanceSummaryDto>;
   createStaffProfile(input: CreateStaffProfileInput): Promise<StaffProfileDto>;
   updateStaffProfile(input: UpdateStaffProfileInput): Promise<StaffProfileDto>;
   listStatement(input: ListStaffStatementInput): Promise<PaginatedStaffStatement>;

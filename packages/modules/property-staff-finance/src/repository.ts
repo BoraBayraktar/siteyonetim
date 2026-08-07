@@ -5,6 +5,7 @@ import {
   FinancePeriodStatus,
   LedgerEntryType,
   Prisma,
+  StaffEmploymentStatus,
   StaffMovementType,
   prisma,
 } from "@siteyonetim/db";
@@ -53,6 +54,30 @@ export class StaffFinanceRepository {
       prisma.propertyStaffProfile.count({ where }),
     ]);
     return { rows, total };
+  }
+
+  async getStaffSummary(ctx: StaffFinanceContext) {
+    const rows = await prisma.propertyStaffProfile.findMany({
+      where: {
+        organizationId: ctx.organizationId,
+        propertyId: ctx.propertyId,
+        status: StaffEmploymentStatus.ACTIVE,
+        ...notDeleted,
+      },
+      select: {
+        financeAccount: { select: { balance: true } },
+      },
+    });
+
+    const totalPayable = rows.reduce(
+      (sum, row) => sum.add(row.financeAccount.balance),
+      new Prisma.Decimal(0),
+    );
+
+    return {
+      activeCount: rows.length,
+      totalPayable,
+    };
   }
 
   async listAllStaffProfiles(ctx: StaffFinanceContext) {

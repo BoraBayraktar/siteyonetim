@@ -7,7 +7,7 @@ import { isTenantDatabaseIsolationEnabled } from "@/lib/platform-features";
 import { PropertyDashboardPanel } from "@/components/property-dashboard-panel";
 import { PropertyTenantPanel } from "@/components/property-tenant-panel";
 import { Button } from "@/components/ui/button";
-import { getFinanceService, getPropertyTenantService, getReportingService, getUnitService } from "@/lib/services";
+import { getFinanceService, getPropertyTenantService, getReportingService, getStaffFinanceService, getUnitService } from "@/lib/services";
 
 type Props = {
   params: Promise<{ locale: string; propertyId: string }>;
@@ -54,11 +54,12 @@ export default async function PropertyDashboardPage({ params }: Props) {
   const reporting = getReportingService();
   const finance = getFinanceService();
 
-  const [dashboard, setup, recentLedgerPage, unitsPage] = await Promise.all([
+  const [dashboard, setup, recentLedgerPage, unitsPage, staffSummary] = await Promise.all([
     reporting.propertyDashboard(filter),
     reporting.propertySetupStatus(organizationId, propertyId),
     finance.listLedger({ ...ctx, page: 1, pageSize: 5 }),
     getUnitService().list({ organizationId, propertyId, page: 1, pageSize: 500 }),
+    getStaffFinanceService().getStaffSummary(ctx),
   ]);
 
   const t = await getTranslations("dashboard");
@@ -84,6 +85,7 @@ export default async function PropertyDashboardPage({ params }: Props) {
         dashboard={dashboard}
         setup={setup}
         recentLedger={recentLedgerPage.items}
+        staffSummary={staffSummary}
       />
 
       <PropertyTenantPanel

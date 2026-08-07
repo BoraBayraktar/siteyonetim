@@ -9,6 +9,7 @@ import type {
   ListStaffStatementInput,
   RecordStaffMovementInput,
   StaffAccountMovementDto,
+  StaffFinanceContext,
   StaffFinanceServiceContract,
   StaffProfileDto,
   UpdateStaffProfileInput,
@@ -105,6 +106,15 @@ export class StaffFinanceService implements StaffFinanceServiceContract {
       total,
       page: input.page,
       pageSize: input.pageSize,
+    };
+  }
+
+  async getStaffSummary(input: StaffFinanceContext) {
+    await this.assertProperty(input);
+    const summary = await this.repository.getStaffSummary(input);
+    return {
+      activeCount: summary.activeCount,
+      totalPayable: summary.totalPayable.toString(),
     };
   }
 

@@ -4,7 +4,8 @@ import { LedgerEntryType } from "@siteyonetim/db";
 import type { LedgerEntryDto } from "@siteyonetim/finance-core";
 import type { AccrualContextWarningsDto } from "@siteyonetim/finance-dues";
 import type { PropertySetupStatusDto, PropertyDashboardDto } from "@siteyonetim/reporting-standard";
-import { AlertTriangle, ArrowRight, Building2, Coins, Receipt, Wallet } from "lucide-react";
+import type { StaffFinanceSummaryDto } from "@siteyonetim/property-staff-finance";
+import { AlertTriangle, ArrowRight, Building2, Coins, Receipt, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -20,6 +21,7 @@ type Props = {
   dashboard: PropertyDashboardDto;
   setup: PropertySetupStatusDto;
   recentLedger: LedgerEntryDto[];
+  staffSummary: StaffFinanceSummaryDto;
 };
 
 function money(value: string, locale: string) {
@@ -42,7 +44,14 @@ function formatEntryDate(date: Date, locale: string) {
   }).format(date);
 }
 
-export function PropertyDashboardPanel({ locale, propertyId, dashboard, setup, recentLedger }: Props) {
+export function PropertyDashboardPanel({
+  locale,
+  propertyId,
+  dashboard,
+  setup,
+  recentLedger,
+  staffSummary,
+}: Props) {
   const t = useTranslations("dashboard");
   const tFinance = useTranslations("finance");
   const router = useRouter();
@@ -78,25 +87,45 @@ export function PropertyDashboardPanel({ locale, propertyId, dashboard, setup, r
       icon: Building2,
       hint: t("kpiOverdueUnitsHint"),
     },
+    {
+      key: "staffPayable",
+      label: t("kpiStaffPayable"),
+      value: money(staffSummary.totalPayable, locale),
+      icon: Users,
+      hint: t("kpiStaffPayableHint", { count: staffSummary.activeCount }),
+      href: `${base}/dues?tab=staffAccounts`,
+    },
   ] as const;
 
   return (
     <div className="space-y-6">
       <PropertySetupChecklist locale={locale} propertyId={propertyId} setup={setup} />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpiCards.map((card) => (
-          <Card key={card.key}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
-              <card.icon className="size-4 text-muted-foreground" aria-hidden />
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold tracking-tight">{card.value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{card.hint}</p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {kpiCards.map((card) => {
+          const content = (
+            <>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
+                <card.icon className="size-4 text-muted-foreground" aria-hidden />
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold tracking-tight">{card.value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{card.hint}</p>
+              </CardContent>
+            </>
+          );
+
+          if ("href" in card && card.href) {
+            return (
+              <Link key={card.key} href={card.href} className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <Card className="h-full transition-colors hover:bg-muted/30">{content}</Card>
+              </Link>
+            );
+          }
+
+          return <Card key={card.key}>{content}</Card>;
+        })}
       </div>
 
       <Card>
@@ -112,6 +141,9 @@ export function PropertyDashboardPanel({ locale, propertyId, dashboard, setup, r
           </Button>
           <Button variant="outline" asChild>
             <Link href={`${base}/dues?tab=expenses`}>{t("recordExpense")}</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`${base}/dues?tab=staffAccounts`}>{t("manageStaffAccounts")}</Link>
           </Button>
           <Button variant="ghost" asChild>
             <Link href={`${base}/reports`}>

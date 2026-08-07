@@ -12,6 +12,7 @@ function revalidateStaffFinance(locale: string, propertyId: string) {
   revalidatePath(`/${locale}/admin/properties/${propertyId}/dues`, "page");
   revalidatePath(`/${locale}/admin/properties/${propertyId}/finance`, "page");
   revalidatePath(`/${locale}/admin/properties/${propertyId}/dashboard`, "page");
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/reports`, "page");
 }
 
 async function adminContext() {
