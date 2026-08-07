@@ -251,13 +251,16 @@
     "progress": "{completed} of {total} steps completed",
     "stepCount": "{count} records",
     "goToStep": "Complete",
+    "optionalTitle": "Optional",
+    "optionalHint": "Recommended when you employ on-site staff",
     "steps": {
       "BLOCKS": "Block definitions",
       "UNITS": "Properties",
       "PARTIES_OCCUPANCY": "Owner and tenant assignments",
       "DUES_DEFINITIONS": "Billing groups",
       "CASHBOX": "Cash & bank",
-      "FIRST_ACCRUAL": "First billing"
+      "FIRST_ACCRUAL": "First billing",
+      "STAFF_PROFILE": "Staff account"
     }
   },
   "accrualContext": {

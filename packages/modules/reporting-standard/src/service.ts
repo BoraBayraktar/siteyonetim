@@ -543,10 +543,22 @@ export class StandardReportingService implements StandardReportingContract {
     ];
 
     const completedCount = steps.filter((step) => step.complete).length;
+    const staffProfileComplete = counts.staffProfileCount > 0;
+    const optionalSteps: PropertySetupStepDto[] = staffProfileComplete
+      ? []
+      : [
+          {
+            id: "STAFF_PROFILE",
+            complete: false,
+            current: counts.staffProfileCount,
+            target: 1,
+          },
+        ];
 
     return {
       propertyId,
       steps,
+      optionalSteps,
       completedCount,
       totalCount: steps.length,
       isComplete: completedCount === steps.length,

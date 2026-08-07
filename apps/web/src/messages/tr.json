@@ -251,13 +251,16 @@
     "progress": "{completed} / {total} adım tamamlandı",
     "stepCount": "{count} kayıt",
     "goToStep": "Tamamla",
+    "optionalTitle": "İsteğe bağlı",
+    "optionalHint": "Kapıcı veya site personeli varsa önerilir",
     "steps": {
       "BLOCKS": "Blok tanımları",
       "UNITS": "Taşınmazlar",
       "PARTIES_OCCUPANCY": "Malik ve kiracı atamaları",
       "DUES_DEFINITIONS": "Borçlandırma grupları",
       "CASHBOX": "Kasa ve banka",
-      "FIRST_ACCRUAL": "İlk borçlandırma"
+      "FIRST_ACCRUAL": "İlk borçlandırma",
+      "STAFF_PROFILE": "Personel carisi"
     }
   },
   "accrualContext": {

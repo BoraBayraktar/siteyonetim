@@ -29,6 +29,8 @@ function stepHref(locale: string, propertyId: string, stepId: PropertySetupStepI
       return `${base}/dues?tab=cashboxes`;
     case "FIRST_ACCRUAL":
       return `${base}/dues?tab=accrual`;
+    case "STAFF_PROFILE":
+      return `${base}/dues?tab=staffAccounts`;
     default:
       return base;
   }
@@ -47,7 +49,7 @@ function stepProgress(step: PropertySetupStatusDto["steps"][number]): string | n
 export function PropertySetupChecklist({ locale, propertyId, setup }: Props) {
   const t = useTranslations("setup");
 
-  if (setup.isComplete) {
+  if (setup.isComplete && setup.optionalSteps.length === 0) {
     return null;
   }
 
@@ -56,42 +58,70 @@ export function PropertySetupChecklist({ locale, propertyId, setup }: Props) {
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <div>
           <CardTitle className="text-base">{t("title")}</CardTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("progress", { completed: setup.completedCount, total: setup.totalCount })}
-          </p>
+          {!setup.isComplete ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("progress", { completed: setup.completedCount, total: setup.totalCount })}
+            </p>
+          ) : null}
         </div>
       </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {setup.steps.map((step) => {
-            const progress = stepProgress(step);
-            return (
-              <li
-                key={step.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  {step.complete ? (
-                    <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden />
-                  ) : (
-                    <Circle className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{t(`steps.${step.id}`)}</p>
-                    {progress ? (
-                      <p className="text-xs text-muted-foreground">{t("stepCount", { count: progress })}</p>
-                    ) : null}
+      <CardContent className="space-y-4">
+        {!setup.isComplete ? (
+          <ul className="space-y-2">
+            {setup.steps.map((step) => {
+              const progress = stepProgress(step);
+              return (
+                <li
+                  key={step.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    {step.complete ? (
+                      <CheckCircle2 className="size-4 shrink-0 text-primary" aria-hidden />
+                    ) : (
+                      <Circle className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{t(`steps.${step.id}`)}</p>
+                      {progress ? (
+                        <p className="text-xs text-muted-foreground">{t("stepCount", { count: progress })}</p>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-                {!step.complete ? (
+                  {!step.complete ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={stepHref(locale, propertyId, step.id)}>{t("goToStep")}</Link>
+                    </Button>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+        {setup.optionalSteps.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">{t("optionalTitle")}</p>
+            <ul className="space-y-2">
+              {setup.optionalSteps.map((step) => (
+                <li
+                  key={step.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed px-3 py-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Circle className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{t(`steps.${step.id}`)}</p>
+                      <p className="text-xs text-muted-foreground">{t("optionalHint")}</p>
+                    </div>
+                  </div>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={stepHref(locale, propertyId, step.id)}>{t("goToStep")}</Link>
                   </Button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

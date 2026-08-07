@@ -23,7 +23,7 @@ import type {
 } from "@siteyonetim/property-staff-finance";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 
 import {
   closePeriodAction,
@@ -485,6 +485,20 @@ function StaffMovementForm({
   const categoryType = expenseMovements.includes(movementType)
     ? FinanceCategoryType.EXPENSE
     : FinanceCategoryType.INCOME;
+  const matchingCategories = useMemo(
+    () => categories.filter((category) => category.type === categoryType),
+    [categories, categoryType],
+  );
+
+  useEffect(() => {
+    if (matchingCategories.length === 0) {
+      setCategoryId("");
+      return;
+    }
+    if (!matchingCategories.some((category) => category.id === categoryId)) {
+      setCategoryId(matchingCategories[0]!.id);
+    }
+  }, [matchingCategories, categoryId]);
 
   return (
     <FormDrawer triggerLabel={t("addStaffMovement")} title={profile.partyName} success={state.success}>
@@ -514,13 +528,11 @@ function StaffMovementForm({
               <SelectValue placeholder={t("noneSelected")} />
             </SelectTrigger>
             <SelectContent>
-              {categories
-                .filter((c) => c.type === categoryType)
-                .map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
+              {matchingCategories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -553,7 +565,7 @@ function StaffMovementForm({
           <Input id={`staff-description-${profile.id}`} name="description" />
         </div>
         <FinanceError code={state.error} t={t} />
-        <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+        <Button type="submit" disabled={pending || !categoryId} className="w-full sm:w-auto">
           {t("addStaffMovement")}
         </Button>
       </form>

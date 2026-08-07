@@ -197,7 +197,8 @@ export type PropertySetupStepId =
   | "PARTIES_OCCUPANCY"
   | "DUES_DEFINITIONS"
   | "CASHBOX"
-  | "FIRST_ACCRUAL";
+  | "FIRST_ACCRUAL"
+  | "STAFF_PROFILE";
 
 export type PropertySetupStepDto = {
   id: PropertySetupStepId;
@@ -209,6 +210,7 @@ export type PropertySetupStepDto = {
 export type PropertySetupStatusDto = {
   propertyId: string;
   steps: PropertySetupStepDto[];
+  optionalSteps: PropertySetupStepDto[];
   completedCount: number;
   totalCount: number;
   isComplete: boolean;

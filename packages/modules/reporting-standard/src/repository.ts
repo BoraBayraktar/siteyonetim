@@ -178,6 +178,7 @@ export class StandardReportRepository {
       definitionCount,
       cashboxCount,
       postedAccrualCount,
+      staffProfileCount,
     ] = await Promise.all([
       prisma.property.findFirst({
         where: { id: propertyId, organizationId, ...notDeleted },
@@ -203,6 +204,13 @@ export class StandardReportRepository {
           ...notDeleted,
         },
       }),
+      prisma.propertyStaffProfile.count({
+        where: {
+          propertyId,
+          organizationId,
+          deleted: false,
+        },
+      }),
     ]);
 
     return {
@@ -213,6 +221,7 @@ export class StandardReportRepository {
       definitionCount,
       cashboxCount,
       postedAccrualCount,
+      staffProfileCount,
     };
   }
 
