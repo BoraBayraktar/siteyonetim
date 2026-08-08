@@ -21,6 +21,9 @@
   "engines": {
     "node": ">=20"
   },
+  "overrides": {
+    "jsdom": "25.0.1"
+  },
   "devDependencies": {
     "vitest": "^4.1.10"
   }
