@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import { getServerDOMPurify } from "@siteyonetim/platform-sanitize";
 
 const ALLOWED_TAGS = [
   "p",
@@ -21,7 +21,7 @@ let hooksConfigured = false;
 
 function configureSanitizerHooks() {
   if (hooksConfigured) return;
-  DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
+  getServerDOMPurify().addHook("uponSanitizeAttribute", (_node, data) => {
     if (data.attrName === "href" || data.attrName === "src") {
       data.attrValue = "";
     }
@@ -31,7 +31,7 @@ function configureSanitizerHooks() {
 
 export function sanitizeAuditorHtml(html: string): string {
   configureSanitizerHooks();
-  return DOMPurify.sanitize(html, {
+  return getServerDOMPurify().sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR: [],
   }).trim();
@@ -39,7 +39,7 @@ export function sanitizeAuditorHtml(html: string): string {
 
 export function stripAuditorHtml(html: string): string {
   configureSanitizerHooks();
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] })
+  return getServerDOMPurify().sanitize(html, { ALLOWED_TAGS: [] })
     .replace(/\s+/g, " ")
     .trim();
 }

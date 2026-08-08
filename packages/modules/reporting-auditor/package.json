@@ -10,7 +10,7 @@
     "@siteyonetim/platform-audit": "*",
     "@siteyonetim/platform-rbac": "*",
     "@siteyonetim/platform-cache": "*",
-    "@siteyonetim/reporting-standard": "*",
-    "isomorphic-dompurify": "^3.19.0"
+    "@siteyonetim/platform-sanitize": "*",
+    "@siteyonetim/reporting-standard": "*"
   }
 }

@@ -28,12 +28,15 @@ const nextConfig: NextConfig = {
     "@siteyonetim/property-settings",
     "@siteyonetim/property-meters",
     "@siteyonetim/reporting-standard",
+    "@siteyonetim/reporting-auditor",
     "@siteyonetim/reporting-core",
     "@siteyonetim/platform-files",
     "@siteyonetim/platform-audit",
     "@siteyonetim/platform-cache",
     "@siteyonetim/platform-jobs",
+    "@siteyonetim/platform-sanitize",
   ],
+  serverExternalPackages: ["jsdom"],
 };
 
 export default withNextIntl(nextConfig);

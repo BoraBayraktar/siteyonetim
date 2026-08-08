@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import { getServerDOMPurify } from "@siteyonetim/platform-sanitize";
 
 import {
   ANNOUNCEMENT_BODY_FORMAT,
@@ -38,7 +38,7 @@ function configureSanitizerHooks() {
   if (hooksConfigured) {
     return;
   }
-  DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
+  getServerDOMPurify().addHook("uponSanitizeAttribute", (node, data) => {
     if (data.attrName === "src" && node.tagName === "IMG") {
       if (!IMAGE_SRC_PATTERN.test(data.attrValue)) {
         data.attrValue = "";
@@ -56,7 +56,7 @@ function configureSanitizerHooks() {
 
 export function sanitizeAnnouncementHtml(html: string): string {
   configureSanitizerHooks();
-  return DOMPurify.sanitize(html, {
+  return getServerDOMPurify().sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
   }).trim();
@@ -64,7 +64,7 @@ export function sanitizeAnnouncementHtml(html: string): string {
 
 export function stripAnnouncementHtml(html: string): string {
   configureSanitizerHooks();
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] })
+  return getServerDOMPurify().sanitize(html, { ALLOWED_TAGS: [] })
     .replace(/\s+/g, " ")
     .trim();
 }

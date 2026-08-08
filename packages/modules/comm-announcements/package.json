@@ -13,6 +13,6 @@
     "@siteyonetim/db": "*",
     "@siteyonetim/platform-audit": "*",
     "@siteyonetim/platform-files": "^0.1.0",
-    "isomorphic-dompurify": "^3.19.0"
+    "@siteyonetim/platform-sanitize": "*"
   }
 }
