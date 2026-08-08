@@ -162,6 +162,19 @@ export class NotificationRepository {
     return Boolean(row);
   }
 
+  async hasMeterReadingReminderOutbox(organizationId: string, sourceId: string) {
+    const row = await prisma.outboxMessage.findFirst({
+      where: {
+        organizationId,
+        sourceType: "MeterReadingReminder",
+        sourceId,
+        deleted: false,
+        status: { in: [OutboxStatus.PENDING, OutboxStatus.SENT] },
+      },
+    });
+    return Boolean(row);
+  }
+
   async findUserEmail(userId: string) {
     const user = await prisma.user.findFirst({
       where: { id: userId, deleted: false },
@@ -374,6 +387,50 @@ export function buildAccrualDraftReminderRows(input: {
     subject,
     body,
     sourceType: "AccrualDraftReminder",
+    sourceId,
+  }));
+}
+
+const METER_KIND_LABELS: Record<string, string> = {
+  HOT_WATER: "Sıcak su",
+  COLD_WATER: "Soğuk su",
+  HEATING: "Isınma",
+  GAS: "Doğalgaz",
+};
+
+export function buildMeterReadingReminderRows(input: {
+  organizationId: string;
+  propertyId: string;
+  propertyName: string;
+  year: number;
+  month: number;
+  missingReadingCount: number;
+  meterKinds: string[];
+  recipientEmails: string[];
+  appBaseUrl: string;
+}) {
+  const sourceId = `${input.propertyId}:${input.year}:${input.month}`;
+  const path = `/tr/admin/properties/${input.propertyId}/meters`;
+  const link = input.appBaseUrl ? `${input.appBaseUrl.replace(/\/$/, "")}${path}` : path;
+  const kindsLabel = input.meterKinds.map((kind) => METER_KIND_LABELS[kind] ?? kind).join(", ");
+  const subject = `Eksik sayaç okuması — ${input.propertyName} (${input.month}/${input.year})`;
+  const body = [
+    `${input.propertyName} apartmanında ${input.month}/${input.year} dönemi için ${input.missingReadingCount} adet eksik sayaç okuması var.`,
+    kindsLabel ? `Sayaç türleri: ${kindsLabel}` : null,
+    "Lütfen sayaç ekranından okumaları tamamlayın.",
+    `Bağlantı: ${link}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return input.recipientEmails.map((email) => ({
+    organizationId: input.organizationId,
+    propertyId: input.propertyId,
+    channel: OutboxChannel.EMAIL,
+    recipient: email,
+    subject,
+    body,
+    sourceType: "MeterReadingReminder",
     sourceId,
   }));
 }

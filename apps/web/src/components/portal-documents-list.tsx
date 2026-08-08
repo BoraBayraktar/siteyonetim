@@ -31,7 +31,9 @@ export function PortalDocumentsList({ items }: Props) {
           <div className="min-w-0">
             <p className="font-medium">{item.title}</p>
             <div className="mt-1 flex flex-wrap gap-2">
-              <Badge variant="outline">{t(`documentCategory.${item.category}`)}</Badge>
+              <Badge variant="outline">
+                {t(`documentCategory.${item.category}`, { defaultMessage: item.category })}
+              </Badge>
               <span className="text-xs text-muted-foreground">
                 {item.fileName} · {formatBytes(item.sizeBytes)}
               </span>

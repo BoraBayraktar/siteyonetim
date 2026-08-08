@@ -44,6 +44,11 @@ type Props = {
   showIncidentsSection: boolean;
   fixedPropertyId?: string;
   fixedUnitId?: string;
+  onlinePayment?: {
+    propertyId: string;
+    partyId: string;
+    unitId?: string;
+  } | null;
 };
 
 function money(value: string, locale: string) {
@@ -78,6 +83,7 @@ export async function PortalDashboard({
   showIncidentsSection,
   fixedPropertyId,
   fixedUnitId,
+  onlinePayment,
 }: Props) {
   const t = await getTranslations("portal");
   const unreadAnnouncements = announcements.filter((item) => !item.readByUser).length;
@@ -196,6 +202,8 @@ export async function PortalDashboard({
         locale={locale}
         lines={openDebtLines}
         showMultipleUnits={showMultipleUnits}
+        openDebt={openDebt}
+        onlinePayment={onlinePayment}
       />
 
       <section className="grid gap-6 xl:grid-cols-2">

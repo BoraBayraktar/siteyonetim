@@ -49,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { FinancePanelTab } from "@/lib/finance-tab";
+import { useEnumLabel } from "@/lib/use-enum-label";
 
 const initial: FinanceActionState = {};
 const staffInitial: StaffFinanceActionState = {};
@@ -434,23 +435,8 @@ function AccountsPanel({
   );
 }
 
-function movementLabel(type: StaffMovementType, t: ReturnType<typeof useTranslations>) {
-  switch (type) {
-    case StaffMovementType.SALARY_ACCRUAL:
-      return t("staffMovementSalary");
-    case StaffMovementType.ADVANCE:
-      return t("staffMovementAdvance");
-    case StaffMovementType.PAYMENT:
-      return t("staffMovementPayment");
-    case StaffMovementType.ADVANCE_OFFSET:
-      return t("staffMovementAdvanceOffset");
-    case StaffMovementType.DEDUCTION:
-      return t("staffMovementDeduction");
-    case StaffMovementType.BONUS:
-      return t("staffMovementBonus");
-    default:
-      return t("staffMovementAdjustment");
-  }
+function movementLabel(type: StaffMovementType, labelEnum: ReturnType<typeof useEnumLabel>) {
+  return labelEnum("StaffMovementType", type);
 }
 
 function StaffMovementForm({
@@ -468,6 +454,7 @@ function StaffMovementForm({
   cashboxes: CashboxDto[];
   t: ReturnType<typeof useTranslations>;
 }) {
+  const labelEnum = useEnumLabel();
   const [state, action, pending] = useActionState(
     recordStaffMovementAction.bind(null, locale, propertyId, profile.id),
     staffInitial,
@@ -524,7 +511,7 @@ function StaffMovementForm({
             <SelectContent>
               {Object.values(StaffMovementType).map((type) => (
                 <SelectItem key={type} value={type}>
-                  {movementLabel(type, t)}
+                  {movementLabel(type, labelEnum)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -659,6 +646,7 @@ function StaffAccountsPanel({
   selectedStaffProfileId?: string | null;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const labelEnum = useEnumLabel();
   const [state, action, pending] = useActionState(
     createStaffProfileAction.bind(null, locale, propertyId),
     staffInitial,
@@ -795,7 +783,7 @@ function StaffAccountsPanel({
                   <TableBody>
                     {staffStatement.items.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell>{movementLabel(row.movementType, t)}</TableCell>
+                        <TableCell>{movementLabel(row.movementType, labelEnum)}</TableCell>
                         <TableCell>{money(row.amount, locale)}</TableCell>
                         <TableCell>
                           {row.periodMonth}/{row.periodYear}

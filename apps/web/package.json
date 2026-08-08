@@ -24,6 +24,7 @@
     "@siteyonetim/document-management": "*",
     "@siteyonetim/finance-core": "*",
     "@siteyonetim/finance-banking": "*",
+    "@siteyonetim/payments-gateway": "*",
     "@siteyonetim/property-governance": "*",
     "@siteyonetim/finance-dues": "*",
     "@siteyonetim/itsm-incidents": "*",

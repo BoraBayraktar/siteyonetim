@@ -9,6 +9,7 @@ export type RunMonthlyJobInput = {
 export type RunLateFeeMonthlyInput = RunMonthlyJobInput;
 export type RunDueAccrualMonthlyInput = RunMonthlyJobInput;
 export type RunAccrualDraftReminderInput = RunMonthlyJobInput;
+export type RunMeterReadingReminderInput = RunMonthlyJobInput;
 
 export type RunAuditorQuarterReminderInput = {
   year: number;
@@ -41,6 +42,13 @@ export type AccrualReminderPropertyResult = {
 };
 
 export type RunAccrualDraftReminderResult = {
+  year: number;
+  month: number;
+  properties: AccrualReminderPropertyResult[];
+  outbox: { processed: number; sent: number; failed: number };
+};
+
+export type RunMeterReadingReminderResult = {
   year: number;
   month: number;
   properties: AccrualReminderPropertyResult[];
@@ -91,5 +99,6 @@ export interface JobServiceContract {
   runLateFeeMonthly(input: RunLateFeeMonthlyInput): Promise<RunLateFeeMonthlyResult>;
   runDueAccrualMonthly(input: RunDueAccrualMonthlyInput): Promise<RunDueAccrualMonthlyResult>;
   runAccrualDraftReminders(input: RunAccrualDraftReminderInput): Promise<RunAccrualDraftReminderResult>;
+  runMeterReadingReminders(input: RunMeterReadingReminderInput): Promise<RunMeterReadingReminderResult>;
   runAuditorQuarterReminders(input: RunAuditorQuarterReminderInput): Promise<RunAuditorQuarterReminderResult>;
 }

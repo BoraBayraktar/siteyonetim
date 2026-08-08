@@ -12,7 +12,8 @@ import { ReportsPanel } from "@/components/reports-panel";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { auditorPortalPath, assertAdminPropertyAccess, isAuditorRole } from "@/lib/auth-context";
-import { getBlockService, getAuditorReportService, getFinanceService, getPropertyService, getReportingService } from "@/lib/services";
+import { getBlockService, getAuditorReportService, getDuesService, getFinanceService, getPropertyService, getReportingService } from "@/lib/services";
+import { mergePeriods, periodsFromAccrualRuns } from "@/lib/period-options";
 
 const KINDS: StandardReportKind[] = [
   "ANNUAL_INCOME_EXPENSE",
@@ -75,6 +76,9 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
 
   const reporting = getReportingService();
   const finance = getFinanceService();
+  const ctx = { organizationId, propertyId, actorUserId: session.user.id };
+  const accrualRuns = await getDuesService().listAccrualRuns(ctx);
+  const reportPeriods = mergePeriods(periodsFromAccrualRuns(accrualRuns, true), [{ year, month }]);
   const blocksPage = await getBlockService().list({ organizationId, propertyId, page: 1, pageSize: 200 });
   const recentExports = await reporting.listReportExports(organizationId, propertyId, 8);
   const categories = await finance.listCategories({ organizationId, propertyId });
@@ -147,6 +151,7 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
           aging={aging}
           annual={annual}
           recentExports={recentExports}
+          periods={reportPeriods}
           readOnly
           reportKinds={KINDS}
         />

@@ -2,6 +2,7 @@ import { DueAccrualLineKind } from "@siteyonetim/db";
 import type { PortalOpenDebtLineDto } from "@siteyonetim/finance-dues";
 import { getTranslations } from "next-intl/server";
 
+import { PortalOnlinePaymentButton } from "@/components/portal-online-payment-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +12,12 @@ type Props = {
   locale: string;
   lines: PortalOpenDebtLineDto[];
   showMultipleUnits: boolean;
+  openDebt: string;
+  onlinePayment?: {
+    propertyId: string;
+    partyId: string;
+    unitId?: string;
+  } | null;
 };
 
 function money(value: string, locale: string) {
@@ -45,7 +52,13 @@ function displayDefinition(line: PortalOpenDebtLineDto) {
   return line.dueDefinitionName;
 }
 
-export async function PortalOpenDebtSection({ locale, lines, showMultipleUnits }: Props) {
+export async function PortalOpenDebtSection({
+  locale,
+  lines,
+  showMultipleUnits,
+  openDebt,
+  onlinePayment,
+}: Props) {
   const t = await getTranslations("portal");
 
   return (
@@ -112,6 +125,15 @@ export async function PortalOpenDebtSection({ locale, lines, showMultipleUnits }
             </Table>
           </ScrollArea>
         )}
+        {onlinePayment ? (
+          <PortalOnlinePaymentButton
+            locale={locale}
+            propertyId={onlinePayment.propertyId}
+            partyId={onlinePayment.partyId}
+            unitId={onlinePayment.unitId}
+            openDebt={openDebt}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );

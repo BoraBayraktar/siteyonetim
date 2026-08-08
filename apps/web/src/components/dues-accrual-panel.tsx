@@ -18,6 +18,7 @@ import { AccrualContextAlerts } from "@/components/accrual-context-alerts";
 import { AccrualFiltersBar } from "@/components/accrual-filters-bar";
 import { AccrualRunDetail } from "@/components/accrual-run-detail";
 import { FormDrawer } from "@/components/form-drawer";
+import { YearMonthFormFields } from "@/components/year-month-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AccrualFilters } from "@/lib/accrual-filters";
 import { filterAccrualLines, filterAccrualRuns } from "@/lib/accrual-filters";
+import { periodsFromAccrualRuns, withCurrentPeriod } from "@/lib/period-options";
 import { isSupplierLateFeeDefinition, needsTotalBill } from "@/lib/dues-definition-form";
 import { SUPPLIER_LATE_FEE_ALLOCATION_MODES } from "@/lib/supplier-late-fee";
 
@@ -106,6 +108,11 @@ export function DuesAccrualPanel({
   const filteredRuns = useMemo(
     () => filterAccrualRuns(runs, filters, runLinesByRunId),
     [runs, filters, runLinesByRunId],
+  );
+
+  const generatePeriods = useMemo(
+    () => withCurrentPeriod(periodsFromAccrualRuns(runs)),
+    [runs],
   );
 
   const defaultRunId = useMemo(() => {
@@ -188,24 +195,15 @@ export function DuesAccrualPanel({
                   <p className="mt-1 text-xs">{t("accrualSupplierLateFeeHint")}</p>
                 </div>
               ) : null}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-2">
-                  <Label htmlFor="year">{t("year")}</Label>
-                  <Input id="year" name="year" type="number" defaultValue={now.getFullYear()} required />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="month">{t("month")}</Label>
-                  <Input
-                    id="month"
-                    name="month"
-                    type="number"
-                    min={1}
-                    max={12}
-                    defaultValue={now.getMonth() + 1}
-                    required
-                  />
-                </div>
-              </div>
+              <YearMonthFormFields
+                periods={generatePeriods}
+                defaultYear={now.getFullYear()}
+                defaultMonth={now.getMonth() + 1}
+                yearLabel={t("year")}
+                monthLabel={t("month")}
+                yearId="accrual-gen-year"
+                monthId="accrual-gen-month"
+              />
               {selectedDef && needsTotalBill(selectedDef.calculationMode) ? (
                 <div className="grid gap-3">
                   <div className="grid gap-2">

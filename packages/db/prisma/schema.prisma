@@ -108,6 +108,19 @@ enum PaymentChannel {
   BANK
 }
 
+enum PaymentProvider {
+  IYZICO
+}
+
+enum PaymentIntentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
 enum DueCalculationMode {
   FIXED
   AREA_M2
@@ -162,6 +175,7 @@ enum JobType {
   LATE_FEE_MONTHLY
   DUE_ACCRUAL_MONTHLY
   ACCRUAL_DRAFT_REMINDER
+  METER_READING_REMINDER
   REPORT_EXPORT
   AUDITOR_QUARTER_REMINDER
   BANK_STATEMENT_SYNC
@@ -460,6 +474,8 @@ model Property {
   auditorReports    AuditorReport[]
   bankStatementImports BankStatementImport[]
   bankWebhookProfile PropertyBankWebhookProfile?
+  paymentProfile         PropertyPaymentProfile?
+  paymentIntents         PaymentIntent[]
   generalAssemblyMeetings GeneralAssemblyMeeting[]
   incidents               Incident[]
   staffOpsProfile         PropertyStaffOpsProfile?
@@ -669,6 +685,7 @@ model Party {
   staffProfiles   PropertyStaffProfile[]
   dueAccrualLines DueAccrualLine[]
   payments        Payment[]
+  paymentIntents  PaymentIntent[]
 
   @@index([organizationId, deleted])
   @@index([email])
@@ -873,6 +890,7 @@ model Cashbox {
   payments     Payment[]
   bankStatementImports BankStatementImport[]
   bankWebhookProfiles PropertyBankWebhookProfile[]
+  paymentProfiles     PropertyPaymentProfile[]
 
   @@unique([propertyId, name])
   @@index([propertyId, deleted])
@@ -1038,6 +1056,8 @@ model Payment {
   paymentDate      DateTime       @default(now())
   documentNo       String?
   description      String?
+  externalReference String?
+  paymentIntentId   String?        @unique
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -1050,6 +1070,7 @@ model Payment {
   cashbox        Cashbox             @relation(fields: [cashboxId], references: [id])
   financeAccount FinanceAccount?     @relation(fields: [financeAccountId], references: [id])
   party          Party?              @relation(fields: [partyId], references: [id])
+  paymentIntent  PaymentIntent?      @relation(fields: [paymentIntentId], references: [id])
   allocations    PaymentAllocation[]
   bankStatementMatches BankStatementLine[] @relation("PaymentBankMatch")
 
@@ -1559,6 +1580,59 @@ model PropertyBankWebhookProfile {
   cashbox  Cashbox? @relation(fields: [cashboxId], references: [id])
 
   @@index([organizationId, deleted])
+}
+
+model PropertyPaymentProfile {
+  id               String          @id @default(cuid())
+  organizationId   String
+  propertyId       String          @unique
+  provider         PaymentProvider @default(IYZICO)
+  enabled          Boolean         @default(false)
+  apiKey           String?
+  secretEnc        String?
+  sandbox          Boolean         @default(true)
+  defaultCashboxId String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deleted          Boolean         @default(false)
+  deletedDate      DateTime?
+  deletedUserId    String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+  cashbox  Cashbox? @relation(fields: [defaultCashboxId], references: [id])
+
+  @@index([organizationId, deleted])
+}
+
+model PaymentIntent {
+  id                String              @id @default(cuid())
+  organizationId    String
+  propertyId        String
+  partyId           String
+  unitId            String?
+  provider          PaymentProvider
+  status            PaymentIntentStatus @default(PENDING)
+  amount            Decimal             @db.Decimal(14, 2)
+  currency          String              @default("TRY")
+  conversationId    String              @unique
+  providerToken     String?
+  providerPaymentId String?
+  locale            String              @default("tr")
+  expiresAt         DateTime?
+  failureReason     String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deleted           Boolean             @default(false)
+  deletedDate       DateTime?
+  deletedUserId     String?
+
+  property Property @relation(fields: [propertyId], references: [id])
+  party    Party    @relation(fields: [partyId], references: [id])
+  payment  Payment?
+
+  @@index([propertyId, status, deleted])
+  @@index([partyId, deleted])
+  @@index([providerToken])
 }
 
 model GeneralAssemblyMeeting {

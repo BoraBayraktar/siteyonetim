@@ -9,6 +9,7 @@ import type {
   EnqueueAccrualDraftReminderInput,
   EnqueueAnnouncementNotificationsInput,
   EnqueueAuditorQuarterReminderInput,
+  EnqueueMeterReadingReminderInput,
   EnqueueReportExportReadyInput,
   ListOutboxInput,
   NotificationServiceContract,
@@ -27,6 +28,7 @@ import {
 import {
   buildAccrualDraftReminderRows,
   buildAuditorQuarterReminderRows,
+  buildMeterReadingReminderRows,
   buildOutboxRowsForAnnouncement,
   buildReportExportReadyRows,
   NotificationRepository,
@@ -147,6 +149,50 @@ export class NotificationService implements NotificationServiceContract {
       entityType: "Property",
       entityId: input.propertyId,
       metadata: { year: input.year, month: input.month, enqueued, draftRunCount: input.draftRunCount },
+    });
+
+    return { enqueued };
+  }
+
+  async enqueueMeterReadingReminder(input: EnqueueMeterReadingReminderInput): Promise<{ enqueued: number }> {
+    const sourceId = `${input.propertyId}:${input.year}:${input.month}`;
+    const already = await this.repository.hasMeterReadingReminderOutbox(input.organizationId, sourceId);
+    if (already) {
+      return { enqueued: 0 };
+    }
+
+    const emails = await this.repository.findOrgNotifierEmails(input.organizationId);
+    if (emails.length === 0) {
+      throw new Error("NOTIFICATION_NO_RECIPIENTS");
+    }
+
+    const rows = buildMeterReadingReminderRows({
+      organizationId: input.organizationId,
+      propertyId: input.propertyId,
+      propertyName: input.propertyName,
+      year: input.year,
+      month: input.month,
+      missingReadingCount: input.missingReadingCount,
+      meterKinds: input.meterKinds,
+      recipientEmails: emails,
+      appBaseUrl: process.env.APP_URL ?? "",
+    });
+
+    const enqueued = await this.repository.createMessages(rows);
+
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "notification.meterReadingReminder.enqueue",
+      entityType: "Property",
+      entityId: input.propertyId,
+      metadata: {
+        year: input.year,
+        month: input.month,
+        enqueued,
+        missingReadingCount: input.missingReadingCount,
+        meterKinds: input.meterKinds,
+      },
     });
 
     return { enqueued };

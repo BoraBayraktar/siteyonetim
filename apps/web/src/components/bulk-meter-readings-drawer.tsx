@@ -8,9 +8,9 @@ import { useTranslations } from "next-intl";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
 import { bulkRecordMeterReadingsAction, type BulkReadingActionState } from "@/app/actions/meters";
+import { YearMonthFilterSelects } from "@/components/year-month-select";
 import { MeterIndexInput, sanitizeMeterIndexInput } from "@/components/meter-index-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -21,6 +21,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { buildPeriodFilterOptions, periodsFromMeterReadings, withCurrentPeriod } from "@/lib/period-options";
 
 const initial: BulkReadingActionState = {};
 
@@ -94,6 +95,16 @@ export function BulkMeterReadingsDrawer({ locale, propertyId, meters, readingsBy
     [meters, kind],
   );
 
+  const readingPeriods = useMemo(
+    () => withCurrentPeriod(periodsFromMeterReadings(readingsByMeterId)),
+    [readingsByMeterId],
+  );
+
+  const { years, months } = useMemo(
+    () => buildPeriodFilterOptions(readingPeriods, { year, month }),
+    [readingPeriods, year, month],
+  );
+
   const previousPeriod = useMemo(() => prevPeriod(year, month), [year, month]);
 
   const formKey = `${kind}-${year}-${month}-${open ? "open" : "closed"}`;
@@ -136,6 +147,8 @@ export function BulkMeterReadingsDrawer({ locale, propertyId, meters, readingsBy
 
           <form action={action} className="flex min-h-0 flex-1 flex-col" key={formKey}>
             <input type="hidden" name="kind" value={kind} />
+            <input type="hidden" name="year" value={year} />
+            <input type="hidden" name="month" value={month} />
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-6">
@@ -155,30 +168,22 @@ export function BulkMeterReadingsDrawer({ locale, propertyId, meters, readingsBy
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="bulk-year">{t("year")}</Label>
-                    <Input
-                      id="bulk-year"
-                      name="year"
-                      type="number"
-                      value={year}
-                      onChange={(event) => setYear(Number(event.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="bulk-month">{t("month")}</Label>
-                    <Input
-                      id="bulk-month"
-                      name="month"
-                      type="number"
-                      min={1}
-                      max={12}
-                      value={month}
-                      onChange={(event) => setMonth(Number(event.target.value))}
-                      required
-                    />
-                  </div>
+                  <YearMonthFilterSelects
+                    years={years}
+                    months={months}
+                    year={year}
+                    month={month}
+                    onYearChange={(nextYear) => {
+                      const nextMonths = buildPeriodFilterOptions(readingPeriods, { year: nextYear, month }).months;
+                      setYear(nextYear);
+                      setMonth(nextMonths.includes(month) ? month : (nextMonths[0] ?? month));
+                    }}
+                    onMonthChange={setMonth}
+                    yearLabel={t("year")}
+                    monthLabel={t("month")}
+                    yearId="bulk-year"
+                    monthId="bulk-month"
+                  />
                 </div>
 
                 {metersForKind.length === 0 ? (

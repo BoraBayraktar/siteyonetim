@@ -7,6 +7,7 @@ import {
   FinanceAccountKind,
   FinancePeriodStatus,
   OccupancyRole,
+  PaymentChannel,
   Prisma,
   prisma,
 } from "@siteyonetim/db";
@@ -226,6 +227,54 @@ export class DuesRepository {
       year,
       month,
       draftRunCount: row.count,
+    }));
+  }
+
+  async listPropertiesWithActiveMeterDefinitions() {
+    const rows = await prisma.dueDefinition.findMany({
+      where: {
+        active: true,
+        ...notDeleted,
+        calculationMode: {
+          in: [DueCalculationMode.METER_CONSUMPTION, DueCalculationMode.METER_ALLOCATED_BILL],
+        },
+        meterKind: { not: null },
+        property: { ...notDeleted },
+      },
+      select: {
+        organizationId: true,
+        propertyId: true,
+        meterKind: true,
+        property: { select: { name: true } },
+      },
+    });
+
+    const map = new Map<
+      string,
+      { organizationId: string; propertyId: string; propertyName: string; meterKinds: Set<NonNullable<(typeof rows)[number]["meterKind"]>> }
+    >();
+
+    for (const row of rows) {
+      if (!row.meterKind) continue;
+      const key = `${row.organizationId}:${row.propertyId}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.meterKinds.add(row.meterKind);
+      } else {
+        map.set(key, {
+          organizationId: row.organizationId,
+          propertyId: row.propertyId,
+          propertyName: row.property.name,
+          meterKinds: new Set([row.meterKind]),
+        });
+      }
+    }
+
+    return [...map.values()].map((row) => ({
+      organizationId: row.organizationId,
+      propertyId: row.propertyId,
+      propertyName: row.propertyName,
+      meterKinds: [...row.meterKinds],
     }));
   }
 
@@ -1198,6 +1247,7 @@ export class DuesRepository {
         data: {
           organizationId: input.organizationId,
           propertyId: input.propertyId,
+          channel: input.channel ?? PaymentChannel.MANUAL,
           amount,
           cashboxId: input.cashboxId,
           financeAccountId: account.id,
@@ -1205,6 +1255,8 @@ export class DuesRepository {
           paymentDate: input.paymentDate ?? new Date(),
           documentNo: input.documentNo ?? null,
           description: input.description ?? null,
+          externalReference: input.externalReference ?? null,
+          paymentIntentId: input.paymentIntentId ?? null,
         },
       });
 
@@ -1494,6 +1546,26 @@ export class DuesRepository {
     const lines = await prisma.dueAccrualLine.findMany({
       where: {
         unitId,
+        deleted: false,
+        status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
+        accrualRun: {
+          status: DueAccrualStatus.POSTED,
+          deleted: false,
+          propertyId,
+        },
+      },
+    });
+    return lines.reduce(
+      (acc, line) => acc.add(line.amount.sub(line.paidAmount)),
+      new Prisma.Decimal(0),
+    );
+  }
+
+  async sumOpenDebtForPartyProperty(partyId: string, propertyId: string, unitId?: string | null) {
+    const lines = await prisma.dueAccrualLine.findMany({
+      where: {
+        partyId,
+        ...(unitId ? { unitId } : {}),
         deleted: false,
         status: { in: [DueLineStatus.OPEN, DueLineStatus.PARTIAL] },
         accrualRun: {
@@ -1918,6 +1990,16 @@ export class DuesRepository {
       where: { year, ...notDeleted },
       orderBy: [{ month: "asc" }],
     });
+  }
+
+  async listLegalInterestYears() {
+    const rows = await prisma.legalInterestRate.findMany({
+      where: notDeleted,
+      select: { year: true },
+      distinct: ["year"],
+      orderBy: { year: "desc" },
+    });
+    return rows.map((row) => row.year);
   }
 
   async upsertLegalInterestRate(input: {

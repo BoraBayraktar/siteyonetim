@@ -11,6 +11,7 @@ export type {
   CreateDueDefinitionInput,
   DebtRowDto,
   DraftAccrualReminderTargetDto,
+  MeterReadingReminderTargetDto,
   DueAccrualLineDto,
   DueAccrualRunDto,
   DueAccrualRunLineDto,

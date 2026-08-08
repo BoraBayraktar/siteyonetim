@@ -252,6 +252,7 @@ export function DuesTabs({
           propertyId={propertyId}
           policy={lateFeePolicy}
           defaultPeriod={{ year: registerFilters.year, month: registerFilters.month }}
+          runs={runs}
         />
       ) : null}
 

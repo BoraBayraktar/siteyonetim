@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useEnumLabel } from "@/lib/use-enum-label";
 
 type Props = {
   locale: string;
@@ -29,17 +30,13 @@ function statusVariant(status: OutboxStatus): "default" | "secondary" | "outline
   return "outline";
 }
 
-function channelLabel(
-  channel: OutboxChannel,
-  t: (key: "channelEmail" | "channelSms" | "channelWhatsApp") => string,
-) {
-  if (channel === OutboxChannel.EMAIL) return t("channelEmail");
-  if (channel === OutboxChannel.WHATSAPP) return t("channelWhatsApp");
-  return t("channelSms");
+function channelLabel(channel: OutboxChannel, labelEnum: ReturnType<typeof useEnumLabel>) {
+  return labelEnum("OutboxChannel", channel);
 }
 
 export function NotificationsAdminPanel({ locale, propertyId, items, page, pageSize, total }: Props) {
   const t = useTranslations("notifications");
+  const labelEnum = useEnumLabel();
   const [state, action, pending] = useActionState(processOutboxAction.bind(null, locale, propertyId), initial);
 
   return (
@@ -77,10 +74,10 @@ export function NotificationsAdminPanel({ locale, propertyId, items, page, pageS
             <TableBody>
               {items.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell>{channelLabel(row.channel, t)}</TableCell>
+                  <TableCell>{channelLabel(row.channel, labelEnum)}</TableCell>
                   <TableCell className="font-mono text-xs">{row.recipient}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant(row.status)}>{t(`status.${row.status}`)}</Badge>
+                    <Badge variant={statusVariant(row.status)}>{labelEnum("OutboxStatus", row.status)}</Badge>
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">{row.subject ?? "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">

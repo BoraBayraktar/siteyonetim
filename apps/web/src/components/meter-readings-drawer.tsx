@@ -11,9 +11,9 @@ import {
   recordMeterReadingAction,
   type MeterActionState,
 } from "@/app/actions/meters";
+import { YearMonthFormFields } from "@/components/year-month-select";
 import { MeterIndexInput } from "@/components/meter-index-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Sheet,
@@ -23,6 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { periodsFromMeterReadings, withCurrentPeriod } from "@/lib/period-options";
 
 const initial: MeterActionState = {};
 
@@ -58,6 +59,7 @@ function ReadingForm({
   propertyId,
   meter,
   editing,
+  readingPeriods,
   onCancelEdit,
   onSuccess,
   t,
@@ -66,6 +68,7 @@ function ReadingForm({
   propertyId: string;
   meter: UnitMeterDto;
   editing: MeterReadingDto | null;
+  readingPeriods: { year: number; month: number }[];
   onCancelEdit: () => void;
   onSuccess: () => void;
   t: ReturnType<typeof useTranslations<"meters">>;
@@ -87,32 +90,17 @@ function ReadingForm({
       <input type="hidden" name="meterId" value={meter.id} />
       <p className="text-sm font-medium">{editing ? t("editReading") : t("addReading")}</p>
       <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-2">
-          <Label htmlFor={`year-${meter.id}`}>{t("year")}</Label>
-          <Input
-            id={`year-${meter.id}`}
-            name="year"
-            type="number"
-            defaultValue={editing?.year ?? now.getFullYear()}
-            required
-            readOnly={Boolean(editing)}
-            className={editing ? "bg-muted" : undefined}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor={`month-${meter.id}`}>{t("month")}</Label>
-          <Input
-            id={`month-${meter.id}`}
-            name="month"
-            type="number"
-            min={1}
-            max={12}
-            defaultValue={editing?.month ?? now.getMonth() + 1}
-            required
-            readOnly={Boolean(editing)}
-            className={editing ? "bg-muted" : undefined}
-          />
-        </div>
+        <YearMonthFormFields
+          periods={readingPeriods}
+          defaultYear={editing?.year ?? now.getFullYear()}
+          defaultMonth={editing?.month ?? now.getMonth() + 1}
+          yearLabel={t("year")}
+          monthLabel={t("month")}
+          yearId={`year-${meter.id}`}
+          monthId={`month-${meter.id}`}
+          yearReadOnly={Boolean(editing)}
+          monthReadOnly={Boolean(editing)}
+        />
       </div>
       <div className="grid gap-2">
         <Label htmlFor={`value-${meter.id}`}>{t("readingValue")}</Label>
@@ -200,6 +188,10 @@ export function MeterReadingsDrawer({
   const [editing, setEditing] = useState<MeterReadingDto | null>(null);
 
   const rows = useMemo(() => enrichReadingsWithConsumption(readings), [readings]);
+  const readingPeriods = useMemo(
+    () => withCurrentPeriod(periodsFromMeterReadings({ [meter.id]: readings })),
+    [meter.id, readings],
+  );
 
   const refresh = () => {
     setEditing(null);
@@ -230,6 +222,7 @@ export function MeterReadingsDrawer({
                 propertyId={propertyId}
                 meter={meter}
                 editing={editing}
+                readingPeriods={readingPeriods}
                 onCancelEdit={() => setEditing(null)}
                 onSuccess={refresh}
                 t={t}

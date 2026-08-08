@@ -11,6 +11,7 @@ import { createGovernanceService } from "@siteyonetim/property-governance";
 import { createMeterService } from "@siteyonetim/property-meters";
 import { createAuditorReportService } from "@siteyonetim/reporting-auditor";
 import { createBankingService } from "@siteyonetim/finance-banking";
+import { createPaymentGatewayService } from "@siteyonetim/payments-gateway";
 import { createStandardReportingService } from "@siteyonetim/reporting-standard";
 import { createDuesService } from "@siteyonetim/finance-dues";
 import { createFinanceService } from "@siteyonetim/finance-core";
@@ -96,6 +97,10 @@ export function getAuditorReportService() {
 
 export function getBankingService() {
   return createBankingService();
+}
+
+export function getPaymentGatewayService() {
+  return createPaymentGatewayService();
 }
 
 export function getGovernanceService() {

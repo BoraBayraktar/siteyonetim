@@ -5,6 +5,7 @@ import {
   DueLineStatus,
   FinancePeriodStatus,
   LateFeeRateKind,
+  MeterKind,
   Prisma,
   SupplierLateFeeAllocationMode,
 } from "@siteyonetim/db";
@@ -56,6 +57,7 @@ import type {
   UpsertLegalInterestRateInput,
   LegalInterestRateDto,
   LateFeePolicyTargetDto,
+  MeterReadingReminderTargetDto,
 } from "./contract";
 import { DuesRepository } from "./repository";
 import { analyzeMissingAccrualUnits } from "./accrual-missing-units";
@@ -703,6 +705,51 @@ export class DuesService implements DuesServiceContract {
   async listDraftAccrualReminderTargets(year: number, month: number) {
     if (month < 1 || month > 12) throw new Error("INVALID_MONTH");
     return this.repository.listDraftAccrualReminderTargets(year, month);
+  }
+
+  async listMeterReadingReminderTargets(year: number, month: number) {
+    if (month < 1 || month > 12) throw new Error("INVALID_MONTH");
+
+    const properties = await this.repository.listPropertiesWithActiveMeterDefinitions();
+    const targets: MeterReadingReminderTargetDto[] = [];
+
+    for (const property of properties) {
+      let missingReadingCount = 0;
+      const missingKinds: MeterKind[] = [];
+      const ctx = {
+        organizationId: property.organizationId,
+        propertyId: property.propertyId,
+      };
+
+      for (const meterKind of property.meterKinds) {
+        const [consumptions, meters] = await Promise.all([
+          this.meters.getConsumptionByUnit({ ...ctx, kind: meterKind, year, month }),
+          this.meters.listMeters(ctx),
+        ]);
+        const activeForKind = meters.filter((meter) => meter.kind === meterKind && meter.active);
+        if (activeForKind.length === 0) continue;
+
+        const missing = activeForKind.length - consumptions.length;
+        if (missing > 0) {
+          missingReadingCount += missing;
+          missingKinds.push(meterKind);
+        }
+      }
+
+      if (missingReadingCount > 0) {
+        targets.push({
+          organizationId: property.organizationId,
+          propertyId: property.propertyId,
+          propertyName: property.propertyName,
+          year,
+          month,
+          missingReadingCount,
+          meterKinds: missingKinds,
+        });
+      }
+    }
+
+    return targets;
   }
 
   async listAccrualRuns(ctx: DuesContext) {
@@ -2123,6 +2170,15 @@ export class DuesService implements DuesServiceContract {
     return total.toString();
   }
 
+  async getPortalOpenDebtForPartyProperty(
+    partyId: string,
+    propertyId: string,
+    unitId?: string | null,
+  ): Promise<string> {
+    const total = await this.repository.sumOpenDebtForPartyProperty(partyId, propertyId, unitId ?? null);
+    return total.toString();
+  }
+
   async getPortalOpenDebtLines(userId: string): Promise<PortalOpenDebtLineDto[]> {
     const party = await this.repository.findPartyByPortalUser(userId);
     if (!party) return [];
@@ -2362,6 +2418,10 @@ export class DuesService implements DuesServiceContract {
       annualRatePercent: r.annualRatePercent.toString(),
       notes: r.notes,
     }));
+  }
+
+  async listLegalInterestYears(): Promise<number[]> {
+    return this.repository.listLegalInterestYears();
   }
 
   async upsertLegalInterestRate(input: UpsertLegalInterestRateInput): Promise<LegalInterestRateDto> {

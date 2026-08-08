@@ -521,6 +521,26 @@
       "DELINQUENT_EQUAL": "Delinquent only (equal)"
     },
     "openDebtKindLateFee": "Late fee",
+    "onlinePaymentTitle": "Pay by card",
+    "onlinePaymentSubtitle": "Secure online collection with 3D Secure",
+    "onlinePaymentPay": "Pay {amount}",
+    "onlinePaymentPending": "Redirecting…",
+    "onlinePaymentResultSuccessTitle": "Payment received",
+    "onlinePaymentResultSuccessDescription": "Your account statement will update within a few seconds.",
+    "onlinePaymentResultFailedTitle": "Payment could not be completed",
+    "onlinePaymentResultFailedDescription": "The transaction was cancelled or declined by the bank.",
+    "onlinePaymentBackToPortal": "Back to portal",
+    "onlinePaymentErrors": {
+      "UNAUTHORIZED": "You are not authorized for this action.",
+      "PAYER_NOT_ALLOWED": "You cannot start payment for this debt.",
+      "ONLINE_PAYMENT_DISABLED": "Online payment is disabled for this property.",
+      "PAYMENT_PROFILE_NOT_CONFIGURED": "Payment profile is not configured for this property.",
+      "NO_OPEN_DEBT": "There is no open debt to pay.",
+      "IYZICO_CHECKOUT_INIT_FAILED": "Could not start payment session.",
+      "MISSING_TOKEN": "Payment verification token is missing.",
+      "CALLBACK_FAILED": "Payment verification failed.",
+      "PAYMENT_INTENT_NOT_FOUND": "Payment record not found."
+    },
     "statementTitle": "Account statement (12 months)",
     "statementSubtitle": "Billing and payment activity",
     "statementEmpty": "No activity yet.",
@@ -544,6 +564,7 @@
       "CONTRACT": "Contract",
       "BOARD_MINUTES": "Board minutes summary",
       "INVOICE_COPY": "Invoice copy",
+      "AUDITOR_REPORT": "Auditor report",
       "OTHER": "Other"
     },
     "incomeExpenseTitle": "{property} — income & expense summary",
@@ -588,6 +609,7 @@
     "showIncomeExpenseReport": "Income/expense report",
     "showMemberDebtSummary": "Other units debt summary",
     "showIncidents": "Incident reporting",
+    "allowOnlinePayment": "Online card payment",
     "saveSettings": "Save settings",
     "isolationTitle": "Database isolation",
     "isolationSubtitle": "Shared schema or dedicated database per site (Neon branch)",
@@ -1084,6 +1106,7 @@
   },
   "legalInterest": {
     "title": "Legal interest rates ({year})",
+    "year": "Year",
     "description": "Enter annual TCMB default interest rates by month. Legal late-fee mode uses annual/12 as the monthly equivalent.",
     "addRate": "Add / update rate",
     "month": "Month",
@@ -1208,6 +1231,7 @@
     "navLabel": "Staff menu",
     "navHome": "Home",
     "navMeters": "Meters",
+    "navResidents": "Residents",
     "navIncidents": "Incidents",
     "navAnnouncements": "Announcements",
     "navDocuments": "Archive",
@@ -1219,6 +1243,18 @@
     "propertiesEmpty": "No properties are assigned to your account. Contact your administrator.",
     "cardMetersTitle": "Meter readings",
     "cardMetersDescription": "Enter water, gas, and other meter readings.",
+    "cardResidentsTitle": "Residents",
+    "cardResidentsDescription": "View unit assignments and owner/tenant names.",
+    "cardResidentsDescriptionWithPhone": "View unit assignments with owner/tenant phone numbers.",
+    "residentsTitle": "Residents",
+    "residentsSubtitle": "Owner and tenant names are shown; phone numbers are disabled by management.",
+    "residentsSubtitleWithPhone": "Owner and tenant names and phone numbers are shown.",
+    "residentsSearch": "Search",
+    "residentsSearchPlaceholder": "Unit code or name",
+    "residentsEmpty": "No matching records.",
+    "roleOwner": "Owner",
+    "roleTenant": "Tenant",
+    "phone": "Phone",
     "cardIncidentsTitle": "Incident reports",
     "cardIncidentsDescription": "Report issues, update status, and track progress.",
     "cardAnnouncementsTitle": "Announcements",
@@ -1580,6 +1616,28 @@
       "UNAUTHORIZED": "Unauthorized."
     }
   },
+  "payments": {
+    "profileTitle": "Online payment (iyzico)",
+    "profileSubtitle": "Each property uses its own iyzico merchant account",
+    "enabled": "Online payment enabled",
+    "sandbox": "Sandbox (test) mode",
+    "apiKey": "API key",
+    "secretKey": "Secret key",
+    "secretConfigured": "saved",
+    "secretPlaceholder": "Enter a new key to replace the saved one",
+    "defaultCashbox": "Collection cashbox",
+    "selectCashbox": "Select cashbox",
+    "saveProfile": "Save payment profile",
+    "saved": "Saved",
+    "errors": {
+      "UNAUTHORIZED": "You are not authorized for this action.",
+      "PAYMENT_API_KEY_REQUIRED": "API key is required.",
+      "PAYMENT_SECRET_REQUIRED": "Secret key is required.",
+      "PAYMENT_CASHBOX_REQUIRED": "Collection cashbox is required.",
+      "CASHBOX_NOT_FOUND": "Cashbox not found.",
+      "PROPERTY_NOT_FOUND": "Property not found."
+    }
+  },
   "banking": {
     "importTitle": "Import bank statement",
     "importHint": "CSV must include date, amount, and description columns. Auto-matching runs after upload.",
@@ -1741,6 +1799,289 @@
       "DECISION_NOT_FOUND": "Decision not found.",
       "UNIT_NOT_FOUND": "Unit not found.",
       "GOVERNANCE_ACTION_FAILED": "Action failed."
+    }
+  },
+  "enums": {
+    "PropertyKind": {
+      "APARTMAN": "Apartment",
+      "APARTMAN_SITE": "Apartment complex"
+    },
+    "OrganizationRole": {
+      "ORG_ADMIN": "Organization admin",
+      "PROPERTY_MANAGER": "Property manager",
+      "ACCOUNTANT": "Accountant",
+      "BOARD_MEMBER": "Board member",
+      "AUDITOR": "Auditor",
+      "STAFF": "Site staff"
+    },
+    "PropertyIsolationMode": {
+      "SHARED_SCHEMA": "Shared schema (logical isolation)",
+      "DEDICATED_DATABASE": "Dedicated database (physical isolation)"
+    },
+    "PropertyTenantStatus": {
+      "PROVISIONING": "Provisioning",
+      "ACTIVE": "Active",
+      "SUSPENDED": "Suspended",
+      "DECOMMISSIONED": "Decommissioned"
+    },
+    "PortalAuthMode": {
+      "EMAIL": "Email only",
+      "UNIT_CREDENTIAL": "Unit code only",
+      "BOTH": "Email and unit code"
+    },
+    "PropertyAccessRole": {
+      "PROPERTY_ADMIN": "Property admin",
+      "PROPERTY_MANAGER": "Property manager",
+      "PROPERTY_ACCOUNTANT": "Accountant",
+      "PROPERTY_AUDITOR": "Auditor",
+      "PROPERTY_BOARD_MEMBER": "Board member",
+      "PROPERTY_STAFF": "Site staff",
+      "SECURITY": "Security",
+      "MAINTENANCE": "Maintenance"
+    },
+    "PartyType": {
+      "PERSON": "Person",
+      "COMPANY": "Company"
+    },
+    "OccupancyRole": {
+      "OWNER": "Owner",
+      "TENANT": "Tenant"
+    },
+    "FinancePeriodStatus": {
+      "OPEN": "Open",
+      "CLOSED": "Closed"
+    },
+    "FinanceCategoryType": {
+      "INCOME": "Income",
+      "EXPENSE": "Expense"
+    },
+    "FinanceAccountKind": {
+      "PARTY": "Party",
+      "SUPPLIER": "Supplier",
+      "STAFF": "Staff",
+      "GENERAL": "General"
+    },
+    "LedgerEntryType": {
+      "INCOME": "Income",
+      "EXPENSE": "Expense"
+    },
+    "CashboxMovementDirection": {
+      "IN": "In",
+      "OUT": "Out"
+    },
+    "StaffEmploymentStatus": {
+      "ACTIVE": "Active",
+      "PASSIVE": "Inactive"
+    },
+    "StaffMovementType": {
+      "SALARY_ACCRUAL": "Salary accrual",
+      "ADVANCE": "Advance",
+      "PAYMENT": "Payment",
+      "ADVANCE_OFFSET": "Advance offset",
+      "DEDUCTION": "Deduction",
+      "BONUS": "Bonus",
+      "MANUAL_ADJUSTMENT": "Manual adjustment"
+    },
+    "PaymentChannel": {
+      "MANUAL": "Manual",
+      "ONLINE": "Online",
+      "BANK": "Bank"
+    },
+    "PaymentProvider": {
+      "IYZICO": "iyzico"
+    },
+    "PaymentIntentStatus": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "SUCCEEDED": "Succeeded",
+      "FAILED": "Failed",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "DueCalculationMode": {
+      "FIXED": "Fixed amount",
+      "AREA_M2": "Per m²",
+      "SHARE_RATIO": "Share ratio",
+      "ALLOCATED_BILL": "Allocated bill",
+      "METER_CONSUMPTION": "Meter consumption",
+      "METER_ALLOCATED_BILL": "Meter allocated bill",
+      "SUPPLIER_LATE_FEE_BILL": "Supplier late fee"
+    },
+    "DueAccrualLineKind": {
+      "STANDARD": "Due",
+      "LATE_FEE": "Late fee",
+      "SUPPLIER_LATE_FEE": "Supplier late fee"
+    },
+    "SupplierLateFeeAllocationMode": {
+      "ALL_UNITS_BY_SHARE": "All units (by share)",
+      "ALL_UNITS_EQUAL": "All units (equal)",
+      "DELINQUENT_BY_DEBT_RATIO": "Delinquent only (by debt ratio)",
+      "DELINQUENT_EQUAL": "Delinquent only (equal)"
+    },
+    "MeterKind": {
+      "HOT_WATER": "Hot water",
+      "COLD_WATER": "Cold water",
+      "HEATING": "Heating",
+      "GAS": "Gas"
+    },
+    "HeatingSystemType": {
+      "NONE": "None / not specified",
+      "INDIVIDUAL_GAS": "Individual gas",
+      "CENTRAL_GAS": "Central gas",
+      "CENTRAL_OTHER": "Central (other)",
+      "DISTRICT_HEATING": "District heating"
+    },
+    "HotWaterSystemType": {
+      "NONE": "None / not specified",
+      "INDIVIDUAL": "Individual",
+      "CENTRAL_INDIVIDUAL_METER": "Central + unit meter",
+      "CENTRAL_SHARED": "Central (shared)"
+    },
+    "LateFeeRateKind": {
+      "CONTRACTUAL": "Contractual",
+      "LEGAL_TCMB": "Legal (CBRT)"
+    },
+    "ReportExportStatus": {
+      "PENDING": "Pending",
+      "PROCESSING": "Processing",
+      "READY": "Ready",
+      "FAILED": "Failed"
+    },
+    "ReportExportFormat": {
+      "CSV": "CSV",
+      "XLSX": "Excel",
+      "PDF": "PDF",
+      "ZIP": "ZIP"
+    },
+    "JobRunStatus": {
+      "PENDING": "Pending",
+      "RUNNING": "Running",
+      "SUCCEEDED": "Succeeded",
+      "FAILED": "Failed",
+      "SKIPPED": "Skipped"
+    },
+    "DueAccrualStatus": {
+      "DRAFT": "Draft",
+      "POSTED": "Posted"
+    },
+    "DueLineStatus": {
+      "OPEN": "Open",
+      "PARTIAL": "Partially paid",
+      "PAID": "Paid"
+    },
+    "PeriodRegisterCellStatus": {
+      "NONE": "—",
+      "OPEN": "Open",
+      "PARTIAL": "Partially paid",
+      "PAID": "Paid"
+    },
+    "AnnouncementAudience": {
+      "PROPERTY_ALL": "Entire property",
+      "BLOCK": "Block",
+      "UNITS": "Selected units"
+    },
+    "AnnouncementBodyFormat": {
+      "PLAIN": "Plain text",
+      "HTML": "Rich text"
+    },
+    "AnnouncementWorkflowStatus": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published"
+    },
+    "IncidentStatus": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In progress",
+      "CLOSED": "Closed"
+    },
+    "IncidentPriority": {
+      "LOW": "Low",
+      "NORMAL": "Normal",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    },
+    "IncidentCategory": {
+      "ELEVATOR": "Elevator",
+      "PLUMBING": "Plumbing",
+      "ELECTRICAL": "Electrical",
+      "COMMON_AREA": "Common area",
+      "SECURITY": "Security",
+      "OTHER": "Other"
+    },
+    "OutboxChannel": {
+      "EMAIL": "Email",
+      "SMS": "SMS",
+      "WHATSAPP": "WhatsApp"
+    },
+    "OutboxStatus": {
+      "PENDING": "Pending",
+      "SENT": "Sent",
+      "FAILED": "Failed"
+    },
+    "DocumentCategory": {
+      "CONTRACT": "Contract",
+      "BOARD_MINUTES": "Board minutes",
+      "INVOICE_COPY": "Invoice copy",
+      "AUDITOR_REPORT": "Auditor report",
+      "OTHER": "Other"
+    },
+    "DocumentVisibility": {
+      "ADMIN_ONLY": "Admin only",
+      "PORTAL_SHARED": "Portal (property)",
+      "UNIT_SPECIFIC": "Selected units"
+    },
+    "AuditorReportPeriod": {
+      "Q1": "Q1",
+      "Q2": "Q2",
+      "Q3": "Q3",
+      "Q4": "Q4",
+      "ANNUAL": "Annual"
+    },
+    "AuditorReportStatus": {
+      "DRAFT": "Draft",
+      "IN_REVIEW": "In review",
+      "APPROVED": "Approved",
+      "ARCHIVED": "Archived"
+    },
+    "AuditorDischargeRecommendation": {
+      "RECOMMEND": "Recommend discharge",
+      "NOT_RECOMMEND": "Do not recommend discharge",
+      "CONDITIONAL": "Conditional discharge"
+    },
+    "BankStatementMatchStatus": {
+      "UNMATCHED": "Unmatched",
+      "MATCHED": "Matched",
+      "IGNORED": "Ignored"
+    },
+    "BankStatementImportSource": {
+      "MANUAL_CSV": "Manual CSV",
+      "API_WEBHOOK": "API (webhook)",
+      "API_REST_POLL": "API (REST poll)"
+    },
+    "BankSyncProviderKind": {
+      "WEBHOOK_PUSH": "Webhook (push)",
+      "GENERIC_REST_POLL": "REST poll (daily)"
+    },
+    "GeneralAssemblyMeetingType": {
+      "ORDINARY": "Ordinary",
+      "EXTRAORDINARY": "Extraordinary"
+    },
+    "AssemblyNoticeMethod": {
+      "POST": "Post",
+      "COURIER": "Courier",
+      "EMAIL": "Email",
+      "HAND_DELIVERY": "Hand delivery",
+      "OTHER": "Other"
+    },
+    "AssemblyAttendanceKind": {
+      "PRESENT": "In person",
+      "PROXY": "By proxy",
+      "ABSENT": "Absent"
+    },
+    "AnnualIncomeExpenseSection": {
+      "INCOME": "Income",
+      "EXPENSE": "Expense",
+      "SUMMARY": "Summary",
+      "BUDGET": "Budget"
     }
   }
 }

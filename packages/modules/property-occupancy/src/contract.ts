@@ -4,6 +4,8 @@ export type OccupancySlotDto = {
   occupancyId: string;
   partyId: string;
   partyName: string;
+  partyPhone?: string | null;
+  partyEmail?: string | null;
 };
 
 export type UnitOccupancyBoardRowDto = {
@@ -112,6 +114,7 @@ export type ListUnitBoardInput = {
   pageSize: number;
   blockId?: string | null;
   unassignedOnly?: boolean;
+  includePartyContact?: boolean;
 };
 
 export type PaginatedUnitBoard = {
@@ -125,6 +128,7 @@ export type GetUnitOccupancyDetailInput = {
   organizationId: string;
   propertyId: string;
   unitId: string;
+  includePartyContact?: boolean;
 };
 
 export type SetUnitRoleOccupancyInput = {

@@ -1,6 +1,8 @@
 import { DueCalculationMode, MeterKind } from "@siteyonetim/db";
 import type { DueDefinitionDto } from "@siteyonetim/finance-dues";
 
+import { enumLabel, type EnumTranslator } from "./enum-labels";
+
 /** Regular dues / shared expense calculation modes (excludes supplier late fee). */
 export const AIDAT_CALCULATION_MODES: DueCalculationMode[] = [
   DueCalculationMode.FIXED,
@@ -40,6 +42,7 @@ export function definitionSummary(
     "calculationMode" | "fixedAmount" | "ratePerM2" | "meterKind" | "supplierLateFeeAllocationMode"
   >,
   t: (key: string) => string,
+  tEnum?: EnumTranslator,
 ): string {
   switch (d.calculationMode) {
     case DueCalculationMode.FIXED:
@@ -51,19 +54,45 @@ export function definitionSummary(
     case DueCalculationMode.ALLOCATED_BILL:
       return t("allocatedBill");
     case DueCalculationMode.METER_ALLOCATED_BILL:
-      return `${t("meterAllocatedBill")}${d.meterKind ? ` (${t(`meterKindLabel.${d.meterKind}`)})` : ""}`;
+      return `${t("meterAllocatedBill")}${d.meterKind ? ` (${meterKindLabel(d.meterKind, t, tEnum)})` : ""}`;
     case DueCalculationMode.METER_CONSUMPTION:
-      return `${t("meterConsumption")}${d.meterKind ? ` (${t(`meterKindLabel.${d.meterKind}`)})` : ""}: ${d.ratePerM2}`;
+      return `${t("meterConsumption")}${d.meterKind ? ` (${meterKindLabel(d.meterKind, t, tEnum)})` : ""}: ${d.ratePerM2}`;
     case DueCalculationMode.SUPPLIER_LATE_FEE_BILL:
       return d.supplierLateFeeAllocationMode
-        ? t(`supplierLateFeeAllocationMode.${d.supplierLateFeeAllocationMode}`)
+        ? supplierAllocationLabel(d.supplierLateFeeAllocationMode, t, tEnum)
         : t("supplierLateFeeBill");
     default:
-      return d.calculationMode;
+      return tEnum ? enumLabel(tEnum, "DueCalculationMode", d.calculationMode) : d.calculationMode;
   }
 }
 
-export function modeLabel(mode: DueCalculationMode, t: (key: string) => string): string {
+function meterKindLabel(
+  kind: MeterKind,
+  t: (key: string) => string,
+  tEnum?: EnumTranslator,
+): string {
+  if (tEnum) {
+    return enumLabel(tEnum, "MeterKind", kind);
+  }
+  return t(`meterKindLabel.${kind}`);
+}
+
+function supplierAllocationLabel(
+  mode: string,
+  t: (key: string) => string,
+  tEnum?: EnumTranslator,
+): string {
+  if (tEnum) {
+    return enumLabel(tEnum, "SupplierLateFeeAllocationMode", mode);
+  }
+  return t(`supplierLateFeeAllocationMode.${mode}`);
+}
+
+export function modeLabel(
+  mode: DueCalculationMode,
+  t: (key: string) => string,
+  tEnum?: EnumTranslator,
+): string {
   switch (mode) {
     case DueCalculationMode.FIXED:
       return t("fixed");
@@ -80,7 +109,7 @@ export function modeLabel(mode: DueCalculationMode, t: (key: string) => string):
     case DueCalculationMode.SUPPLIER_LATE_FEE_BILL:
       return t("supplierLateFeeBill");
     default:
-      return mode;
+      return tEnum ? enumLabel(tEnum, "DueCalculationMode", mode) : mode;
   }
 }
 

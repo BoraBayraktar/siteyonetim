@@ -5,6 +5,7 @@ import type {
   DueLineStatus,
   LateFeeRateKind,
   MeterKind,
+  PaymentChannel,
   ReportExportFormat,
   SupplierLateFeeAllocationMode,
 } from "@siteyonetim/db";
@@ -400,6 +401,16 @@ export type DraftAccrualReminderTargetDto = {
   draftRunCount: number;
 };
 
+export type MeterReadingReminderTargetDto = {
+  organizationId: string;
+  propertyId: string;
+  propertyName: string;
+  year: number;
+  month: number;
+  missingReadingCount: number;
+  meterKinds: MeterKind[];
+};
+
 export type GenerateAccrualInput = DuesContext & {
   dueDefinitionId: string;
   year: number;
@@ -460,6 +471,9 @@ export type RecordPaymentInput = DuesContext & {
   autoAllocate?: boolean;
   allowAdvance?: boolean;
   allocations?: PaymentAllocationInput[];
+  channel?: PaymentChannel;
+  externalReference?: string | null;
+  paymentIntentId?: string | null;
 };
 
 export type RecordPaymentResult = {
@@ -479,6 +493,7 @@ export interface DuesServiceContract {
   ): Promise<DueDefinitionDto>;
   listAutoAccrualDefinitionTargets(): Promise<AutoAccrualTargetDto[]>;
   listDraftAccrualReminderTargets(year: number, month: number): Promise<DraftAccrualReminderTargetDto[]>;
+  listMeterReadingReminderTargets(year: number, month: number): Promise<MeterReadingReminderTargetDto[]>;
   listAccrualRuns(ctx: DuesContext): Promise<DueAccrualRunDto[]>;
   listAccrualRunLinesByProperty(ctx: DuesContext): Promise<Record<string, DueAccrualRunLineDto[]>>;
   generateAccrual(input: GenerateAccrualInput): Promise<DueAccrualRunDto>;
@@ -511,6 +526,11 @@ export interface DuesServiceContract {
   getPortalOpenDebt(userId: string): Promise<string>;
   getPortalStatementForUnit(propertyId: string, unitId: string): Promise<StatementLineDto[]>;
   getPortalOpenDebtForUnit(propertyId: string, unitId: string): Promise<string>;
+  getPortalOpenDebtForPartyProperty(
+    partyId: string,
+    propertyId: string,
+    unitId?: string | null,
+  ): Promise<string>;
   getPortalOpenDebtLines(userId: string): Promise<PortalOpenDebtLineDto[]>;
   getPortalOpenDebtLinesForUnit(propertyId: string, unitId: string): Promise<PortalOpenDebtLineDto[]>;
   getPortalMemberDebtSummary(input: PortalMemberDebtSummaryInput): Promise<PortalMemberDebtSummaryDto>;
@@ -519,5 +539,6 @@ export interface DuesServiceContract {
   applyLateFees(input: ApplyLateFeesInput): Promise<{ added: number; runId: string | null }>;
   listActiveLateFeePolicyTargets(): Promise<LateFeePolicyTargetDto[]>;
   listLegalInterestRates(year: number): Promise<LegalInterestRateDto[]>;
+  listLegalInterestYears(): Promise<number[]>;
   upsertLegalInterestRate(input: UpsertLegalInterestRateInput): Promise<LegalInterestRateDto>;
 }

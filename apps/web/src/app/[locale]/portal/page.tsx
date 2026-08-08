@@ -13,6 +13,7 @@ import {
   getDuesService,
   getIncidentService,
   getOccupancyService,
+  getPaymentGatewayService,
   getPropertyTenantService,
   getReportingService,
 } from "@/lib/services";
@@ -82,6 +83,34 @@ export default async function PortalPage({ params }: Props) {
   const incidentPropertyIds = [...propertyContexts.entries()]
     .filter(([, context]) => context.settings?.showIncidents !== false)
     .map(([id]) => id);
+
+  let onlinePayment: { propertyId: string; partyId: string; unitId?: string } | null = null;
+  if (unitPortal && propertyId && unitId) {
+    const settings = propertyContexts.get(propertyId)?.settings;
+    if (settings?.allowOnlinePayment) {
+      const payer = await getPaymentGatewayService().resolvePortalPayer({
+        organizationId: session.user.organizationId,
+        propertyId,
+        unitId,
+      });
+      if (payer) {
+        onlinePayment = { propertyId, partyId: payer.partyId, unitId };
+      }
+    }
+  } else if (propertyIds.length === 1) {
+    const singlePropertyId = propertyIds[0]!;
+    const settings = propertyContexts.get(singlePropertyId)?.settings;
+    if (settings?.allowOnlinePayment) {
+      const payer = await getPaymentGatewayService().resolvePortalPayer({
+        organizationId: session.user.organizationId,
+        propertyId: singlePropertyId,
+        portalUserId: session.user.id,
+      });
+      if (payer) {
+        onlinePayment = { propertyId: singlePropertyId, partyId: payer.partyId };
+      }
+    }
+  }
 
   const propertyNames = Object.fromEntries(
     units.map((unit) => [unit.propertyId, unit.propertyName]),
@@ -169,6 +198,7 @@ export default async function PortalPage({ params }: Props) {
         memberDebtSummaries={memberDebtSummaries}
         fixedPropertyId={unitPortal && propertyId ? propertyId : undefined}
         fixedUnitId={unitPortal && unitId ? unitId : undefined}
+        onlinePayment={onlinePayment}
         showIncidentsSection={incidentPropertyIds.length > 0}
         primarySettings={
           primarySettings

@@ -24,8 +24,16 @@ export default async function LegalInterestPage({ params, searchParams }: Props)
   redirectStaffFromOrgAdmin(locale, session.user.role, resolveAdminLandingPath(locale, propertiesNav, session.user.role));
 
   const sp = await searchParams;
-  const year = sp.year ? Number(sp.year) : new Date().getFullYear();
-  const rates = await getDuesService().listLegalInterestRates(year);
+  const now = new Date();
+  const year = sp.year ? Number(sp.year) : now.getFullYear();
+  const dues = getDuesService();
+  const [rates, yearsFromData] = await Promise.all([
+    dues.listLegalInterestRates(year),
+    dues.listLegalInterestYears(),
+  ]);
+  const years = yearsFromData.includes(year)
+    ? yearsFromData
+    : [year, ...yearsFromData].sort((a, b) => b - a);
 
-  return <LegalInterestPanel locale={locale} year={year} rates={rates} />;
+  return <LegalInterestPanel locale={locale} year={year} years={years} rates={rates} />;
 }

@@ -16,17 +16,19 @@ import type { BlockDto } from "@siteyonetim/property-core";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import { requestAsyncReportExportAction, type ReportExportActionState } from "@/app/actions/report-export";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { YearMonthFilterSelects } from "@/components/year-month-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { buildPeriodFilterOptions, type PeriodPoint } from "@/lib/period-options";
+import { useEnumLabel } from "@/lib/use-enum-label";
 
 const DEFAULT_REPORTS: StandardReportKind[] = [
   "DUE_ACCRUAL_SUMMARY",
@@ -56,6 +58,7 @@ type Props = {
   aging: DebtAgingReport | null;
   annual: AnnualIncomeExpenseReport | null;
   recentExports: ReportExportDto[];
+  periods: PeriodPoint[];
   readOnly?: boolean;
   reportKinds?: StandardReportKind[];
 };
@@ -83,14 +86,20 @@ export function ReportsPanel({
   aging,
   annual,
   recentExports,
+  periods,
   readOnly = false,
   reportKinds = DEFAULT_REPORTS,
 }: Props) {
   const t = useTranslations("reports");
+  const labelEnum = useEnumLabel();
   const REPORTS = reportKinds;
   const annualActive = isAnnualReportKind(activeKind);
   const router = useRouter();
   const pathname = usePathname();
+  const { years, months } = useMemo(
+    () => buildPeriodFilterOptions(periods, { year, month }),
+    [periods, year, month],
+  );
   const [asyncState, asyncAction, asyncPending] = useActionState(
     requestAsyncReportExportAction.bind(null, locale, propertyId),
     {} as ReportExportActionState,
@@ -141,27 +150,22 @@ export function ReportsPanel({
           <CardTitle>{t("filtersTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="grid gap-2">
-            <Label htmlFor="rep-year">{t("year")}</Label>
-            <Input
-              id="rep-year"
-              type="number"
-              defaultValue={year}
-              onBlur={(e) => applyFilters({ year: Number(e.target.value) })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="rep-month">{t("month")}</Label>
-            <Input
-              id="rep-month"
-              type="number"
-              min={1}
-              max={12}
-              defaultValue={month}
-              disabled={annualActive}
-              onBlur={(e) => applyFilters({ month: Number(e.target.value) })}
-            />
-          </div>
+          <YearMonthFilterSelects
+            years={years}
+            months={months}
+            year={year}
+            month={month}
+            onYearChange={(nextYear) => {
+              const nextMonths = buildPeriodFilterOptions(periods, { year: nextYear, month }).months;
+              applyFilters({ year: nextYear, month: nextMonths.includes(month) ? month : (nextMonths[0] ?? month) });
+            }}
+            onMonthChange={(nextMonth) => applyFilters({ month: nextMonth })}
+            yearLabel={t("year")}
+            monthLabel={t("month")}
+            yearId="rep-year"
+            monthId="rep-month"
+            monthDisabled={annualActive}
+          />
           {annualActive ? (
             <div className="grid gap-2">
               <Label>{t("quarter")}</Label>
@@ -299,7 +303,7 @@ export function ReportsPanel({
                   r.unitCode,
                   r.blockName ?? "—",
                   r.definitionName,
-                  r.lineKind,
+                  labelEnum("DueAccrualLineKind", r.lineKind),
                   money(r.amount, locale),
                 ])}
                 footer={[t("total"), "", "", "", money(accrual.totalAccrued, locale)]}
@@ -377,14 +381,14 @@ export function ReportsPanel({
                 <ReportTable
                   headers={[t("section"), t("item"), t("amount"), t("planned"), t("variance")]}
                   rows={annual.rows.map((r) => [
-                    r.section,
+                    labelEnum("AnnualIncomeExpenseSection", r.section),
                     r.label,
                     money(r.amount, locale),
                     r.plannedAmount ? money(r.plannedAmount, locale) : "—",
                     r.variance ? money(r.variance, locale) : "—",
                   ])}
                   footer={[
-                    "SUMMARY",
+                    labelEnum("AnnualIncomeExpenseSection", "SUMMARY"),
                     t("netResult"),
                     money(annual.netResult, locale),
                     annual.budgetPlannedTotal ? money(annual.budgetPlannedTotal, locale) : "—",

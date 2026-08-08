@@ -64,6 +64,7 @@ function PortalSettingsForm({
   );
   const [showMemberDebtSummary, setShowMemberDebtSummary] = useState(portalSettings.showMemberDebtSummary);
   const [showIncidents, setShowIncidents] = useState(portalSettings.showIncidents);
+  const [allowOnlinePayment, setAllowOnlinePayment] = useState(portalSettings.allowOnlinePayment);
 
   useEffect(() => {
     setShowStatement(portalSettings.showStatement);
@@ -72,6 +73,7 @@ function PortalSettingsForm({
     setShowIncomeExpenseReport(portalSettings.showIncomeExpenseReport);
     setShowMemberDebtSummary(portalSettings.showMemberDebtSummary);
     setShowIncidents(portalSettings.showIncidents);
+    setAllowOnlinePayment(portalSettings.allowOnlinePayment);
   }, [portalSettings]);
 
   useEffect(() => {
@@ -90,6 +92,7 @@ function PortalSettingsForm({
       <input type="hidden" name="showIncomeExpenseReport" value={showIncomeExpenseReport ? "on" : "off"} />
       <input type="hidden" name="showMemberDebtSummary" value={showMemberDebtSummary ? "on" : "off"} />
       <input type="hidden" name="showIncidents" value={showIncidents ? "on" : "off"} />
+      <input type="hidden" name="allowOnlinePayment" value={allowOnlinePayment ? "on" : "off"} />
       <label className="flex items-center gap-2 text-sm">
         <Checkbox
           checked={showStatement}
@@ -137,6 +140,14 @@ function PortalSettingsForm({
           disabled={!canMutate}
         />
         {t("showIncidents")}
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <Checkbox
+          checked={allowOnlinePayment}
+          onCheckedChange={(value) => setAllowOnlinePayment(value === true)}
+          disabled={!canMutate}
+        />
+        {t("allowOnlinePayment")}
       </label>
       {canMutate ? (
         <Button type="submit" size="sm" disabled={pending}>

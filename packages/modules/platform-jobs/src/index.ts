@@ -13,5 +13,7 @@ export type {
   RunDueAccrualMonthlyResult,
   RunLateFeeMonthlyInput,
   RunLateFeeMonthlyResult,
+  RunMeterReadingReminderInput,
+  RunMeterReadingReminderResult,
 } from "./contract";
 export { createJobService, JobService } from "./service";

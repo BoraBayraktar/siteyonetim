@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Gauge, Home, Megaphone, FileText, Wrench } from "lucide-react";
+import { Gauge, Home, Megaphone, FileText, Users, Wrench } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
@@ -12,6 +12,7 @@ import {
   staffIncidentsPath,
   staffMetersPath,
   staffPropertyPath,
+  staffResidentsPath,
 } from "@/lib/staff-landing-path";
 import type { StaffPropertyCapabilities } from "@/lib/staff-property-capabilities";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,13 @@ export function StaffShell({ locale, propertyId, capabilities, children }: Props
       visible: true,
     },
     {
+      href: staffResidentsPath(locale, propertyId),
+      label: t("navResidents"),
+      icon: Users,
+      match: (path: string) => path.startsWith(staffResidentsPath(locale, propertyId)),
+      visible: true,
+    },
+    {
       href: staffIncidentsPath(locale, propertyId),
       label: t("navIncidents"),
       icon: Wrench,
@@ -65,7 +73,7 @@ export function StaffShell({ locale, propertyId, capabilities, children }: Props
     },
   ].filter((item) => item.visible);
 
-  const navCols = nav.length <= 4 ? "grid-cols-4" : "grid-cols-5";
+  const navCols = nav.length <= 5 ? "grid-cols-5" : "grid-cols-6";
 
   return (
     <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col">

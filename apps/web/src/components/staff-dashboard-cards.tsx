@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Gauge, Megaphone, FileText, Wrench } from "lucide-react";
+import { Gauge, Megaphone, FileText, Users, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -9,6 +9,7 @@ import {
   staffDocumentsPath,
   staffIncidentsPath,
   staffMetersPath,
+  staffResidentsPath,
 } from "@/lib/staff-landing-path";
 import type { StaffPropertyCapabilities } from "@/lib/staff-property-capabilities";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,15 @@ export function StaffDashboardCards({
       description: t("cardMetersDescription"),
       icon: Gauge,
       primary: true,
+      visible: true,
+    },
+    {
+      href: staffResidentsPath(locale, propertyId),
+      title: t("cardResidentsTitle"),
+      description: capabilities.staffCanViewPartyPhone
+        ? t("cardResidentsDescriptionWithPhone")
+        : t("cardResidentsDescription"),
+      icon: Users,
       visible: true,
     },
     {

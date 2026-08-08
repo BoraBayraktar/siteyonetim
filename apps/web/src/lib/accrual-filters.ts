@@ -1,5 +1,6 @@
 import type { DueAccrualRunDto, DueAccrualRunLineDto } from "@siteyonetim/finance-dues";
-import { DueAccrualStatus } from "@siteyonetim/db";
+
+import { buildPeriodFilterOptions, periodsFromAccrualRuns } from "@/lib/period-options";
 
 export type AccrualFilters = {
   year: number | null;
@@ -62,36 +63,26 @@ export function uniqueDefinitionOptions(
 }
 
 export function uniqueYearsFromRuns(runs: DueAccrualRunDto[]): number[] {
-  return [...new Set(runs.map((run) => run.year))].sort((a, b) => b - a);
+  return buildPeriodFilterOptions(periodsFromAccrualRuns(runs), {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+  }).years;
 }
 
 export function uniquePostedYearsFromRuns(runs: DueAccrualRunDto[]): number[] {
-  return uniqueYearsFromRuns(runs.filter((run) => run.status === DueAccrualStatus.POSTED));
+  return buildPeriodFilterOptions(periodsFromAccrualRuns(runs, true), {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+  }).years;
 }
 
 export function uniquePostedMonthsFromRuns(runs: DueAccrualRunDto[], year: number): number[] {
-  return [
-    ...new Set(
-      runs
-        .filter((run) => run.status === DueAccrualStatus.POSTED && run.year === year)
-        .map((run) => run.month),
-    ),
-  ].sort((a, b) => b - a);
+  return buildPeriodFilterOptions(periodsFromAccrualRuns(runs, true), { year, month: 1 }).months;
 }
 
 export function registerPeriodFilterOptions(
   runs: DueAccrualRunDto[],
   active: { year: number; month: number },
 ): { years: number[]; months: number[] } {
-  let years = uniquePostedYearsFromRuns(runs);
-  let months = uniquePostedMonthsFromRuns(runs, active.year);
-
-  if (!years.includes(active.year)) {
-    years = [active.year, ...years].sort((a, b) => b - a);
-  }
-  if (!months.includes(active.month)) {
-    months = [active.month, ...months].sort((a, b) => b - a);
-  }
-
-  return { years, months };
+  return buildPeriodFilterOptions(periodsFromAccrualRuns(runs, true), active);
 }

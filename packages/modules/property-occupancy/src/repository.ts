@@ -19,15 +19,24 @@ import type {
 const notDeleted = { deleted: false };
 const activeOccupancy = { endDate: null, deleted: false };
 
-function mapSlot(o: {
-  id: string;
-  partyId: string;
-  party: { displayName: string };
-}): OccupancySlotDto {
+function mapSlot(
+  o: {
+    id: string;
+    partyId: string;
+    party: { displayName: string; phone?: string | null; email?: string | null };
+  },
+  includePartyContact: boolean,
+): OccupancySlotDto {
   return {
     occupancyId: o.id,
     partyId: o.partyId,
     partyName: o.party.displayName,
+    ...(includePartyContact
+      ? {
+          partyPhone: o.party.phone ?? null,
+          partyEmail: o.party.email ?? null,
+        }
+      : {}),
   };
 }
 
@@ -138,13 +147,18 @@ export class OccupancyRepository {
     }
 
     const ids = unitIds.map((row) => row.id);
+    const includePartyContact = input.includePartyContact === true;
+    const partySelect = includePartyContact
+      ? { id: true, displayName: true, phone: true, email: true }
+      : { id: true, displayName: true };
+
     const units = await prisma.unit.findMany({
       where: { id: { in: ids } },
       include: {
         block: { select: { name: true } },
         occupancies: {
           where: activeOccupancy,
-          include: { party: { select: { id: true, displayName: true } } },
+          include: { party: { select: partySelect } },
         },
       },
     });
@@ -155,8 +169,8 @@ export class OccupancyRepository {
       if (!unit) return [];
       const ownerRow = unit.occupancies.find((o) => o.role === OccupancyRole.OWNER) ?? null;
       const tenantRow = unit.occupancies.find((o) => o.role === OccupancyRole.TENANT) ?? null;
-      const owner = ownerRow ? mapSlot(ownerRow) : null;
-      const tenant = tenantRow ? mapSlot(tenantRow) : null;
+      const owner = ownerRow ? mapSlot(ownerRow, includePartyContact) : null;
+      const tenant = tenantRow ? mapSlot(tenantRow, includePartyContact) : null;
       return [
         {
           unitId: unit.id,
@@ -178,6 +192,11 @@ export class OccupancyRepository {
   }
 
   async getUnitOccupancyDetail(input: GetUnitOccupancyDetailInput): Promise<UnitOccupancyDetailDto | null> {
+    const includePartyContact = input.includePartyContact === true;
+    const partySelect = includePartyContact
+      ? { id: true, displayName: true, phone: true, email: true }
+      : { id: true, displayName: true };
+
     const unit = await prisma.unit.findFirst({
       where: {
         id: input.unitId,
@@ -193,7 +212,7 @@ export class OccupancyRepository {
         occupancies: {
           where: { deleted: false },
           orderBy: [{ endDate: "desc" }, { startDate: "desc" }],
-          include: { party: { select: { id: true, displayName: true } } },
+          include: { party: { select: partySelect } },
         },
       },
     });
@@ -204,8 +223,8 @@ export class OccupancyRepository {
     const active = unit.occupancies.filter((o) => o.endDate === null);
     const ownerRow = active.find((o) => o.role === OccupancyRole.OWNER) ?? null;
     const tenantRow = active.find((o) => o.role === OccupancyRole.TENANT) ?? null;
-    const owner = ownerRow ? mapSlot(ownerRow) : null;
-    const tenant = tenantRow ? mapSlot(tenantRow) : null;
+    const owner = ownerRow ? mapSlot(ownerRow, includePartyContact) : null;
+    const tenant = tenantRow ? mapSlot(tenantRow, includePartyContact) : null;
 
     const history: OccupancyHistoryDto[] = unit.occupancies
       .filter((o) => o.endDate !== null)

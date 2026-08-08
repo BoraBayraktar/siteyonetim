@@ -20,6 +20,10 @@ export function staffDocumentsPath(locale: string, propertyId: string): string {
   return `${staffPropertyPath(locale, propertyId)}/documents`;
 }
 
+export function staffResidentsPath(locale: string, propertyId: string): string {
+  return `${staffPropertyPath(locale, propertyId)}/residents`;
+}
+
 export function staffIncidentsPath(locale: string, propertyId: string): string {
   return `${staffPropertyPath(locale, propertyId)}/incidents`;
 }

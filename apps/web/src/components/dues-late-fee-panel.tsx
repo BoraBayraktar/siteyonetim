@@ -1,12 +1,13 @@
 "use client";
 
 import { LateFeeRateKind } from "@siteyonetim/db";
-import type { DueLateFeePolicyDto } from "@siteyonetim/finance-dues";
+import type { DueAccrualRunDto, DueLateFeePolicyDto } from "@siteyonetim/finance-dues";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 
 import { applyLateFeesAction, upsertLateFeePolicyAction, type DuesActionState } from "@/app/actions/dues";
+import { YearMonthFormFields } from "@/components/year-month-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,12 +21,14 @@ import {
   type LateFeeUiMode,
 } from "@/lib/late-fee-form";
 import { cn } from "@/lib/utils";
+import { periodsFromAccrualRuns } from "@/lib/period-options";
 
 type Props = {
   locale: string;
   propertyId: string;
   policy: DueLateFeePolicyDto | null;
   defaultPeriod: { year: number; month: number };
+  runs: DueAccrualRunDto[];
 };
 
 const initial: DuesActionState = {};
@@ -42,8 +45,9 @@ function modeDescription(mode: LateFeeUiMode, t: ReturnType<typeof useTranslatio
   return t("lateFeeModeFixedHint");
 }
 
-export function DuesLateFeePanel({ locale, propertyId, policy, defaultPeriod }: Props) {
+export function DuesLateFeePanel({ locale, propertyId, policy, defaultPeriod, runs }: Props) {
   const t = useTranslations("dues");
+  const applyPeriods = useMemo(() => periodsFromAccrualRuns(runs, true), [runs]);
   const [mode, setMode] = useState<LateFeeUiMode>(() => resolveLateFeeUiMode(policy));
   const [policyState, policyAction, policyPending] = useActionState(
     upsertLateFeePolicyAction.bind(null, locale, propertyId),
@@ -162,30 +166,16 @@ export function DuesLateFeePanel({ locale, propertyId, policy, defaultPeriod }: 
 
           <form action={applyAction} className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-2">
-                <Label htmlFor="late-fee-year">{t("year")}</Label>
-                <Input
-                  id="late-fee-year"
-                  name="year"
-                  type="number"
-                  defaultValue={defaultPeriod.year}
-                  required
-                  disabled={!enabled || !policySavedActive}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="late-fee-month">{t("month")}</Label>
-                <Input
-                  id="late-fee-month"
-                  name="month"
-                  type="number"
-                  min={1}
-                  max={12}
-                  defaultValue={defaultPeriod.month}
-                  required
-                  disabled={!enabled || !policySavedActive}
-                />
-              </div>
+              <YearMonthFormFields
+                periods={applyPeriods}
+                defaultYear={defaultPeriod.year}
+                defaultMonth={defaultPeriod.month}
+                yearLabel={t("year")}
+                monthLabel={t("month")}
+                yearId="late-fee-year"
+                monthId="late-fee-month"
+                disabled={!enabled || !policySavedActive}
+              />
             </div>
             {applyState.error ? (
               <p className="text-sm text-destructive">

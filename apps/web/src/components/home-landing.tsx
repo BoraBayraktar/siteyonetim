@@ -135,6 +135,9 @@ export async function HomeLanding({ locale }: Props) {
                 <Button size="lg" variant="outline" asChild>
                   <Link href={`/${locale}/portal/login`}>{t("goPortalLogin")}</Link>
                 </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <Link href={`/${locale}/auditor/login`}>{t("goAuditorLogin")}</Link>
+                </Button>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">

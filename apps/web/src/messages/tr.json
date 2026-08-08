@@ -521,6 +521,26 @@
       "DELINQUENT_EQUAL": "Yalnızca borçlular (eşit)"
     },
     "openDebtKindLateFee": "Gecikme",
+    "onlinePaymentTitle": "Kart ile ödeme",
+    "onlinePaymentSubtitle": "3D Secure ile güvenli online tahsilat",
+    "onlinePaymentPay": "{amount} öde",
+    "onlinePaymentPending": "Yönlendiriliyor…",
+    "onlinePaymentResultSuccessTitle": "Ödemeniz alındı",
+    "onlinePaymentResultSuccessDescription": "Tahsilat birkaç saniye içinde hesabınıza yansır.",
+    "onlinePaymentResultFailedTitle": "Ödeme tamamlanamadı",
+    "onlinePaymentResultFailedDescription": "İşlem iptal edildi veya banka tarafından reddedildi.",
+    "onlinePaymentBackToPortal": "Portala dön",
+    "onlinePaymentErrors": {
+      "UNAUTHORIZED": "Bu işlem için yetkiniz yok.",
+      "PAYER_NOT_ALLOWED": "Bu borç için ödeme başlatamazsınız.",
+      "ONLINE_PAYMENT_DISABLED": "Online ödeme bu site için kapalı.",
+      "PAYMENT_PROFILE_NOT_CONFIGURED": "Site ödeme profili yapılandırılmamış.",
+      "NO_OPEN_DEBT": "Ödenecek açık borç bulunmuyor.",
+      "IYZICO_CHECKOUT_INIT_FAILED": "Ödeme oturumu başlatılamadı.",
+      "MISSING_TOKEN": "Ödeme doğrulama bilgisi eksik.",
+      "CALLBACK_FAILED": "Ödeme doğrulaması başarısız.",
+      "PAYMENT_INTENT_NOT_FOUND": "Ödeme kaydı bulunamadı."
+    },
     "statementTitle": "Hesap dökümü (12 ay)",
     "statementSubtitle": "Borçlandırma ve tahsilat hareketleri",
     "statementEmpty": "Henüz hareket yok.",
@@ -544,6 +564,7 @@
       "CONTRACT": "Sözleşme",
       "BOARD_MINUTES": "Karar defteri özeti",
       "INVOICE_COPY": "Fatura kopyası",
+      "AUDITOR_REPORT": "Denetçi raporu",
       "OTHER": "Diğer"
     },
     "incomeExpenseTitle": "{property} — gelir-gider özeti",
@@ -588,6 +609,7 @@
     "showIncomeExpenseReport": "Gelir-gider raporu",
     "showMemberDebtSummary": "Diğer daire borç özeti",
     "showIncidents": "Arıza bildirimi",
+    "allowOnlinePayment": "Online kart ödemesi",
     "saveSettings": "Ayarları kaydet",
     "isolationTitle": "Veritabanı izolasyonu",
     "isolationSubtitle": "Paylaşımlı şema veya site başına ayrı veritabanı (Neon branch)",
@@ -1084,6 +1106,7 @@
   },
   "legalInterest": {
     "title": "Kanuni faiz oranları ({year})",
+    "year": "Yıl",
     "description": "TCMB yıllık temerrüt faiz oranlarını ay bazında girin. Kanuni gecikme modunda borçlandırma yıllık/12 aylık eşdeğer kullanır.",
     "addRate": "Oran ekle / güncelle",
     "month": "Ay",
@@ -1208,6 +1231,7 @@
     "navLabel": "Görevli menüsü",
     "navHome": "Ana sayfa",
     "navMeters": "Sayaçlar",
+    "navResidents": "Sakinler",
     "navIncidents": "Arızalar",
     "navAnnouncements": "Duyurular",
     "navDocuments": "Arşiv",
@@ -1219,6 +1243,18 @@
     "propertiesEmpty": "Hesabınıza atanmış apartman bulunmuyor. Yöneticinizle iletişime geçin.",
     "cardMetersTitle": "Sayaç endeksleri",
     "cardMetersDescription": "Su, doğalgaz ve diğer sayaç okumalarını girin.",
+    "cardResidentsTitle": "Sakinler",
+    "cardResidentsDescription": "Taşınmaz ve malik/kiracı bilgilerini görüntüleyin.",
+    "cardResidentsDescriptionWithPhone": "Taşınmaz, malik/kiracı ve telefon bilgilerini görüntüleyin.",
+    "residentsTitle": "Sakinler",
+    "residentsSubtitle": "Malik ve kiracı adları görüntülenir; telefon numaraları yönetici tarafından kapalı.",
+    "residentsSubtitleWithPhone": "Malik ve kiracı adları ile telefon numaraları görüntülenir.",
+    "residentsSearch": "Ara",
+    "residentsSearchPlaceholder": "Taşınmaz kodu veya isim",
+    "residentsEmpty": "Eşleşen kayıt yok.",
+    "roleOwner": "Malik",
+    "roleTenant": "Kiracı",
+    "phone": "Telefon",
     "cardIncidentsTitle": "Arıza kayıtları",
     "cardIncidentsDescription": "Arıza bildir, durumu güncelle ve takip et.",
     "cardAnnouncementsTitle": "Duyurular",
@@ -1580,6 +1616,28 @@
       "UNAUTHORIZED": "Yetkisiz işlem."
     }
   },
+  "payments": {
+    "profileTitle": "Online ödeme (iyzico)",
+    "profileSubtitle": "Her apartman kendi iyzico merchant hesabını kullanır",
+    "enabled": "Online ödeme etkin",
+    "sandbox": "Sandbox (test) modu",
+    "apiKey": "API anahtarı",
+    "secretKey": "Gizli anahtar",
+    "secretConfigured": "kayıtlı",
+    "secretPlaceholder": "Değiştirmek için yeni anahtar girin",
+    "defaultCashbox": "Tahsilat kasası",
+    "selectCashbox": "Kasa seçin",
+    "saveProfile": "Ödeme profilini kaydet",
+    "saved": "Kaydedildi",
+    "errors": {
+      "UNAUTHORIZED": "Bu işlem için yetkiniz yok.",
+      "PAYMENT_API_KEY_REQUIRED": "API anahtarı zorunludur.",
+      "PAYMENT_SECRET_REQUIRED": "Gizli anahtar zorunludur.",
+      "PAYMENT_CASHBOX_REQUIRED": "Tahsilat kasası seçilmelidir.",
+      "CASHBOX_NOT_FOUND": "Kasa bulunamadı.",
+      "PROPERTY_NOT_FOUND": "Site bulunamadı."
+    }
+  },
   "banking": {
     "importTitle": "Banka ekstresi içe aktar",
     "importHint": "CSV dosyasında tarih, tutar ve açıklama sütunları olmalıdır. Yükleme sonrası otomatik eşleştirme çalışır.",
@@ -1741,6 +1799,289 @@
       "DECISION_NOT_FOUND": "Karar bulunamadı.",
       "UNIT_NOT_FOUND": "Taşınmaz bulunamadı.",
       "GOVERNANCE_ACTION_FAILED": "İşlem başarısız."
+    }
+  },
+  "enums": {
+    "PropertyKind": {
+      "APARTMAN": "Apartman",
+      "APARTMAN_SITE": "Apartman sitesi"
+    },
+    "OrganizationRole": {
+      "ORG_ADMIN": "Organizasyon yöneticisi",
+      "PROPERTY_MANAGER": "Site yöneticisi",
+      "ACCOUNTANT": "Muhasebe",
+      "BOARD_MEMBER": "Yönetim kurulu",
+      "AUDITOR": "Denetçi",
+      "STAFF": "Site görevlisi"
+    },
+    "PropertyIsolationMode": {
+      "SHARED_SCHEMA": "Paylaşımlı şema (mantıksal izolasyon)",
+      "DEDICATED_DATABASE": "Ayrı veritabanı (fiziksel izolasyon)"
+    },
+    "PropertyTenantStatus": {
+      "PROVISIONING": "Hazırlanıyor",
+      "ACTIVE": "Aktif",
+      "SUSPENDED": "Askıda",
+      "DECOMMISSIONED": "Kapatıldı"
+    },
+    "PortalAuthMode": {
+      "EMAIL": "Yalnızca e-posta",
+      "UNIT_CREDENTIAL": "Yalnızca daire kodu",
+      "BOTH": "E-posta ve daire kodu"
+    },
+    "PropertyAccessRole": {
+      "PROPERTY_ADMIN": "Site yöneticisi",
+      "PROPERTY_MANAGER": "Site yöneticisi",
+      "PROPERTY_ACCOUNTANT": "Muhasebe",
+      "PROPERTY_AUDITOR": "Denetçi",
+      "PROPERTY_BOARD_MEMBER": "Yönetim kurulu",
+      "PROPERTY_STAFF": "Site görevlisi",
+      "SECURITY": "Güvenlik",
+      "MAINTENANCE": "Bakım"
+    },
+    "PartyType": {
+      "PERSON": "Üye",
+      "COMPANY": "Kurum"
+    },
+    "OccupancyRole": {
+      "OWNER": "Malik",
+      "TENANT": "Kiracı"
+    },
+    "FinancePeriodStatus": {
+      "OPEN": "Açık",
+      "CLOSED": "Kapalı"
+    },
+    "FinanceCategoryType": {
+      "INCOME": "Gelir",
+      "EXPENSE": "Gider"
+    },
+    "FinanceAccountKind": {
+      "PARTY": "Üye",
+      "SUPPLIER": "Tedarikçi",
+      "STAFF": "Personel",
+      "GENERAL": "Genel"
+    },
+    "LedgerEntryType": {
+      "INCOME": "Gelir",
+      "EXPENSE": "Gider"
+    },
+    "CashboxMovementDirection": {
+      "IN": "Giriş",
+      "OUT": "Çıkış"
+    },
+    "StaffEmploymentStatus": {
+      "ACTIVE": "Aktif",
+      "PASSIVE": "Pasif"
+    },
+    "StaffMovementType": {
+      "SALARY_ACCRUAL": "Maaş tahakkuku",
+      "ADVANCE": "Avans",
+      "PAYMENT": "Ödeme",
+      "ADVANCE_OFFSET": "Avans mahsubu",
+      "DEDUCTION": "Kesinti",
+      "BONUS": "Prim",
+      "MANUAL_ADJUSTMENT": "Manuel düzeltme"
+    },
+    "PaymentChannel": {
+      "MANUAL": "Manuel",
+      "ONLINE": "Online",
+      "BANK": "Banka"
+    },
+    "PaymentProvider": {
+      "IYZICO": "iyzico"
+    },
+    "PaymentIntentStatus": {
+      "PENDING": "Bekliyor",
+      "PROCESSING": "İşleniyor",
+      "SUCCEEDED": "Başarılı",
+      "FAILED": "Başarısız",
+      "CANCELLED": "İptal edildi",
+      "EXPIRED": "Süresi doldu"
+    },
+    "DueCalculationMode": {
+      "FIXED": "Sabit tutar",
+      "AREA_M2": "m² başına",
+      "SHARE_RATIO": "Dağıtım payı",
+      "ALLOCATED_BILL": "Fatura paylaştırma",
+      "METER_CONSUMPTION": "Sayaç tüketimi",
+      "METER_ALLOCATED_BILL": "Fatura paylaştırma (sayaç)",
+      "SUPPLIER_LATE_FEE_BILL": "Tedarikçi gecikme faizi"
+    },
+    "DueAccrualLineKind": {
+      "STANDARD": "Aidat",
+      "LATE_FEE": "Gecikme faizi",
+      "SUPPLIER_LATE_FEE": "Tedarikçi gecikme faizi"
+    },
+    "SupplierLateFeeAllocationMode": {
+      "ALL_UNITS_BY_SHARE": "Tüm daireler (arsa payı)",
+      "ALL_UNITS_EQUAL": "Tüm daireler (eşit)",
+      "DELINQUENT_BY_DEBT_RATIO": "Yalnızca borçlular (borç oranı)",
+      "DELINQUENT_EQUAL": "Yalnızca borçlular (eşit)"
+    },
+    "MeterKind": {
+      "HOT_WATER": "Sıcak su",
+      "COLD_WATER": "Soğuk su",
+      "HEATING": "Isıtma",
+      "GAS": "Doğalgaz"
+    },
+    "HeatingSystemType": {
+      "NONE": "Yok / belirtilmedi",
+      "INDIVIDUAL_GAS": "Bireysel doğalgaz",
+      "CENTRAL_GAS": "Merkezi doğalgaz",
+      "CENTRAL_OTHER": "Merkezi (diğer)",
+      "DISTRICT_HEATING": "Merkezi ısıtma (bölgesel)"
+    },
+    "HotWaterSystemType": {
+      "NONE": "Yok / belirtilmedi",
+      "INDIVIDUAL": "Bireysel",
+      "CENTRAL_INDIVIDUAL_METER": "Merkezi + taşınmaz sayacı",
+      "CENTRAL_SHARED": "Merkezi (ortak pay)"
+    },
+    "LateFeeRateKind": {
+      "CONTRACTUAL": "Sözleşmesel",
+      "LEGAL_TCMB": "Yasal (TCMB)"
+    },
+    "ReportExportStatus": {
+      "PENDING": "Bekliyor",
+      "PROCESSING": "İşleniyor",
+      "READY": "Hazır",
+      "FAILED": "Hata"
+    },
+    "ReportExportFormat": {
+      "CSV": "CSV",
+      "XLSX": "Excel",
+      "PDF": "PDF",
+      "ZIP": "ZIP"
+    },
+    "JobRunStatus": {
+      "PENDING": "Bekliyor",
+      "RUNNING": "Çalışıyor",
+      "SUCCEEDED": "Başarılı",
+      "FAILED": "Başarısız",
+      "SKIPPED": "Atlandı"
+    },
+    "DueAccrualStatus": {
+      "DRAFT": "Taslak",
+      "POSTED": "Kesinleşmiş"
+    },
+    "DueLineStatus": {
+      "OPEN": "Açık",
+      "PARTIAL": "Kısmi ödendi",
+      "PAID": "Ödendi"
+    },
+    "PeriodRegisterCellStatus": {
+      "NONE": "—",
+      "OPEN": "Açık",
+      "PARTIAL": "Kısmi ödendi",
+      "PAID": "Ödendi"
+    },
+    "AnnouncementAudience": {
+      "PROPERTY_ALL": "Tüm apartman",
+      "BLOCK": "Blok",
+      "UNITS": "Seçili taşınmazlar"
+    },
+    "AnnouncementBodyFormat": {
+      "PLAIN": "Düz metin",
+      "HTML": "Zengin metin"
+    },
+    "AnnouncementWorkflowStatus": {
+      "DRAFT": "Taslak",
+      "PUBLISHED": "Yayında"
+    },
+    "IncidentStatus": {
+      "OPEN": "Açık",
+      "IN_PROGRESS": "Devam ediyor",
+      "CLOSED": "Kapalı"
+    },
+    "IncidentPriority": {
+      "LOW": "Düşük",
+      "NORMAL": "Normal",
+      "HIGH": "Yüksek",
+      "URGENT": "Acil"
+    },
+    "IncidentCategory": {
+      "ELEVATOR": "Asansör",
+      "PLUMBING": "Tesisat",
+      "ELECTRICAL": "Elektrik",
+      "COMMON_AREA": "Ortak alan",
+      "SECURITY": "Güvenlik",
+      "OTHER": "Diğer"
+    },
+    "OutboxChannel": {
+      "EMAIL": "E-posta",
+      "SMS": "SMS",
+      "WHATSAPP": "WhatsApp"
+    },
+    "OutboxStatus": {
+      "PENDING": "Bekliyor",
+      "SENT": "Gönderildi",
+      "FAILED": "Başarısız"
+    },
+    "DocumentCategory": {
+      "CONTRACT": "Sözleşme",
+      "BOARD_MINUTES": "Karar defteri özeti",
+      "INVOICE_COPY": "Fatura kopyası",
+      "AUDITOR_REPORT": "Denetçi raporu",
+      "OTHER": "Diğer"
+    },
+    "DocumentVisibility": {
+      "ADMIN_ONLY": "Yalnızca yönetim",
+      "PORTAL_SHARED": "Portal (apartman)",
+      "UNIT_SPECIFIC": "Seçili taşınmazlar"
+    },
+    "AuditorReportPeriod": {
+      "Q1": "1. çeyrek",
+      "Q2": "2. çeyrek",
+      "Q3": "3. çeyrek",
+      "Q4": "4. çeyrek",
+      "ANNUAL": "Yıllık"
+    },
+    "AuditorReportStatus": {
+      "DRAFT": "Taslak",
+      "IN_REVIEW": "İncelemede",
+      "APPROVED": "Onaylandı",
+      "ARCHIVED": "Arşivlendi"
+    },
+    "AuditorDischargeRecommendation": {
+      "RECOMMEND": "İbra önerilir",
+      "NOT_RECOMMEND": "İbra önerilmez",
+      "CONDITIONAL": "Koşullu ibra"
+    },
+    "BankStatementMatchStatus": {
+      "UNMATCHED": "Eşleşmedi",
+      "MATCHED": "Eşleşti",
+      "IGNORED": "Yoksayıldı"
+    },
+    "BankStatementImportSource": {
+      "MANUAL_CSV": "Manuel CSV",
+      "API_WEBHOOK": "API (webhook)",
+      "API_REST_POLL": "API (REST poll)"
+    },
+    "BankSyncProviderKind": {
+      "WEBHOOK_PUSH": "Webhook (push)",
+      "GENERIC_REST_POLL": "REST poll (günlük)"
+    },
+    "GeneralAssemblyMeetingType": {
+      "ORDINARY": "Olağan",
+      "EXTRAORDINARY": "Olağanüstü"
+    },
+    "AssemblyNoticeMethod": {
+      "POST": "Posta",
+      "COURIER": "Kurye",
+      "EMAIL": "E-posta",
+      "HAND_DELIVERY": "Elden tebliğ",
+      "OTHER": "Diğer"
+    },
+    "AssemblyAttendanceKind": {
+      "PRESENT": "Bizzat",
+      "PROXY": "Vekaleten",
+      "ABSENT": "Katılmadı"
+    },
+    "AnnualIncomeExpenseSection": {
+      "INCOME": "Gelir",
+      "EXPENSE": "Gider",
+      "SUMMARY": "Özet",
+      "BUDGET": "Bütçe"
     }
   }
 }

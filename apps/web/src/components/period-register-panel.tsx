@@ -11,6 +11,7 @@ import type {
 } from "@siteyonetim/finance-dues";
 import type { BlockDto } from "@siteyonetim/property-core";
 import { DueAccrualLineKind, DueCalculationMode } from "@siteyonetim/db";
+import type { EnumLabelFn } from "@/lib/enum-labels";
 import { Download, Filter, Search } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -29,6 +30,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { registerPeriodFilterOptions } from "@/lib/accrual-filters";
+import { turkishMonthName } from "@/lib/period-options";
+import { useEnumLabel } from "@/lib/use-enum-label";
 
 type Props = {
   locale: string;
@@ -88,7 +91,10 @@ function formatStatementDate(date: Date | string, locale: string) {
   return value.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-US");
 }
 
-function formatOpenDebtLineLabel(line: UnitDebtDetailDto["openLines"][number]) {
+function formatOpenDebtLineLabel(
+  line: UnitDebtDetailDto["openLines"][number],
+  labelEnum: EnumLabelFn,
+) {
   if (
     line.lineKind === DueAccrualLineKind.LATE_FEE &&
     line.sourceDueDefinitionName &&
@@ -99,7 +105,7 @@ function formatOpenDebtLineLabel(line: UnitDebtDetailDto["openLines"][number]) {
   }
   if (line.lineKind === DueAccrualLineKind.SUPPLIER_LATE_FEE && line.supplierLateFeeAllocationMode) {
     const ref = line.supplierReference ? ` · ${line.supplierReference}` : "";
-    return `${line.dueDefinitionName} (${line.supplierLateFeeAllocationMode}${ref})`;
+    return `${line.dueDefinitionName} (${labelEnum("SupplierLateFeeAllocationMode", line.supplierLateFeeAllocationMode)}${ref})`;
   }
   return `${line.dueDefinitionName} ${line.month}/${line.year}`;
 }
@@ -413,6 +419,7 @@ export function PeriodRegisterPanel({
   const tDues = useTranslations("dues");
   const tDebt = useTranslations("unitsDebt");
   const tPortal = useTranslations("portal");
+  const labelEnum = useEnumLabel();
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
@@ -788,7 +795,7 @@ export function PeriodRegisterPanel({
               <SelectContent>
                 {monthOptions.map((optionMonth) => (
                   <SelectItem key={optionMonth} value={String(optionMonth)}>
-                    {tDues(`monthNames.${optionMonth}` as "monthNames.1")}
+                    {turkishMonthName(optionMonth)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1056,7 +1063,7 @@ export function PeriodRegisterPanel({
                       const allocations = detail.openLines.map((line) => ({
                         lineId: line.id,
                         remaining: line.remaining,
-                        definitionName: formatOpenDebtLineLabel(line),
+                        definitionName: formatOpenDebtLineLabel(line, labelEnum),
                       }));
                       const paymentAmount =
                         allocations.length > 0
@@ -1102,7 +1109,7 @@ export function PeriodRegisterPanel({
                           className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 pr-2 text-sm"
                         >
                           <span className="min-w-0 break-words">
-                            {formatOpenDebtLineLabel(line)}
+                            {formatOpenDebtLineLabel(line, labelEnum)}
                           </span>
                           <span className="shrink-0 font-medium tabular-nums">
                             {formatDebtMoney(line.remaining, locale)}

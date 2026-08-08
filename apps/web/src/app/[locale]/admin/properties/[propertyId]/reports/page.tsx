@@ -24,8 +24,10 @@ import {
   getPropertyService,
   getReportingService,
   getStaffFinanceService,
+  getDuesService,
 } from "@/lib/services";
 import { getAppBaseUrl } from "@/lib/app-url";
+import { mergePeriods, periodsFromAccrualRuns, periodsFromBankImports } from "@/lib/period-options";
 import { OrganizationRole } from "@siteyonetim/db";
 
 const KINDS: StandardReportKind[] = [
@@ -83,6 +85,10 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
     locale,
     ...quarterMonths,
   };
+
+  const ctx = { organizationId, propertyId, actorUserId: session.user.id };
+  const accrualRuns = await getDuesService().listAccrualRuns(ctx);
+  let reportPeriods = periodsFromAccrualRuns(accrualRuns, true);
 
   const reporting = getReportingService();
   const finance = getFinanceService();
@@ -151,6 +157,11 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
       ])
     : [[], [], { items: [], total: 0, page: 1, pageSize: 20 }, null, null, { items: [], total: 0, page: 1, pageSize: 200 }];
 
+  if (showBankReconciliation && bankImports.length > 0) {
+    reportPeriods = mergePeriods(reportPeriods, periodsFromBankImports(bankImports));
+  }
+  reportPeriods = mergePeriods(reportPeriods, [{ year, month }]);
+
   const t = await getTranslations("reports");
   const tCommon = await getTranslations("common");
 
@@ -191,6 +202,7 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
           aging={aging}
           annual={annual}
           recentExports={recentExports}
+          periods={reportPeriods}
         />
       </Suspense>
 
@@ -208,6 +220,7 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
             propertyId={propertyId}
             year={year}
             month={month}
+            periods={reportPeriods}
             cashboxes={cashboxes}
             imports={bankImports}
             unmatchedLines={unmatchedPage.items}

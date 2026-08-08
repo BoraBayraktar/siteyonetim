@@ -21,6 +21,8 @@ import type {
   RunDueAccrualMonthlyResult,
   RunLateFeeMonthlyInput,
   RunLateFeeMonthlyResult,
+  RunMeterReadingReminderInput,
+  RunMeterReadingReminderResult,
 } from "./contract";
 import { isSkippableAccrualJobError } from "./accrual-errors";
 import { JobRepository } from "./repository";
@@ -213,6 +215,95 @@ export class JobService implements JobServiceContract {
     }
 
     await this.auditJobBatch("jobs.accrualDraftReminder.run", input, properties);
+
+    return {
+      year: input.year,
+      month: input.month,
+      properties,
+      outbox: { processed, sent, failed },
+    };
+  }
+
+  async runMeterReadingReminders(input: RunMeterReadingReminderInput): Promise<RunMeterReadingReminderResult> {
+    const targets = await this.dues.listMeterReadingReminderTargets(input.year, input.month);
+    const properties: AccrualReminderPropertyResult[] = [];
+
+    for (const target of targets) {
+      const idempotencyKey = `METER_READING_REMINDER:${target.propertyId}:${input.year}:${input.month}`;
+      const existing = await this.repository.findByIdempotencyKey(idempotencyKey);
+      if (existing?.status === JobRunStatus.SUCCEEDED) {
+        properties.push({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          status: "SKIPPED",
+        });
+        continue;
+      }
+
+      const run =
+        existing != null
+          ? await this.repository.restartRun(existing.id)
+          : await this.repository.createRun({
+              jobType: JobType.METER_READING_REMINDER,
+              idempotencyKey,
+              organizationId: target.organizationId,
+              propertyId: target.propertyId,
+              year: input.year,
+              month: input.month,
+            });
+
+      try {
+        const { enqueued } = await this.notifications.enqueueMeterReadingReminder({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          propertyName: target.propertyName,
+          year: target.year,
+          month: target.month,
+          missingReadingCount: target.missingReadingCount,
+          meterKinds: target.meterKinds,
+          actorUserId: input.actorUserId ?? null,
+        });
+        await this.repository.finishRun(run.id, JobRunStatus.SUCCEEDED, { enqueued });
+        properties.push({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          status: enqueued > 0 ? "SUCCEEDED" : "SKIPPED",
+          enqueued,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "JOB_FAILED";
+        if (message === "NOTIFICATION_NO_RECIPIENTS") {
+          await this.repository.finishRun(run.id, JobRunStatus.SUCCEEDED, { skipped: message });
+          properties.push({
+            organizationId: target.organizationId,
+            propertyId: target.propertyId,
+            status: "SKIPPED",
+            error: message,
+          });
+          continue;
+        }
+        await this.repository.finishRun(run.id, JobRunStatus.FAILED, undefined, message);
+        properties.push({
+          organizationId: target.organizationId,
+          propertyId: target.propertyId,
+          status: "FAILED",
+          error: message,
+        });
+      }
+    }
+
+    const orgIds = [...new Set(properties.map((p) => p.organizationId))];
+    let processed = 0;
+    let sent = 0;
+    let failed = 0;
+    for (const organizationId of orgIds) {
+      const result = await this.notifications.processPending({ organizationId, limit: 50 });
+      processed += result.processed;
+      sent += result.sent;
+      failed += result.failed;
+    }
+
+    await this.auditJobBatch("jobs.meterReadingReminder.run", input, properties);
 
     return {
       year: input.year,

@@ -15,18 +15,21 @@ import {
   type BankingActionState,
 } from "@/app/actions/banking";
 
+import { YearMonthFormFields } from "@/components/year-month-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { PeriodPoint } from "@/lib/period-options";
 
 type Props = {
   locale: string;
   propertyId: string;
   year: number;
   month: number;
+  periods: PeriodPoint[];
   cashboxes: CashboxDto[];
   imports: BankStatementImportDto[];
   unmatchedLines: BankStatementLineDto[];
@@ -54,6 +57,7 @@ export function BankReconciliationPanel({
   propertyId,
   year,
   month,
+  periods,
   cashboxes,
   imports,
   unmatchedLines,
@@ -106,14 +110,15 @@ export function BankReconciliationPanel({
                 </Select>
                 <input type="hidden" name="cashboxId" value={cashboxId} />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="bank-year">{tReports("year")}</Label>
-                <Input id="bank-year" name="year" type="number" defaultValue={year} required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="bank-month">{tReports("month")}</Label>
-                <Input id="bank-month" name="month" type="number" min={0} max={12} defaultValue={month} required />
-              </div>
+              <YearMonthFormFields
+                periods={periods}
+                defaultYear={year}
+                defaultMonth={month}
+                yearLabel={tReports("year")}
+                monthLabel={tReports("month")}
+                yearId="bank-year"
+                monthId="bank-month"
+              />
               <div className="grid gap-2 sm:col-span-2 lg:col-span-4">
                 <Label htmlFor="bank-csv">{t("csvFile")}</Label>
                 <Input id="bank-csv" name="csvFile" type="file" accept=".csv,text/csv" required />

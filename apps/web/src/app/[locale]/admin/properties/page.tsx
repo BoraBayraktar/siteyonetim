@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
+import { enumLabel } from "@/lib/enum-labels";
 import { isStaffRole, resolveAccessiblePropertyIds } from "@/lib/auth-context";
 import { staffPropertyHomePath } from "@/lib/staff-admin-access";
 import { CreatePropertyForm } from "@/components/create-property-form";
@@ -20,11 +21,8 @@ type Props = {
   searchParams: Promise<{ page?: string }>;
 };
 
-function kindLabel(kind: PropertyKind, t: Awaited<ReturnType<typeof getTranslations>>) {
-  if (kind === PropertyKind.APARTMAN_SITE) {
-    return t("kindApartmentSite");
-  }
-  return t("kindApartment");
+function kindLabel(kind: PropertyKind, tEnum: Awaited<ReturnType<typeof getTranslations>>) {
+  return enumLabel(tEnum, "PropertyKind", kind);
 }
 
 export default async function PropertiesPage({ params, searchParams }: Props) {
@@ -40,6 +38,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
   const isStaffUser = isStaffRole(session.user.role);
   const page = Math.max(1, Number(pageParam ?? "1") || 1);
   const t = await getTranslations("properties");
+  const tEnum = await getTranslations("enums");
   const scope = await resolveAccessiblePropertyIds(session);
 
   const data = await getPropertyService().list({
@@ -89,7 +88,7 @@ export default async function PropertiesPage({ params, searchParams }: Props) {
                         {property.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{kindLabel(property.kind, t)}</TableCell>
+                    <TableCell>{kindLabel(property.kind, tEnum)}</TableCell>
                     <TableCell>{property.address ?? "—"}</TableCell>
                     <TableCell className="text-right">{property.blockCount}</TableCell>
                     <TableCell className="text-right">{property.unitCount}</TableCell>

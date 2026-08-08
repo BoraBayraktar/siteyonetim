@@ -64,6 +64,17 @@ export type EnqueueAccrualDraftReminderInput = {
   actorUserId?: string | null;
 };
 
+export type EnqueueMeterReadingReminderInput = {
+  organizationId: string;
+  propertyId: string;
+  propertyName: string;
+  year: number;
+  month: number;
+  missingReadingCount: number;
+  meterKinds: string[];
+  actorUserId?: string | null;
+};
+
 export type EnqueueReportExportReadyInput = {
   organizationId: string;
   propertyId: string;
@@ -94,6 +105,7 @@ export interface NotificationServiceContract {
   listOutbox(input: ListOutboxInput): Promise<PaginatedOutbox>;
   enqueueAnnouncementNotifications(input: EnqueueAnnouncementNotificationsInput): Promise<{ enqueued: number }>;
   enqueueAccrualDraftReminder(input: EnqueueAccrualDraftReminderInput): Promise<{ enqueued: number }>;
+  enqueueMeterReadingReminder(input: EnqueueMeterReadingReminderInput): Promise<{ enqueued: number }>;
   enqueueAuditorQuarterReminder(input: EnqueueAuditorQuarterReminderInput): Promise<{ enqueued: number }>;
   enqueueReportExportReady(input: EnqueueReportExportReadyInput): Promise<{ enqueued: number }>;
   processPending(input: ProcessOutboxInput): Promise<ProcessOutboxResult>;

@@ -6,11 +6,13 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useTransition } from "react";
 
+import { YearMonthOptionalFilterSelects } from "@/components/year-month-select";
 import { Button } from "@/components/ui/button";
+import type { AccrualFilters } from "@/lib/accrual-filters";
+import { uniqueDefinitionOptions } from "@/lib/accrual-filters";
+import { periodsFromAccrualRuns } from "@/lib/period-options";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { AccrualFilters } from "@/lib/accrual-filters";
-import { uniqueDefinitionOptions, uniqueYearsFromRuns } from "@/lib/accrual-filters";
 
 const ALL = "all";
 
@@ -28,7 +30,7 @@ export function AccrualFiltersBar({ filters, runs, definitions, units }: Props) 
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const yearOptions = useMemo(() => uniqueYearsFromRuns(runs), [runs]);
+  const periods = useMemo(() => periodsFromAccrualRuns(runs), [runs]);
   const definitionOptions = useMemo(() => {
     const fromRuns = uniqueDefinitionOptions(runs);
     if (fromRuns.length > 0) return fromRuns;
@@ -107,49 +109,20 @@ export function AccrualFiltersBar({ filters, runs, definitions, units }: Props) 
           </Select>
         </div>
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="accrual-filter-year">{t("year")}</Label>
-          <Select
-            value={filters.year != null ? String(filters.year) : ALL}
-            onValueChange={(value) =>
-              pushFilters({ year: value === ALL ? null : Number(value) })
-            }
-          >
-            <SelectTrigger id="accrual-filter-year" className="w-full bg-background">
-              <SelectValue placeholder={t("accrualFilterAllYears")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t("accrualFilterAllYears")}</SelectItem>
-              {yearOptions.map((year) => (
-                <SelectItem key={year} value={String(year)}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="accrual-filter-month">{t("accrualFilterPeriod")}</Label>
-          <Select
-            value={filters.month != null ? String(filters.month) : ALL}
-            onValueChange={(value) =>
-              pushFilters({ month: value === ALL ? null : Number(value) })
-            }
-          >
-            <SelectTrigger id="accrual-filter-month" className="w-full bg-background">
-              <SelectValue placeholder={t("accrualFilterAllPeriods")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>{t("accrualFilterAllPeriods")}</SelectItem>
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <SelectItem key={month} value={String(month)}>
-                  {t(`monthNames.${month}` as "monthNames.1")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <YearMonthOptionalFilterSelects
+          periods={periods}
+          year={filters.year}
+          month={filters.month}
+          onYearChange={(year) => pushFilters({ year })}
+          onMonthChange={(month) => pushFilters({ month })}
+          yearLabel={t("year")}
+          monthLabel={t("accrualFilterPeriod")}
+          allYearsLabel={t("accrualFilterAllYears")}
+          allMonthsLabel={t("accrualFilterAllPeriods")}
+          yearId="accrual-filter-year"
+          monthId="accrual-filter-month"
+          disabled={pending}
+        />
 
         <div className="grid gap-1.5">
           <Label htmlFor="accrual-filter-definition">{t("accrualFilterDebtType")}</Label>
