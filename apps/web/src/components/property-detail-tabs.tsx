@@ -69,6 +69,7 @@ export function PropertyDetailTabs({
   staffOpsProfile,
 }: Props) {
   const t = useTranslations("propertyDetail");
+  const tPh = useTranslations("placeholders");
   const outerTab = useMemo(() => resolvePropertyStructureTab(defaultTab), [defaultTab]);
   const structureSection = useMemo(() => resolveStructureSection(defaultTab), [defaultTab]);
 
@@ -99,7 +100,7 @@ export function PropertyDetailTabs({
               <form action={blockAction} className="grid gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="block-name">{t("blockName")}</Label>
-                  <Input id="block-name" name="name" required />
+                  <Input id="block-name" name="name" placeholder={tPh("blockName")} required />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="sort-order">{t("sortOrder")}</Label>

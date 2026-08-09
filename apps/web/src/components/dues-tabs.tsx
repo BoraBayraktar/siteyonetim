@@ -1,5 +1,6 @@
 "use client";
 
+import type { DueCalculationMode } from "@siteyonetim/db";
 import type { CashboxDto, FinanceAccountDto, FinanceCategoryDto, FinancePeriodDto, LedgerEntryDto } from "@siteyonetim/finance-core";
 import type {
   AccrualContextWarningsDto,
@@ -17,11 +18,13 @@ import type {
   PaginatedStaffProfiles,
   PaginatedStaffStatement,
 } from "@siteyonetim/property-staff-finance";
+import type { PropertyMonthlyWorkflowDto } from "@siteyonetim/reporting-standard";
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
 import { setDefinitionAutoAccrualAction, type DuesActionState } from "@/app/actions/dues";
 import { DueDefinitionWizard } from "@/components/due-definition-wizard";
+import { EmptyStateAction } from "@/components/empty-state-action";
 import { DuesAccrualPanel } from "@/components/dues-accrual-panel";
 import { DuesLateFeePanel } from "@/components/dues-late-fee-panel";
 import { DuesMetersPanel } from "@/components/dues-meters-panel";
@@ -72,8 +75,10 @@ type Props = {
   initialStaffProfileId?: string | null;
   accrualFilters: AccrualFilters;
   accrualUnits: UnitDto[];
+  monthlyWorkflow?: PropertyMonthlyWorkflowDto | null;
   staffOperationsOnly?: boolean;
   canManageMeters?: boolean;
+  defaultCalculationMode?: DueCalculationMode;
 };
 
 function AutoAccrualToggle({
@@ -132,10 +137,13 @@ export function DuesTabs({
   initialStaffProfileId,
   accrualFilters,
   accrualUnits,
+  monthlyWorkflow = null,
   staffOperationsOnly = false,
   canManageMeters = true,
+  defaultCalculationMode,
 }: Props) {
   const t = useTranslations("dues");
+  const tEmpty = useTranslations("emptyActions.definitions");
   const activeTab: DuesTab = resolveDuesTab(initialTab);
 
   if (staffOperationsOnly) {
@@ -171,8 +179,14 @@ export function DuesTabs({
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle>{t("definitionsList")}</CardTitle>
-              <div className="flex flex-wrap gap-2">
-                <DueDefinitionWizard mode="insert" locale={locale} propertyId={propertyId} variant="aidat" />
+              <div id="definitions-actions" className="flex flex-wrap gap-2">
+                <DueDefinitionWizard
+                  mode="insert"
+                  locale={locale}
+                  propertyId={propertyId}
+                  variant="aidat"
+                  defaultCalculationMode={defaultCalculationMode}
+                />
                 <DueDefinitionWizard
                   mode="insert"
                   locale={locale}
@@ -182,6 +196,14 @@ export function DuesTabs({
               </div>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              {definitions.length === 0 ? (
+                <EmptyStateAction
+                  message={tEmpty("message")}
+                  steps={[tEmpty("step1"), tEmpty("step2")]}
+                  actionLabel={tEmpty("action")}
+                  actionHref={`/${locale}/admin/properties/${propertyId}/dues?tab=definitions#definitions-actions`}
+                />
+              ) : null}
               {definitions.map((d) => {
                 const isSupplier = isSupplierLateFeeDefinition(d.calculationMode);
                 return (
@@ -232,6 +254,7 @@ export function DuesTabs({
           initialRunId={initialRunId}
           filters={accrualFilters}
           units={accrualUnits}
+          monthlyWorkflow={monthlyWorkflow}
         />
       ) : null}
 

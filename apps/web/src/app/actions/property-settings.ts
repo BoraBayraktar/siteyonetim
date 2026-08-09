@@ -1,5 +1,6 @@
 "use server";
 
+import type { AdminUiMode } from "@siteyonetim/db";
 import { HeatingSystemType, HotWaterSystemType } from "@siteyonetim/db";
 import { revalidatePath } from "next/cache";
 
@@ -10,6 +11,75 @@ import { getPropertySettingsService } from "@/lib/services";
 export type UtilityActionState = { error?: string; success?: boolean };
 export type WhatsAppActionState = { error?: string; success?: boolean };
 export type StaffOpsActionState = { error?: string; success?: boolean };
+export type UiModeActionState = { error?: string; success?: boolean };
+export type ApplyRecommendedDefaultsActionState = {
+  error?: string;
+  createdBlock?: boolean;
+  createdCashbox?: boolean;
+  appliedSimpleMode?: boolean;
+};
+
+function revalidatePropertyUiPaths(locale: string, propertyId: string) {
+  revalidatePath(`/${locale}/admin/properties/${propertyId}`, "layout");
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/dashboard`, "page");
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/setup`, "page");
+  revalidatePath(`/${locale}/admin/properties/${propertyId}/dues`, "page");
+}
+
+export async function setUiModeAction(
+  locale: string,
+  propertyId: string,
+  adminUiMode: AdminUiMode,
+): Promise<UiModeActionState> {
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) {
+    return { error: "UNAUTHORIZED" };
+  }
+
+  try {
+    await getPropertySettingsService().setUiMode({
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
+      adminUiMode,
+      actorUserId: ctx.actorUserId,
+    });
+    revalidatePropertyUiPaths(locale, propertyId);
+    return { success: true };
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROPERTY_NOT_FOUND") {
+      return { error: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function applyRecommendedDefaultsAction(
+  locale: string,
+  propertyId: string,
+  applySimpleMode: boolean,
+): Promise<ApplyRecommendedDefaultsActionState> {
+  const ctx = await adminPropertyMutateContext(propertyId);
+  if (!ctx) {
+    return { error: "UNAUTHORIZED" };
+  }
+
+  try {
+    const result = await getPropertySettingsService().applyRecommendedDefaults({
+      organizationId: ctx.organizationId,
+      propertyId: ctx.propertyId,
+      applySimpleMode,
+      actorUserId: ctx.actorUserId,
+    });
+    revalidatePropertyUiPaths(locale, propertyId);
+    revalidatePath(`/${locale}/admin/properties/${propertyId}`, "page");
+    return result;
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROPERTY_NOT_FOUND") {
+      return { error: error.message };
+    }
+    throw error;
+  }
+}
 
 export async function upsertUtilityProfileAction(
   locale: string,

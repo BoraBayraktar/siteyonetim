@@ -1,14 +1,28 @@
+import { AdminUiMode } from "@siteyonetim/db";
 import { createAuditService } from "@siteyonetim/platform-audit";
 
 import type {
+  ApplyRecommendedDefaultsInput,
+  ApplyRecommendedDefaultsResult,
+  PropertyRecommendedDefaultsDto,
   PropertySettingsServiceContract,
   PropertyStaffOpsProfileDto,
+  PropertyUiModeDto,
   PropertyUtilityProfileDto,
   PropertyWhatsAppProfileDto,
+  SetUiModeInput,
   UpsertStaffOpsProfileInput,
   UpsertUtilityProfileInput,
   UpsertWhatsAppProfileInput,
 } from "./contract";
+import {
+  DEFAULT_BLOCK_NAME,
+  DEFAULT_CASHBOX_NAME,
+  recommendCalculationMode,
+  shouldSuggestDefaultBlock,
+  shouldSuggestDefaultCashbox,
+  shouldSuggestSimpleMode,
+} from "./property-defaults";
 import { PropertySettingsRepository } from "./repository";
 
 export class PropertySettingsService implements PropertySettingsServiceContract {
@@ -104,6 +118,102 @@ export class PropertySettingsService implements PropertySettingsServiceContract 
       },
     });
     return saved;
+  }
+
+  async getUiMode(organizationId: string, propertyId: string): Promise<PropertyUiModeDto> {
+    const meta = await this.repository.getPropertyMeta(organizationId, propertyId);
+    if (!meta) throw new Error("PROPERTY_NOT_FOUND");
+    return { propertyId, adminUiMode: meta.adminUiMode };
+  }
+
+  async setUiMode(input: SetUiModeInput): Promise<PropertyUiModeDto> {
+    const ok = await this.repository.propertyExists(input.organizationId, input.propertyId);
+    if (!ok) throw new Error("PROPERTY_NOT_FOUND");
+
+    const saved = await this.repository.setAdminUiMode(input.propertyId, input.adminUiMode);
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "property.uiMode.set",
+      entityType: "Property",
+      entityId: input.propertyId,
+      metadata: { adminUiMode: input.adminUiMode },
+    });
+    return { propertyId: saved.id, adminUiMode: saved.adminUiMode };
+  }
+
+  async getRecommendedDefaults(
+    organizationId: string,
+    propertyId: string,
+  ): Promise<PropertyRecommendedDefaultsDto> {
+    const meta = await this.repository.getPropertyMeta(organizationId, propertyId);
+    if (!meta) throw new Error("PROPERTY_NOT_FOUND");
+
+    return {
+      propertyId,
+      suggestSimpleMode: shouldSuggestSimpleMode(meta.kind, meta.adminUiMode),
+      suggestDefaultBlock: shouldSuggestDefaultBlock(meta.kind, meta._count.blocks),
+      suggestDefaultCashbox: shouldSuggestDefaultCashbox(meta._count.cashboxes),
+      recommendedCalculationMode: recommendCalculationMode({
+        blockCount: meta._count.blocks,
+        unitCount: meta._count.units,
+      }),
+      defaultBlockName: DEFAULT_BLOCK_NAME,
+      defaultCashboxName: DEFAULT_CASHBOX_NAME,
+    };
+  }
+
+  async applyRecommendedDefaults(input: ApplyRecommendedDefaultsInput): Promise<ApplyRecommendedDefaultsResult> {
+    const meta = await this.repository.getPropertyMeta(input.organizationId, input.propertyId);
+    if (!meta) throw new Error("PROPERTY_NOT_FOUND");
+
+    const recommendations = await this.getRecommendedDefaults(input.organizationId, input.propertyId);
+    let createdBlock = false;
+    let createdCashbox = false;
+    let appliedSimpleMode = false;
+
+    if (recommendations.suggestDefaultBlock) {
+      const { createBlockService } = await import("@siteyonetim/property-core");
+      await createBlockService().create({
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        name: recommendations.defaultBlockName,
+        actorUserId: input.actorUserId,
+      });
+      createdBlock = true;
+    }
+
+    if (recommendations.suggestDefaultCashbox) {
+      const { createFinanceService } = await import("@siteyonetim/finance-core");
+      await createFinanceService().createCashbox({
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        name: recommendations.defaultCashboxName,
+        actorUserId: input.actorUserId,
+      });
+      createdCashbox = true;
+    }
+
+    if (input.applySimpleMode && recommendations.suggestSimpleMode) {
+      await this.setUiMode({
+        organizationId: input.organizationId,
+        propertyId: input.propertyId,
+        adminUiMode: AdminUiMode.SIMPLE,
+        actorUserId: input.actorUserId,
+      });
+      appliedSimpleMode = true;
+    }
+
+    await this.audit.record({
+      organizationId: input.organizationId,
+      userId: input.actorUserId,
+      action: "property.recommendedDefaults.apply",
+      entityType: "Property",
+      entityId: input.propertyId,
+      metadata: { createdBlock, createdCashbox, appliedSimpleMode },
+    });
+
+    return { createdBlock, createdCashbox, appliedSimpleMode };
   }
 }
 

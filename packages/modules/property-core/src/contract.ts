@@ -1,4 +1,4 @@
-import type { PropertyKind } from "@siteyonetim/db";
+import type { AdminUiMode, PropertyKind } from "@siteyonetim/db";
 
 export type PropertyDto = {
   id: string;
@@ -6,6 +6,7 @@ export type PropertyDto = {
   kind: PropertyKind;
   name: string;
   address: string | null;
+  adminUiMode: AdminUiMode;
   blockCount: number;
   unitCount: number;
   createdAt: Date;

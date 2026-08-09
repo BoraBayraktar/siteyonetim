@@ -40,3 +40,41 @@ export function shouldRedirectLegacyDuesTab(
   }
   return null;
 }
+
+export const DUES_TAB_GROUPS = {
+  collection: ["register"],
+  billing: ["accrual", "lateFee"],
+  ledger: ["expenses"],
+  settings: ["definitions", "cashboxes", "accounts", "staffAccounts", "categories", "meters"],
+} as const;
+
+export type DuesTabGroup = keyof typeof DUES_TAB_GROUPS;
+
+const TAB_TO_GROUP = Object.entries(DUES_TAB_GROUPS).reduce(
+  (acc, [group, tabs]) => {
+    for (const tab of tabs) {
+      acc[tab as DuesTab] = group as DuesTabGroup;
+    }
+    return acc;
+  },
+  {} as Record<DuesTab, DuesTabGroup>,
+);
+
+export function resolveDuesTabGroup(tab: DuesTab): DuesTabGroup {
+  return TAB_TO_GROUP[tab] ?? "collection";
+}
+
+export function defaultTabForGroup(group: DuesTabGroup): DuesTab {
+  return DUES_TAB_GROUPS[group][0];
+}
+
+export function buildDuesTabHref(
+  locale: string,
+  propertyId: string,
+  tab: DuesTab,
+  searchParams: URLSearchParams,
+): string {
+  const params = new URLSearchParams(searchParams);
+  params.set("tab", tab);
+  return `/${locale}/admin/properties/${propertyId}/dues?${params.toString()}`;
+}

@@ -16,6 +16,7 @@ import {
   voidPostedAccrualAction,
   type DuesActionState,
 } from "@/app/actions/dues";
+import { FieldHelp } from "@/components/field-help";
 import { FormDrawer } from "@/components/form-drawer";
 import {
   AlertDialog,
@@ -473,6 +474,7 @@ export function AccrualRunDetail({
   unitsWithoutOccupancy: number;
 }) {
   const t = useTranslations("dues");
+  const tHelp = useTranslations("help");
   const showConsumption = needsMeterKind(run.calculationMode);
   const linesWithConsumption = lines.filter((line) => line.meterConsumption != null).length;
   const linesMissingPreviousIndex = lines.filter(
@@ -504,6 +506,12 @@ export function AccrualRunDetail({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-base font-semibold">{run.dueDefinitionName}</h3>
             {statusBadge}
+            <FieldHelp
+              label={run.status === DueAccrualStatus.DRAFT ? t("accrualStatusDraft") : t("posted")}
+              content={
+                run.status === DueAccrualStatus.DRAFT ? tHelp("draftAccrual") : tHelp("postAccrual")
+              }
+            />
           </div>
           <p className="text-sm text-muted-foreground">
             {t("accrualRunPeriod", { period: `${run.month}/${run.year}` })} · {money(run.totalAmount, locale)} ·{" "}

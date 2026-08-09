@@ -40,6 +40,8 @@ import {
   type StaffFinanceActionState,
 } from "@/app/actions/staff-finance";
 import { FormDrawer } from "@/components/form-drawer";
+import { EmptyStateAction } from "@/components/empty-state-action";
+import { LabelWithHelp } from "@/components/field-help";
 import { PartyCombobox } from "@/components/party-combobox";
 import { ServerPagination } from "@/components/server-pagination";
 import { Button } from "@/components/ui/button";
@@ -152,6 +154,7 @@ function LedgerPanel({
     createLedgerEntryAction.bind(null, locale, propertyId),
     initial,
   );
+  const tEmpty = useTranslations("emptyActions.ledger");
   const [entryType, setEntryType] = useState<LedgerEntryType>(LedgerEntryType.EXPENSE);
   const [categoryId, setCategoryId] = useState("");
   const [cashboxId, setCashboxId] = useState("");
@@ -258,7 +261,12 @@ function LedgerPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {ledger.items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("ledgerEmpty")}</p>
+          <EmptyStateAction
+            message={tEmpty("message")}
+            steps={[tEmpty("step1"), tEmpty("step2")]}
+            actionLabel={tEmpty("action")}
+            actionHref={`/${locale}/admin/properties/${propertyId}/dues?tab=categories`}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -309,6 +317,7 @@ function CashboxesPanel({
     createCashboxAction.bind(null, locale, propertyId),
     initial,
   );
+  const tPh = useTranslations("placeholders");
 
   return (
     <Card>
@@ -318,7 +327,7 @@ function CashboxesPanel({
           <form action={cashboxAction} className="grid gap-3">
             <div className="grid gap-2">
               <Label htmlFor="cashbox-name">{t("cashbox")}</Label>
-              <Input id="cashbox-name" name="name" required />
+              <Input id="cashbox-name" name="name" placeholder={tPh("cashboxName")} required />
             </div>
             <FinanceError code={cashboxState.error} t={t} />
             <Button type="submit" disabled={cashboxPending} className="w-full sm:w-auto">
@@ -360,6 +369,7 @@ function AccountsPanel({
   );
   const [accountKind, setAccountKind] = useState<FinanceAccountKind>(FinanceAccountKind.SUPPLIER);
   const [partyId, setPartyId] = useState("");
+  const tHelp = useTranslations("help");
 
   return (
     <Card>
@@ -378,7 +388,7 @@ function AccountsPanel({
               <Input id="acc-name" name="name" required />
             </div>
             <div className="grid gap-2">
-              <Label>{t("accountKind")}</Label>
+              <LabelWithHelp label={t("accountKind")} help={tHelp("accountKind")} />
               <Select value={accountKind} onValueChange={(v) => setAccountKind(v as FinanceAccountKind)}>
                 <SelectTrigger>
                   <SelectValue />

@@ -4,6 +4,7 @@ import { DueCalculationMode, LateFeeRateKind, SupplierLateFeeAllocationMode } fr
 import { revalidatePath } from "next/cache";
 
 import { adminPropertyMutateContext } from "@/lib/admin-action-context";
+import { invalidatePropertyMonthlyInsightsForProperty } from "@/lib/invalidate-monthly-insights";
 import { getDuesService } from "@/lib/services";
 
 export type DuesActionState = { error?: string; success?: boolean; advanceAmount?: string };
@@ -11,6 +12,7 @@ export type DuesActionState = { error?: string; success?: boolean; advanceAmount
 function revalidateDues(locale: string, propertyId: string) {
   revalidatePath(`/${locale}/admin/properties/${propertyId}/dues`, "page");
   revalidatePath(`/${locale}/admin/properties/${propertyId}/dashboard`, "page");
+  void invalidatePropertyMonthlyInsightsForProperty(propertyId);
 }
 
 export async function createDueDefinitionAction(

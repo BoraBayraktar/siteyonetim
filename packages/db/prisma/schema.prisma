@@ -12,6 +12,17 @@ enum PropertyKind {
   APARTMAN_SITE
 }
 
+enum AdminUiMode {
+  STANDARD
+  SIMPLE
+}
+
+enum AdminNavProfile {
+  DAILY
+  FULL
+  READONLY
+}
+
 enum OrganizationRole {
   ORG_ADMIN
   PROPERTY_MANAGER
@@ -397,6 +408,28 @@ model User {
   uploadedDocuments  Document[]
   createdAnnouncements Announcement[] @relation("AnnouncementCreatedBy")
   reportedIncidents    Incident[]       @relation("IncidentReportedBy")
+  uiPreferences        UserUiPreference[]
+}
+
+model UserUiPreference {
+  id                         String           @id @default(cuid())
+  userId                     String
+  organizationId             String
+  adminOnboardingCompletedAt DateTime?
+  adminOnboardingStep        Int?
+  navProfile                 AdminNavProfile?
+  dismissedHints             Json?
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+
+  deleted       Boolean   @default(false)
+  deletedDate   DateTime?
+  deletedUserId String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, deleted])
 }
 
 model UserOrganization {
@@ -437,6 +470,7 @@ model Property {
   kind           PropertyKind @default(APARTMAN)
   name           String
   address        String?
+  adminUiMode    AdminUiMode  @default(STANDARD)
   settings       Json         @default("{}")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

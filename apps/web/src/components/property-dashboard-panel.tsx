@@ -2,8 +2,13 @@
 
 import { LedgerEntryType } from "@siteyonetim/db";
 import type { LedgerEntryDto } from "@siteyonetim/finance-core";
-import type { AccrualContextWarningsDto } from "@siteyonetim/finance-dues";
-import type { PropertySetupStatusDto, PropertyDashboardDto } from "@siteyonetim/reporting-standard";
+import type { PropertyRecommendedDefaultsDto } from "@siteyonetim/property-settings";
+import type {
+  PropertyDashboardDto,
+  PropertyMonthlyTasksDto,
+  PropertyMonthlyWorkflowDto,
+  PropertySetupStatusDto,
+} from "@siteyonetim/reporting-standard";
 import type { StaffFinanceSummaryDto } from "@siteyonetim/property-staff-finance";
 import { AlertTriangle, ArrowRight, Building2, Coins, Receipt, Users, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -11,6 +16,9 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { DebtStatusTable } from "@/components/debt-status-table";
+import { PropertyMonthlyTasksPanel } from "@/components/property-monthly-tasks-panel";
+import { PropertyMonthlyWorkflowPanel } from "@/components/property-monthly-workflow-panel";
+import { PropertyRecommendedDefaultsPanel } from "@/components/property-recommended-defaults-panel";
 import { PropertySetupChecklist } from "@/components/property-setup-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +28,12 @@ type Props = {
   propertyId: string;
   dashboard: PropertyDashboardDto;
   setup: PropertySetupStatusDto;
+  monthlyTasks: PropertyMonthlyTasksDto;
+  monthlyWorkflow: PropertyMonthlyWorkflowDto;
   recentLedger: LedgerEntryDto[];
   staffSummary: StaffFinanceSummaryDto;
+  recommendations: PropertyRecommendedDefaultsDto;
+  canMutate: boolean;
 };
 
 function money(value: string, locale: string) {
@@ -49,8 +61,12 @@ export function PropertyDashboardPanel({
   propertyId,
   dashboard,
   setup,
+  monthlyTasks,
+  monthlyWorkflow,
   recentLedger,
   staffSummary,
+  recommendations,
+  canMutate,
 }: Props) {
   const t = useTranslations("dashboard");
   const tFinance = useTranslations("finance");
@@ -99,7 +115,15 @@ export function PropertyDashboardPanel({
 
   return (
     <div className="space-y-6">
+      <PropertyRecommendedDefaultsPanel
+        locale={locale}
+        propertyId={propertyId}
+        recommendations={recommendations}
+        canMutate={canMutate}
+      />
       <PropertySetupChecklist locale={locale} propertyId={propertyId} setup={setup} />
+      <PropertyMonthlyTasksPanel locale={locale} propertyId={propertyId} tasks={monthlyTasks} />
+      <PropertyMonthlyWorkflowPanel locale={locale} propertyId={propertyId} workflow={monthlyWorkflow} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {kpiCards.map((card) => {

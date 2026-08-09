@@ -15,6 +15,7 @@ import type {
   PaginatedStaffProfiles,
   PaginatedStaffStatement,
 } from "@siteyonetim/property-staff-finance";
+import type { PropertyMonthlyWorkflowDto } from "@siteyonetim/reporting-standard";
 
 import type { DuesTab } from "@/lib/dues-tab";
 import { isFinanceDuesTab } from "@/lib/finance-tab";
@@ -26,6 +27,7 @@ import {
   getPartyService,
   getStaffFinanceService,
   getUnitService,
+  getReportingService,
 } from "@/lib/services";
 
 const PAGE_SIZE = 10;
@@ -58,6 +60,7 @@ export type PropertyDuesPageData = {
   staffProfiles: PaginatedStaffProfiles;
   staffStatement: PaginatedStaffStatement;
   accrualUnits: UnitDto[];
+  monthlyWorkflow: PropertyMonthlyWorkflowDto | null;
 };
 
 function emptyLedger(page: number): PropertyDuesPageData["ledger"] {
@@ -234,6 +237,15 @@ export async function loadPropertyDuesPageData(input: {
       })
     : emptyAccrualWarnings(ctx.propertyId, accrualPeriod);
 
+  const monthlyWorkflow = needsAccrual
+    ? await getReportingService().propertyMonthlyWorkflow(
+        ctx.organizationId,
+        ctx.propertyId,
+        accrualPeriod.year,
+        accrualPeriod.month,
+      )
+    : null;
+
   return {
     definitions,
     runs,
@@ -257,5 +269,6 @@ export async function loadPropertyDuesPageData(input: {
     staffProfiles: staffBundle?.staffProfiles ?? emptyStaffProfiles(page),
     staffStatement: staffBundle?.staffStatement ?? emptyStaffStatement(1),
     accrualUnits: accrualUnitsPage?.items ?? [],
+    monthlyWorkflow,
   };
 }

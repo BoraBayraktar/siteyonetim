@@ -4,17 +4,30 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { AdminMobileMenuTrigger } from "@/components/admin-mobile-menu-trigger";
+import { AdminNavProfileToggle } from "@/components/module-help-link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import type { AdminNavProfile } from "@/lib/admin-nav-capabilities-types";
 
 type Props = {
   adminHomePath: string;
   organizationName: string;
   userName: string;
   logoutAction: () => Promise<void>;
+  locale: string;
+  navProfile: AdminNavProfile;
+  canToggleNavProfile: boolean;
 };
 
-export function AdminHeader({ adminHomePath, organizationName, userName, logoutAction }: Props) {
+export function AdminHeader({
+  adminHomePath,
+  organizationName,
+  userName,
+  logoutAction,
+  locale,
+  navProfile,
+  canToggleNavProfile,
+}: Props) {
   const t = useTranslations("nav");
   const tAuth = useTranslations("auth");
 
@@ -31,6 +44,7 @@ export function AdminHeader({ adminHomePath, organizationName, userName, logoutA
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <AdminNavProfileToggle locale={locale} navProfile={navProfile} canToggle={canToggleNavProfile} />
           <span className="hidden max-w-[8rem] truncate text-xs text-muted-foreground sm:inline">{userName}</span>
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <form action={logoutAction}>

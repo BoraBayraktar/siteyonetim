@@ -73,10 +73,16 @@ export async function invalidateCachePrefix(prefix: string): Promise<void> {
 
 export {
   REPORT_ANNUAL_TTL_SECONDS,
+  MONTHLY_TASKS_TTL_SECONDS,
   annualReportCacheKey,
   annualReportCachePrefix,
   collectionRateCacheKey,
   collectionRateCachePrefix,
   invalidatePropertyYearReports,
+  invalidatePropertyMonthlyInsights,
+  monthlyTasksCacheKey,
+  monthlyTasksCachePrefix,
+  monthlyWorkflowCacheKey,
+  monthlyWorkflowCachePrefix,
 } from "./report-cache";
 export type { ReportCacheScope } from "./report-cache";

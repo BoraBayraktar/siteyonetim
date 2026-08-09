@@ -1,5 +1,6 @@
 import { createAuditService } from "@siteyonetim/platform-audit";
 import { getCacheClient, invalidateCachePrefix } from "@siteyonetim/platform-cache";
+import { PropertyKind } from "@siteyonetim/db";
 
 import type {
   CreatePropertyInput,
@@ -7,7 +8,10 @@ import type {
   PaginatedProperties,
   PropertyServiceContract,
 } from "./contract";
+import { BlockService } from "./block.service";
 import { PropertyRepository } from "./repository";
+
+const DEFAULT_APARTMAN_BLOCK_NAME = "A Blok";
 
 const CACHE_PREFIX = "property:list:";
 
@@ -18,6 +22,7 @@ function listCacheKey(input: ListPropertiesInput): string {
 export class PropertyService implements PropertyServiceContract {
   constructor(
     private readonly repository = new PropertyRepository(),
+    private readonly blockService = new BlockService(),
     private readonly audit = createAuditService(),
     private readonly cache = getCacheClient(),
   ) {}
@@ -62,6 +67,16 @@ export class PropertyService implements PropertyServiceContract {
     });
 
     await invalidateCachePrefix(`${CACHE_PREFIX}${input.organizationId}:`);
+
+    if (created.kind === PropertyKind.APARTMAN) {
+      await this.blockService.create({
+        organizationId: input.organizationId,
+        propertyId: created.id,
+        name: DEFAULT_APARTMAN_BLOCK_NAME,
+        actorUserId: input.actorUserId,
+      });
+      return (await this.repository.getById(input.organizationId, created.id)) ?? created;
+    }
 
     return created;
   }

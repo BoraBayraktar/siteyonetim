@@ -9,6 +9,7 @@ import type {
   DueDefinitionDto,
 } from "@siteyonetim/finance-dues";
 import type { UnitDto } from "@siteyonetim/property-core";
+import type { PropertyMonthlyWorkflowDto } from "@siteyonetim/reporting-standard";
 import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
@@ -17,6 +18,8 @@ import { generateAccrualAction, type DuesActionState } from "@/app/actions/dues"
 import { AccrualContextAlerts } from "@/components/accrual-context-alerts";
 import { AccrualFiltersBar } from "@/components/accrual-filters-bar";
 import { AccrualRunDetail } from "@/components/accrual-run-detail";
+import { EmptyStateAction } from "@/components/empty-state-action";
+import { PropertyMonthlyWorkflowPanel } from "@/components/property-monthly-workflow-panel";
 import { FormDrawer } from "@/components/form-drawer";
 import { YearMonthFormFields } from "@/components/year-month-select";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +49,7 @@ type Props = {
   initialRunId?: string | null;
   filters: AccrualFilters;
   units: UnitDto[];
+  monthlyWorkflow?: PropertyMonthlyWorkflowDto | null;
 };
 
 function DuesError({ code, t }: { code?: string; t: ReturnType<typeof useTranslations> }) {
@@ -69,8 +73,10 @@ export function DuesAccrualPanel({
   initialRunId,
   filters,
   units,
+  monthlyWorkflow = null,
 }: Props) {
   const t = useTranslations("dues");
+  const tEmpty = useTranslations("emptyActions.accrualRuns");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -136,6 +142,14 @@ export function DuesAccrualPanel({
 
   return (
     <div className="space-y-4">
+      {monthlyWorkflow ? (
+        <PropertyMonthlyWorkflowPanel
+          locale={locale}
+          propertyId={propertyId}
+          workflow={monthlyWorkflow}
+          compact
+        />
+      ) : null}
       <AccrualContextAlerts locale={locale} propertyId={propertyId} warnings={accrualWarnings} />
       <AccrualFiltersBar filters={filters} runs={runs} definitions={definitions} units={units} />
       <Card>
@@ -264,7 +278,12 @@ export function DuesAccrualPanel({
         </CardHeader>
         <CardContent>
           {runs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("accrualRunsEmpty")}</p>
+            <EmptyStateAction
+              message={tEmpty("message")}
+              steps={[tEmpty("step1"), tEmpty("step2"), tEmpty("step3")]}
+              actionLabel={tEmpty("action")}
+              actionHref={`/${locale}/admin/properties/${propertyId}/dues?tab=definitions`}
+            />
           ) : filteredRuns.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("accrualRunsEmptyFiltered")}</p>
           ) : (

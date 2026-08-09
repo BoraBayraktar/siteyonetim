@@ -216,6 +216,49 @@ export type PropertySetupStatusDto = {
   isComplete: boolean;
 };
 
+export type PropertyMonthlyTaskCode =
+  | "ACCRUAL_NOT_RUN"
+  | "METER_READINGS_MISSING"
+  | "DRAFT_ACCRUAL_PENDING"
+  | "OVERDUE_UNITS"
+  | "PERIOD_NOT_CLOSED";
+
+export type PropertyMonthlyTaskPriority = "high" | "medium" | "low";
+
+export type PropertyMonthlyTaskDto = {
+  code: PropertyMonthlyTaskCode;
+  priority: PropertyMonthlyTaskPriority;
+  count?: number;
+};
+
+export type PropertyMonthlyTasksDto = {
+  propertyId: string;
+  period: { year: number; month: number };
+  tasks: PropertyMonthlyTaskDto[];
+};
+
+export type PropertyMonthlyWorkflowStepId =
+  | "METER_READINGS"
+  | "GENERATE_ACCRUAL"
+  | "POST_ACCRUAL"
+  | "SEND_REMINDERS"
+  | "REVIEW_OVERDUE"
+  | "DOWNLOAD_REPORT";
+
+export type PropertyMonthlyWorkflowStepDto = {
+  id: PropertyMonthlyWorkflowStepId;
+  complete: boolean;
+  optional?: boolean;
+};
+
+export type PropertyMonthlyWorkflowDto = {
+  propertyId: string;
+  period: { year: number; month: number };
+  steps: PropertyMonthlyWorkflowStepDto[];
+  completedCount: number;
+  totalCount: number;
+};
+
 export type ProcessPendingExportsResult = {
   processed: number;
   ready: number;
@@ -236,6 +279,18 @@ export interface StandardReportingContract {
   propertyInfo(organizationId: string, propertyId: string): Promise<PropertyInfoDto>;
   propertyDashboard(filter: ReportFilter): Promise<PropertyDashboardDto>;
   propertySetupStatus(organizationId: string, propertyId: string): Promise<PropertySetupStatusDto>;
+  propertyMonthlyTasks(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ): Promise<PropertyMonthlyTasksDto>;
+  propertyMonthlyWorkflow(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ): Promise<PropertyMonthlyWorkflowDto>;
   exportCsv(kind: StandardReportKind, filter: ReportFilter): Promise<string>;
   exportReportFile(
     kind: StandardReportKind,

@@ -1,17 +1,25 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
 import { DuesTabs } from "@/components/dues-tabs";
+import { DuesPageTabs } from "@/components/dues-page-tabs";
+import { ModuleHelpLink } from "@/components/module-help-link";
+import { SimpleDuesHub } from "@/components/simple-dues-hub";
 import { Button } from "@/components/ui/button";
 import { getAdminSession } from "@/lib/cached-admin";
 import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
+import { canOverrideSimpleUiMode } from "@/lib/admin-nav-capabilities";
+import { propertyUiModeFromDb } from "@/lib/admin-nav-capabilities-types";
 import { isStaffRole } from "@/lib/auth-context";
-import { resolveDuesTab, shouldRedirectLegacyDuesTab } from "@/lib/dues-tab";
+import { resolveDuesTab, shouldRedirectLegacyDuesTab, type DuesTab } from "@/lib/dues-tab";
 import { parseAccrualFilters } from "@/lib/accrual-filters";
 import { resolveFinancePanelTab } from "@/lib/finance-tab";
 import { loadPropertyDuesPageData } from "@/lib/load-property-dues-data";
-import { getPropertyService } from "@/lib/services";
+import { getPropertyService, getPropertySettingsService } from "@/lib/services";
+
+const SIMPLE_DUES_TABS = new Set<DuesTab>(["register", "accrual", "expenses", "definitions", "cashboxes"]);
 
 type Props = {
   params: Promise<{ locale: string; propertyId: string }>;
@@ -66,6 +74,14 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
   if (!property) notFound();
 
   const activeTab = resolveDuesTab(sp.tab);
+  const propertyUiMode = propertyUiModeFromDb(property.adminUiMode);
+  const isSimpleUiMode =
+    propertyUiMode === "simple" && !canOverrideSimpleUiMode(session.user.role);
+
+  if (isSimpleUiMode && !SIMPLE_DUES_TABS.has(activeTab)) {
+    redirect(`/${locale}/admin/properties/${propertyId}/dues?tab=register`);
+  }
+
   if (isStaffUser && activeTab !== "meters") {
     redirect(`/${locale}/admin/properties/${propertyId}/dues?tab=meters`);
   }
@@ -105,6 +121,8 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
     staffStatementPage: Math.max(1, Number(sp.staffPage ?? "1") || 1),
   });
 
+  const recommendations = await getPropertySettingsService().getRecommendedDefaults(organizationId, propertyId);
+
   const t = await getTranslations("dues");
   const tRegister = await getTranslations("periodRegister");
   const tFinance = await getTranslations("finance");
@@ -138,6 +156,13 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
         ? tFinance("subtitle")
         : t("unifiedSubtitle");
 
+  const helpModuleKey =
+    activeTab === "register"
+      ? "register"
+      : activeTab === "accrual"
+        ? "accrual"
+        : "dues";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -152,7 +177,18 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
           </h1>
           <p className="text-sm text-muted-foreground">{pageSubtitle}</p>
         </div>
+        {!isStaffUser ? <ModuleHelpLink locale={locale} moduleKey={helpModuleKey} /> : null}
       </div>
+
+      {!isStaffUser && !isSimpleUiMode ? (
+        <Suspense fallback={null}>
+          <DuesPageTabs locale={locale} propertyId={propertyId} activeTab={activeTab} />
+        </Suspense>
+      ) : null}
+
+      {!isStaffUser && isSimpleUiMode ? (
+        <SimpleDuesHub locale={locale} propertyId={propertyId} activeTab={activeTab} />
+      ) : null}
 
       <DuesTabs
         key={`${sp.tab ?? "register"}-${sp.unitId ?? ""}-${registerFilters.year}-${registerFilters.month}-${sp.accrualYear ?? ""}-${sp.accrualMonth ?? ""}-${sp.accrualUnitId ?? ""}-${sp.accrualDefinitionId ?? ""}-${sp.runId ?? ""}-${sp.staffProfileId ?? ""}-${sp.staffPage ?? ""}`}
@@ -184,8 +220,10 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
         initialRunId={sp.runId ?? null}
         accrualFilters={accrualFilters}
         accrualUnits={duesData.accrualUnits}
+        monthlyWorkflow={duesData.monthlyWorkflow}
         staffOperationsOnly={isStaffUser}
         canManageMeters={!isStaffUser}
+        defaultCalculationMode={recommendations?.recommendedCalculationMode}
       />
     </div>
   );

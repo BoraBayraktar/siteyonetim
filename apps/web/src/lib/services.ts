@@ -15,12 +15,16 @@ import { createPaymentGatewayService } from "@siteyonetim/payments-gateway";
 import { createStandardReportingService } from "@siteyonetim/reporting-standard";
 import { createDuesService } from "@siteyonetim/finance-dues";
 import { createFinanceService } from "@siteyonetim/finance-core";
-import { createAuthService } from "@siteyonetim/platform-auth";
+import { createAuthService, createUserPreferenceService } from "@siteyonetim/platform-auth";
 import { createPropertyRbacService } from "@siteyonetim/platform-rbac";
 import { createPropertyTenantService } from "@siteyonetim/platform-tenant";
 
 export function getAuthService() {
   return createAuthService();
+}
+
+export function getUserPreferenceService() {
+  return createUserPreferenceService();
 }
 
 export function getPropertyTenantService() {

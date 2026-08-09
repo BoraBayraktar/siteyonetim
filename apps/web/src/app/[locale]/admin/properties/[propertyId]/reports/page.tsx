@@ -11,6 +11,7 @@ import { BankWebhookSettingsPanel } from "@/components/bank-webhook-settings-pan
 import { OperatingBudgetPanel } from "@/components/operating-budget-panel";
 import { AuditorAssignmentPanel } from "@/components/auditor-assignment-panel";
 import { ReportsPanel } from "@/components/reports-panel";
+import { ModuleHelpLink } from "@/components/module-help-link";
 import { getAdminSession } from "@/lib/cached-admin";
 import { canManageAuditorAssignments, isAuditorRole } from "@/lib/auth-context";
 import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
@@ -167,14 +168,17 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
 
   return (
     <div className="space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-          <Link href={`/${locale}/admin/properties/${propertyId}/dashboard`}>← {tCommon("back")}</Link>
-        </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {property.name} — {t("title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
+            <Link href={`/${locale}/admin/properties/${propertyId}/dashboard`}>← {tCommon("back")}</Link>
+          </Button>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {property.name} — {t("title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <ModuleHelpLink locale={locale} moduleKey="reports" />
       </div>
 
       <OperatingBudgetPanel

@@ -9,6 +9,7 @@ import { getAdminSession, listAdminPropertiesNav } from "@/lib/cached-admin";
 import { resolveAdminNavCapabilities } from "@/lib/admin-nav-capabilities";
 import { auditorPortalPath, canManageOrgUsers, isAuditorRole, isStaffRole } from "@/lib/auth-context";
 import { resolveStaffLandingPath } from "@/lib/staff-landing-path";
+import { getUserPreferenceService } from "@/lib/services";
 
 type Props = {
   children: React.ReactNode;
@@ -36,7 +37,15 @@ export default async function AdminLayout({ children, params }: Props) {
   }
 
   const propertiesNav = await listAdminPropertiesNav(session.user.organizationId);
-  const navCapabilities = resolveAdminNavCapabilities(session.user.role, canManageOrgUsers(session));
+  const preference = await getUserPreferenceService().getPreference({
+    userId: session.user.id,
+    organizationId: session.user.organizationId,
+  });
+  const navCapabilities = resolveAdminNavCapabilities(
+    session.user.role,
+    canManageOrgUsers(session),
+    preference?.navProfile ?? null,
+  );
 
   return (
     <AdminLayoutChrome

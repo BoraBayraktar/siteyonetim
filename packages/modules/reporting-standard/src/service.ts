@@ -7,6 +7,12 @@ import type { ReportingCoreContract } from "@siteyonetim/reporting-core";
 import { contentTypeForFormat, createReportingCoreService, extensionForFormat } from "@siteyonetim/reporting-core";
 import { createAuditService } from "@siteyonetim/platform-audit";
 import { createLocalFileStorage } from "@siteyonetim/platform-files";
+import {
+  MONTHLY_TASKS_TTL_SECONDS,
+  getCacheClient,
+  monthlyTasksCacheKey,
+  monthlyWorkflowCacheKey,
+} from "@siteyonetim/platform-cache";
 
 import type {
   AnnualIncomeExpenseReport,
@@ -20,6 +26,10 @@ import type {
   PortalIncomeExpenseSummaryDto,
   PropertyDashboardDto,
   PropertyInfoDto,
+  PropertyMonthlyTaskDto,
+  PropertyMonthlyTasksDto,
+  PropertyMonthlyWorkflowDto,
+  PropertyMonthlyWorkflowStepDto,
   PropertySetupStatusDto,
   PropertySetupStepDto,
   PropertySetupStepId,
@@ -563,6 +573,171 @@ export class StandardReportingService implements StandardReportingContract {
       totalCount: steps.length,
       isComplete: completedCount === steps.length,
     };
+  }
+
+  private async loadMonthlyInsightInputs(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ) {
+    const filter: ReportFilter = { organizationId, propertyId, year, month };
+    const ctx = { organizationId, propertyId };
+    const period = { year, month };
+    const { createDuesService } = await import("@siteyonetim/finance-dues");
+
+    const [warnings, hasPosted, hasAnyRun, dashboard, prevPeriodOpen, definitionCount, readyExports] =
+      await Promise.all([
+        createDuesService().getAccrualContextWarnings(ctx, period),
+        this.repository.hasPostedAccrualForPeriod(organizationId, propertyId, year, month),
+        this.repository.hasAnyAccrualRunForPeriod(organizationId, propertyId, year, month),
+        this.propertyDashboard(filter),
+        this.repository.isPreviousFinancePeriodOpen(organizationId, propertyId, year, month),
+        this.repository.countActiveDefinitions(organizationId, propertyId),
+        this.repository.countReadyReportExportsForPeriod(organizationId, propertyId, year, month),
+      ]);
+
+    const meterWarning = warnings.warnings.find((item) => item.code === "INCOMPLETE_METER_READINGS");
+    const draftWarning = warnings.warnings.find((item) => item.code === "DRAFT_ACCRUAL_PENDING");
+    const meterIssue = warnings.warnings.some(
+      (item) => item.code === "INCOMPLETE_METER_READINGS" || item.code === "NO_METER_CONSUMPTION",
+    );
+
+    return {
+      definitionCount,
+      hasPosted,
+      hasAnyRun,
+      dashboard,
+      prevPeriodOpen,
+      readyExports,
+      meterWarningCount: meterWarning?.count ?? 0,
+      draftWarningCount: draftWarning?.count ?? 0,
+      meterIssue,
+    };
+  }
+
+  private buildMonthlyTasksFromInputs(
+    propertyId: string,
+    year: number,
+    month: number,
+    inputs: Awaited<ReturnType<StandardReportingService["loadMonthlyInsightInputs"]>>,
+  ): PropertyMonthlyTasksDto {
+    const tasks: PropertyMonthlyTaskDto[] = [];
+
+    if (inputs.definitionCount > 0 && !inputs.hasPosted) {
+      tasks.push({ code: "ACCRUAL_NOT_RUN", priority: "high" });
+    }
+    if (inputs.meterWarningCount > 0) {
+      tasks.push({
+        code: "METER_READINGS_MISSING",
+        priority: "high",
+        count: inputs.meterWarningCount,
+      });
+    }
+    if (inputs.draftWarningCount > 0) {
+      tasks.push({
+        code: "DRAFT_ACCRUAL_PENDING",
+        priority: "medium",
+        count: inputs.draftWarningCount,
+      });
+    }
+    if (inputs.dashboard.overdueUnitCount > 0) {
+      tasks.push({
+        code: "OVERDUE_UNITS",
+        priority: "medium",
+        count: inputs.dashboard.overdueUnitCount,
+      });
+    }
+    if (inputs.prevPeriodOpen) {
+      tasks.push({ code: "PERIOD_NOT_CLOSED", priority: "low" });
+    }
+
+    const priorityOrder: Record<PropertyMonthlyTaskDto["priority"], number> = {
+      high: 0,
+      medium: 1,
+      low: 2,
+    };
+    tasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+    return {
+      propertyId,
+      period: { year, month },
+      tasks,
+    };
+  }
+
+  private buildMonthlyWorkflowFromInputs(
+    propertyId: string,
+    year: number,
+    month: number,
+    inputs: Awaited<ReturnType<StandardReportingService["loadMonthlyInsightInputs"]>>,
+  ): PropertyMonthlyWorkflowDto {
+    const steps: PropertyMonthlyWorkflowStepDto[] = [
+      { id: "METER_READINGS", complete: !inputs.meterIssue },
+      { id: "GENERATE_ACCRUAL", complete: inputs.hasAnyRun },
+      { id: "POST_ACCRUAL", complete: inputs.hasPosted },
+      { id: "SEND_REMINDERS", complete: false, optional: true },
+      {
+        id: "REVIEW_OVERDUE",
+        complete: inputs.dashboard.overdueUnitCount === 0,
+      },
+      { id: "DOWNLOAD_REPORT", complete: inputs.readyExports > 0 },
+    ];
+
+    const requiredSteps = steps.filter((step) => !step.optional);
+    const completedCount = requiredSteps.filter((step) => step.complete).length;
+
+    return {
+      propertyId,
+      period: { year, month },
+      steps,
+      completedCount,
+      totalCount: requiredSteps.length,
+    };
+  }
+
+  async propertyMonthlyTasks(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ): Promise<PropertyMonthlyTasksDto> {
+    const ok = await this.repository.assertProperty(organizationId, propertyId);
+    if (!ok) throw new Error("PROPERTY_NOT_FOUND");
+
+    const cache = getCacheClient();
+    const cacheKey = monthlyTasksCacheKey(propertyId, year, month);
+    const cached = await cache.get<PropertyMonthlyTasksDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const inputs = await this.loadMonthlyInsightInputs(organizationId, propertyId, year, month);
+    const dto = this.buildMonthlyTasksFromInputs(propertyId, year, month, inputs);
+    await cache.set(cacheKey, dto, MONTHLY_TASKS_TTL_SECONDS);
+    return dto;
+  }
+
+  async propertyMonthlyWorkflow(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ): Promise<PropertyMonthlyWorkflowDto> {
+    const ok = await this.repository.assertProperty(organizationId, propertyId);
+    if (!ok) throw new Error("PROPERTY_NOT_FOUND");
+
+    const cache = getCacheClient();
+    const cacheKey = monthlyWorkflowCacheKey(propertyId, year, month);
+    const cached = await cache.get<PropertyMonthlyWorkflowDto>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const inputs = await this.loadMonthlyInsightInputs(organizationId, propertyId, year, month);
+    const dto = this.buildMonthlyWorkflowFromInputs(propertyId, year, month, inputs);
+    await cache.set(cacheKey, dto, MONTHLY_TASKS_TTL_SECONDS);
+    return dto;
   }
 
   async exportCsv(kind: StandardReportKind, filter: ReportFilter): Promise<string> {

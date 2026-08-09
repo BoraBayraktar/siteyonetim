@@ -1,9 +1,11 @@
 import {
   DueAccrualStatus,
   DueLineStatus,
+  FinancePeriodStatus,
   LedgerEntryType,
   Prisma,
   PropertyKind,
+  ReportExportStatus,
   prisma,
 } from "@siteyonetim/db";
 
@@ -302,5 +304,80 @@ export class StandardReportRepository {
       },
     });
     return budget;
+  }
+
+  async countActiveDefinitions(organizationId: string, propertyId: string) {
+    return prisma.dueDefinition.count({
+      where: { organizationId, propertyId, active: true, ...notDeleted },
+    });
+  }
+
+  async hasPostedAccrualForPeriod(organizationId: string, propertyId: string, year: number, month: number) {
+    const count = await prisma.dueAccrualRun.count({
+      where: {
+        organizationId,
+        propertyId,
+        year,
+        month,
+        status: DueAccrualStatus.POSTED,
+        ...notDeleted,
+      },
+    });
+    return count > 0;
+  }
+
+  async hasAnyAccrualRunForPeriod(organizationId: string, propertyId: string, year: number, month: number) {
+    const count = await prisma.dueAccrualRun.count({
+      where: {
+        organizationId,
+        propertyId,
+        year,
+        month,
+        ...notDeleted,
+      },
+    });
+    return count > 0;
+  }
+
+  async isPreviousFinancePeriodOpen(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ) {
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const period = await prisma.financePeriod.findFirst({
+      where: {
+        organizationId,
+        propertyId,
+        year: prevYear,
+        month: prevMonth,
+        ...notDeleted,
+      },
+      select: { status: true },
+    });
+    if (!period) {
+      return false;
+    }
+    return period.status === FinancePeriodStatus.OPEN;
+  }
+
+  async countReadyReportExportsForPeriod(
+    organizationId: string,
+    propertyId: string,
+    year: number,
+    month: number,
+  ) {
+    return prisma.reportExport.count({
+      where: {
+        organizationId,
+        propertyId,
+        year,
+        month,
+        status: ReportExportStatus.READY,
+        ...notDeleted,
+      },
+    });
   }
 }

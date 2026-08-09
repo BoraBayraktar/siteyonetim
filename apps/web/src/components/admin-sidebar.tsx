@@ -29,10 +29,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useAdminNav } from "@/components/admin-nav-provider";
+import { usePropertyUiMode } from "@/components/property-ui-mode-context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useClientSearchParams } from "@/hooks/use-client-search-params";
-import type { AdminNavCapabilities } from "@/lib/admin-nav-capabilities-types";
+import { resolvePropertyNavModules } from "@/lib/admin-nav-capabilities";
+import type { AdminNavCapabilities, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
 import { hasPropertyNavModule } from "@/lib/admin-nav-capabilities-types";
 import { isPilotSinglePropertyMode, type AdminPropertyNavItem } from "@/lib/admin-property-nav";
 import { resolveDuesTab } from "@/lib/dues-tab";
@@ -44,6 +46,7 @@ type Props = {
   locale: string;
   propertiesNav: AdminPropertyNavItem[];
   navCapabilities: AdminNavCapabilities;
+  userRole?: string | null;
 };
 
 type NavLinkItem = {
@@ -178,19 +181,19 @@ function buildStaffFlatPropertyLinks({
   onDuesPage,
   duesTab,
   pathname,
-  capabilities,
+  propertyModules,
   t,
 }: {
   propertyBase: string;
   onDuesPage: boolean;
   duesTab: ReturnType<typeof resolveDuesTab>;
   pathname: string;
-  capabilities: AdminNavCapabilities;
+  propertyModules: ReadonlySet<PropertyNavModule>;
   t: ReturnType<typeof useTranslations<"nav">>;
 }): NavNode[] {
   const links: NavNode[] = [];
 
-  if (hasPropertyNavModule(capabilities, "settingsMeters")) {
+  if (propertyModules.has("settingsMeters")) {
     links.push({
       kind: "link",
       href: `${propertyBase}/dues?tab=meters`,
@@ -199,7 +202,7 @@ function buildStaffFlatPropertyLinks({
       active: onDuesPage && duesTab === "meters",
     });
   }
-  if (hasPropertyNavModule(capabilities, "announcements")) {
+  if (propertyModules.has("announcements")) {
     links.push({
       kind: "link",
       href: `${propertyBase}/announcements`,
@@ -208,7 +211,7 @@ function buildStaffFlatPropertyLinks({
       active: pathname.includes("/announcements"),
     });
   }
-  if (hasPropertyNavModule(capabilities, "documents")) {
+  if (propertyModules.has("documents")) {
     links.push({
       kind: "link",
       href: `${propertyBase}/documents`,
@@ -217,7 +220,7 @@ function buildStaffFlatPropertyLinks({
       active: pathname.includes("/documents"),
     });
   }
-  if (hasPropertyNavModule(capabilities, "incidents")) {
+  if (propertyModules.has("incidents")) {
     links.push({
       kind: "link",
       href: `${propertyBase}/incidents`,
@@ -238,7 +241,7 @@ function buildPropertyModuleLinks({
   resolvedTab,
   pathname,
   duesTab,
-  capabilities,
+  propertyModules,
   t,
 }: {
   propertyBase: string;
@@ -248,13 +251,16 @@ function buildPropertyModuleLinks({
   resolvedTab: ReturnType<typeof resolvePropertyStructureTab>;
   pathname: string;
   duesTab: ReturnType<typeof resolveDuesTab>;
-  capabilities: AdminNavCapabilities;
+  propertyModules: ReadonlySet<PropertyNavModule>;
   t: ReturnType<typeof useTranslations<"nav">>;
 }): NavNode[] {
   const onDuesPage = pathname.includes(`/admin/properties/${propertyId}/dues`);
+  const onSetupPage = pathname.includes(`/admin/properties/${propertyId}/setup`);
   const nodes: NavNode[] = [];
+  const isSimpleNavLayout =
+    propertyModules.has("propertySetup") && !propertyModules.has("structureUnits");
 
-  if (hasPropertyNavModule(capabilities, "dashboard")) {
+  if (propertyModules.has("dashboard")) {
     nodes.push({
       kind: "link",
       href: `${propertyBase}/dashboard`,
@@ -264,9 +270,9 @@ function buildPropertyModuleLinks({
     });
   }
 
-  const financeChildren: NavLinkItem[] = [];
-  if (hasPropertyNavModule(capabilities, "financeRegister")) {
-    financeChildren.push({
+  const financeLinks: NavLinkItem[] = [];
+  if (propertyModules.has("financeRegister")) {
+    financeLinks.push({
       kind: "link",
       href: `${propertyBase}/dues?tab=register`,
       label: t("registerModule"),
@@ -274,17 +280,8 @@ function buildPropertyModuleLinks({
       active: onDuesPage && duesTab === "register",
     });
   }
-  if (hasPropertyNavModule(capabilities, "financeExpenses")) {
-    financeChildren.push({
-      kind: "link",
-      href: `${propertyBase}/dues?tab=expenses`,
-      label: t("expensesModule"),
-      icon: Receipt,
-      active: onDuesPage && duesTab === "expenses",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "financeAccrual")) {
-    financeChildren.push({
+  if (propertyModules.has("financeAccrual")) {
+    financeLinks.push({
       kind: "link",
       href: `${propertyBase}/dues?tab=accrual`,
       label: t("accrualModule"),
@@ -292,8 +289,17 @@ function buildPropertyModuleLinks({
       active: onDuesPage && duesTab === "accrual",
     });
   }
-  if (hasPropertyNavModule(capabilities, "financeLateFee")) {
-    financeChildren.push({
+  if (propertyModules.has("financeExpenses")) {
+    financeLinks.push({
+      kind: "link",
+      href: `${propertyBase}/dues?tab=expenses`,
+      label: t("expensesModule"),
+      icon: Receipt,
+      active: onDuesPage && duesTab === "expenses",
+    });
+  }
+  if (propertyModules.has("financeLateFee")) {
+    financeLinks.push({
       kind: "link",
       href: `${propertyBase}/dues?tab=lateFee`,
       label: t("lateFeeModule"),
@@ -301,17 +307,20 @@ function buildPropertyModuleLinks({
       active: onDuesPage && duesTab === "lateFee",
     });
   }
-  if (financeChildren.length > 0) {
+
+  if (isSimpleNavLayout) {
+    nodes.push(...financeLinks);
+  } else if (financeLinks.length > 0) {
     nodes.push({
       kind: "group",
       id: "finance",
       label: t("menuFinance"),
       icon: Wallet,
-      children: financeChildren,
+      children: financeLinks,
     });
   }
 
-  if (hasPropertyNavModule(capabilities, "reports")) {
+  if (propertyModules.has("reports")) {
     nodes.push({
       kind: "link",
       href: `${propertyBase}/reports`,
@@ -321,7 +330,7 @@ function buildPropertyModuleLinks({
     });
   }
 
-  if (hasPropertyNavModule(capabilities, "governance")) {
+  if (propertyModules.has("governance")) {
     nodes.push({
       kind: "link",
       href: `${propertyBase}/governance`,
@@ -331,120 +340,119 @@ function buildPropertyModuleLinks({
     });
   }
 
-  const structureChildren: NavLinkItem[] = [];
-  if (hasPropertyNavModule(capabilities, "structureBlocks")) {
-    structureChildren.push({
-      kind: "link",
-      href: `${propertyBase}?tab=blocks`,
-      label: t("tabBlocks"),
-      icon: LayoutGrid,
-      active: onStructurePage && resolvedTab === "structure" && structureSection === "blocks",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "structureUnits")) {
-    structureChildren.push({
-      kind: "link",
-      href: `${propertyBase}?tab=units`,
-      label: t("tabUnits"),
-      icon: Building2,
-      active: onStructurePage && resolvedTab === "structure" && structureSection === "units",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "structureParties")) {
-    structureChildren.push({
-      kind: "link",
-      href: `${propertyBase}?tab=parties`,
-      label: t("tabParties"),
-      icon: Coins,
-      active: onStructurePage && resolvedTab === "structure" && structureSection === "parties",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "structureUtility")) {
-    structureChildren.push({
-      kind: "link",
-      href: `${propertyBase}?tab=utility`,
-      label: t("tabUtility"),
-      icon: Droplets,
-      active: onStructurePage && resolvedTab === "utility",
-    });
-  }
-  if (structureChildren.length > 0) {
+  if (propertyModules.has("propertySetup") && isSimpleNavLayout) {
     nodes.push({
-      kind: "group",
-      id: "structure",
-      label: t("menuStructureGroup"),
-      icon: LayoutGrid,
-      children: structureChildren,
-    });
-  }
-
-  const settingsChildren: NavLinkItem[] = [];
-  if (hasPropertyNavModule(capabilities, "settingsCashboxes")) {
-    settingsChildren.push({
       kind: "link",
-      href: `${propertyBase}/dues?tab=cashboxes`,
-      label: t("cashboxesModule"),
-      icon: Wallet,
-      active: onDuesPage && duesTab === "cashboxes",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "settingsAccounts")) {
-    settingsChildren.push({
-      kind: "link",
-      href: `${propertyBase}/dues?tab=accounts`,
-      label: t("accountsModule"),
-      icon: Coins,
-      active: onDuesPage && duesTab === "accounts",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "settingsStaffAccounts")) {
-    settingsChildren.push({
-      kind: "link",
-      href: `${propertyBase}/dues?tab=staffAccounts`,
-      label: t("staffAccountsModule"),
-      icon: UserRound,
-      active: onDuesPage && duesTab === "staffAccounts",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "settingsCategories")) {
-    settingsChildren.push({
-      kind: "link",
-      href: `${propertyBase}/dues?tab=categories`,
-      label: t("categoriesModule"),
-      icon: Receipt,
-      active: onDuesPage && duesTab === "categories",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "settingsMeters")) {
-    settingsChildren.push({
-      kind: "link",
-      href: `${propertyBase}/dues?tab=meters`,
-      label: t("metersModule"),
-      icon: Gauge,
-      active: onDuesPage && duesTab === "meters",
-    });
-  }
-  if (hasPropertyNavModule(capabilities, "settingsDefinitions")) {
-    settingsChildren.push({
-      kind: "link",
-      href: `${propertyBase}/dues?tab=definitions`,
-      label: t("duesDefinitionsModule"),
-      icon: Scale,
-      active: onDuesPage && duesTab === "definitions",
-    });
-  }
-  if (settingsChildren.length > 0) {
-    nodes.push({
-      kind: "group",
-      id: "definitions",
+      href: `${propertyBase}/setup`,
       label: t("settingsModule"),
       icon: Settings,
-      children: settingsChildren,
+      active: onSetupPage,
     });
+  } else {
+    const propertySetupChildren: NavLinkItem[] = [];
+    if (propertyModules.has("structureUnits")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}?tab=units`,
+        label: t("tabUnits"),
+        icon: Building2,
+        active: onStructurePage && resolvedTab === "structure" && structureSection === "units",
+      });
+    }
+    if (propertyModules.has("settingsDefinitions")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/dues?tab=definitions`,
+        label: t("duesDefinitionsModule"),
+        icon: Scale,
+        active: onDuesPage && duesTab === "definitions",
+      });
+    }
+    if (propertyModules.has("settingsCashboxes")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/dues?tab=cashboxes`,
+        label: t("cashboxesModule"),
+        icon: Wallet,
+        active: onDuesPage && duesTab === "cashboxes",
+      });
+    }
+    if (propertyModules.has("settingsMeters")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/dues?tab=meters`,
+        label: t("metersModule"),
+        icon: Gauge,
+        active: onDuesPage && duesTab === "meters",
+      });
+    }
+    if (propertyModules.has("structureBlocks")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}?tab=blocks`,
+        label: t("tabBlocks"),
+        icon: LayoutGrid,
+        active: onStructurePage && resolvedTab === "structure" && structureSection === "blocks",
+      });
+    }
+    if (propertyModules.has("structureParties")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}?tab=parties`,
+        label: t("tabParties"),
+        icon: Coins,
+        active: onStructurePage && resolvedTab === "structure" && structureSection === "parties",
+      });
+    }
+    if (propertyModules.has("settingsAccounts")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/dues?tab=accounts`,
+        label: t("accountsModule"),
+        icon: Coins,
+        active: onDuesPage && duesTab === "accounts",
+      });
+    }
+    if (propertyModules.has("settingsStaffAccounts")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/dues?tab=staffAccounts`,
+        label: t("staffAccountsModule"),
+        icon: UserRound,
+        active: onDuesPage && duesTab === "staffAccounts",
+      });
+    }
+    if (propertyModules.has("settingsCategories")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/dues?tab=categories`,
+        label: t("categoriesModule"),
+        icon: Receipt,
+        active: onDuesPage && duesTab === "categories",
+      });
+    }
+    if (propertyModules.has("structureUtility")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}?tab=utility`,
+        label: t("tabUtility"),
+        icon: Droplets,
+        active: onStructurePage && resolvedTab === "utility",
+      });
+    }
+    if (propertySetupChildren.length > 0) {
+      nodes.push({
+        kind: "group",
+        id: "property-setup",
+        label: t("settingsModule"),
+        icon: Settings,
+        children: propertySetupChildren,
+      });
+    }
   }
 
   const communicationChildren: NavLinkItem[] = [];
-  if (hasPropertyNavModule(capabilities, "announcements")) {
+  if (propertyModules.has("announcements")) {
     communicationChildren.push({
       kind: "link",
       href: `${propertyBase}/announcements`,
@@ -453,7 +461,7 @@ function buildPropertyModuleLinks({
       active: pathname.includes("/announcements"),
     });
   }
-  if (hasPropertyNavModule(capabilities, "notifications")) {
+  if (propertyModules.has("notifications")) {
     communicationChildren.push({
       kind: "link",
       href: `${propertyBase}/notifications`,
@@ -462,7 +470,7 @@ function buildPropertyModuleLinks({
       active: pathname.includes("/notifications"),
     });
   }
-  if (hasPropertyNavModule(capabilities, "documents")) {
+  if (propertyModules.has("documents")) {
     communicationChildren.push({
       kind: "link",
       href: `${propertyBase}/documents`,
@@ -471,7 +479,7 @@ function buildPropertyModuleLinks({
       active: pathname.includes("/documents"),
     });
   }
-  if (hasPropertyNavModule(capabilities, "incidents")) {
+  if (propertyModules.has("incidents")) {
     communicationChildren.push({
       kind: "link",
       href: `${propertyBase}/incidents`,
@@ -480,7 +488,16 @@ function buildPropertyModuleLinks({
       active: pathname.includes("/incidents"),
     });
   }
-  if (communicationChildren.length > 0) {
+
+  if (isSimpleNavLayout && propertyModules.has("announcements")) {
+    nodes.push({
+      kind: "link",
+      href: `${propertyBase}/announcements`,
+      label: t("announcementsModule"),
+      icon: Megaphone,
+      active: pathname.includes("/announcements"),
+    });
+  } else if (communicationChildren.length > 0) {
     nodes.push({
       kind: "group",
       id: "communication",
@@ -510,6 +527,7 @@ function buildPropertyNavLinks(
     pathname: string;
     duesTab: ReturnType<typeof resolveDuesTab>;
     capabilities: AdminNavCapabilities;
+    propertyModules: ReadonlySet<PropertyNavModule>;
     t: ReturnType<typeof useTranslations<"nav">>;
   },
 ): NavNode[] {
@@ -519,28 +537,46 @@ function buildPropertyNavLinks(
       onDuesPage: params.pathname.includes(`/admin/properties/${params.propertyId}/dues`),
       duesTab: params.duesTab,
       pathname: params.pathname,
-      capabilities: params.capabilities,
+      propertyModules: params.propertyModules,
       t: params.t,
     });
   }
 
-  return buildPropertyModuleLinks(params);
+  return buildPropertyModuleLinks({
+    propertyBase: params.propertyBase,
+    propertyId: params.propertyId,
+    onStructurePage: params.onStructurePage,
+    structureSection: params.structureSection,
+    resolvedTab: params.resolvedTab,
+    pathname: params.pathname,
+    duesTab: params.duesTab,
+    propertyModules: params.propertyModules,
+    t: params.t,
+  });
 }
 
 function AdminNavPanel({
   locale,
   propertiesNav,
   navCapabilities,
+  userRole = null,
   onNavigate,
 }: {
   locale: string;
   propertiesNav: AdminPropertyNavItem[];
   navCapabilities: AdminNavCapabilities;
+  userRole?: string | null;
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
   const searchParams = useClientSearchParams();
   const t = useTranslations("nav");
+  const { propertyUiMode } = usePropertyUiMode();
+
+  const propertyModules = useMemo(
+    () => resolvePropertyNavModules(navCapabilities, { propertyUiMode, role: userRole }),
+    [navCapabilities, propertyUiMode, userRole],
+  );
 
   const propertyId = useMemo(() => parsePropertyId(pathname), [pathname]);
   const queryString = searchParams.toString();
@@ -594,6 +630,15 @@ function AdminNavPanel({
         active: pathname.includes("/users"),
       });
     }
+    if (hasPropertyNavModule(navCapabilities, "helpGlossary")) {
+      orgModuleLinks.push({
+        kind: "link",
+        href: `${base}/help/glossary`,
+        label: t("glossaryModule"),
+        icon: FileText,
+        active: pathname.includes("/help/glossary"),
+      });
+    }
 
     if (navCapabilities.isStaffRestricted) {
       const staffApartmentsGroup: NavGroupItem = {
@@ -625,6 +670,7 @@ function AdminNavPanel({
           pathname,
           duesTab,
           capabilities: navCapabilities,
+          propertyModules,
           t,
         });
       }
@@ -641,6 +687,7 @@ function AdminNavPanel({
             pathname,
             duesTab,
             capabilities: navCapabilities,
+            propertyModules,
             t,
           }),
         ];
@@ -660,6 +707,7 @@ function AdminNavPanel({
           pathname,
           duesTab,
           capabilities: navCapabilities,
+          propertyModules,
           t,
         }),
         ...orgModuleLinks,
@@ -720,6 +768,7 @@ function AdminNavPanel({
         pathname,
         duesTab,
         capabilities: navCapabilities,
+        propertyModules,
         t,
       }),
     };
@@ -742,6 +791,7 @@ function AdminNavPanel({
     resolvedTab,
     structureSection,
     navCapabilities,
+    propertyModules,
     t,
   ]);
 
@@ -800,6 +850,7 @@ export function AdminSidebar({
   locale,
   propertiesNav,
   navCapabilities,
+  userRole = null,
 }: Props) {
   const t = useTranslations("nav");
   const { mobileOpen, setMobileOpen } = useAdminNav();
@@ -814,6 +865,7 @@ export function AdminSidebar({
             locale={locale}
             propertiesNav={propertiesNav}
             navCapabilities={navCapabilities}
+            userRole={userRole}
             onNavigate={() => undefined}
           />
         </NavScroll>
@@ -829,6 +881,7 @@ export function AdminSidebar({
               locale={locale}
               propertiesNav={propertiesNav}
               navCapabilities={navCapabilities}
+              userRole={userRole}
               onNavigate={closeMobile}
             />
           </NavScroll>

@@ -11,6 +11,8 @@ import {
   updateDueDefinitionAction,
   type DuesActionState,
 } from "@/app/actions/dues";
+import { FieldHelp, LabelWithHelp } from "@/components/field-help";
+import { LateFeeDecisionGuide } from "@/components/late-fee-decision-guide";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,7 @@ type WizardProps = {
   /** Insert: which flow to open. Edit: inferred from definition when omitted. */
   variant?: DueDefinitionWizardVariant;
   triggerLabel?: string;
+  defaultCalculationMode?: DueCalculationMode;
 };
 
 function DuesError({ code, t }: { code?: string; t: ReturnType<typeof useTranslations<"dues">> }) {
@@ -71,9 +74,12 @@ export function DueDefinitionWizard({
   definition,
   variant,
   triggerLabel,
+  defaultCalculationMode = DueCalculationMode.FIXED,
 }: WizardProps) {
   const t = useTranslations("dues");
   const tCommon = useTranslations("common");
+  const tHelp = useTranslations("help");
+  const tPh = useTranslations("placeholders");
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [state, formAction, pending] = useActionState(
@@ -93,7 +99,7 @@ export function DueDefinitionWizard({
 
   const [name, setName] = useState(definition?.name ?? "");
   const [calculationMode, setCalculationMode] = useState<DueCalculationMode>(
-    definition?.calculationMode ?? DueCalculationMode.FIXED,
+    definition?.calculationMode ?? defaultCalculationMode,
   );
   const [fixedAmount, setFixedAmount] = useState(definition?.fixedAmount ?? "");
   const [ratePerM2, setRatePerM2] = useState(definition?.ratePerM2 ?? "");
@@ -124,11 +130,11 @@ export function DueDefinitionWizard({
       setCalculationMode(DueCalculationMode.SUPPLIER_LATE_FEE_BILL);
       setAutoAccrualMonthly(false);
     } else {
-      setCalculationMode(definition?.calculationMode ?? DueCalculationMode.FIXED);
+      setCalculationMode(definition?.calculationMode ?? defaultCalculationMode);
       setAutoAccrualMonthly(definition?.autoAccrualMonthly ?? false);
     }
     setStep(1);
-  }, [open, definition, isSupplierWizard]);
+  }, [open, definition, isSupplierWizard, defaultCalculationMode]);
 
   const defaultTriggerLabel = isSupplierWizard
     ? mode === "edit"
@@ -184,14 +190,16 @@ export function DueDefinitionWizard({
     stepContent = (
       <div className="grid gap-4">
         <StepIndicator step={1} t={t} />
-        {isSupplierWizard ? <SupplierNotAidatBanner t={t} /> : null}
+        {isSupplierWizard ? <SupplierNotAidatBanner t={t} /> : (
+          <LateFeeDecisionGuide locale={locale} propertyId={propertyId} className="py-2 text-xs" />
+        )}
         <div className="grid gap-2">
           <Label htmlFor="wizard-def-name">{t("definitionName")}</Label>
           <Input
             id="wizard-def-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={isSupplierWizard ? t("wizard.supplierNamePlaceholder") : undefined}
+            placeholder={isSupplierWizard ? t("wizard.supplierNamePlaceholder") : tPh("definitionName")}
             required
           />
         </div>
@@ -205,7 +213,10 @@ export function DueDefinitionWizard({
         ) : (
           <>
             <div className="grid gap-2">
-              <Label>{t("wizard.chooseMode")}</Label>
+              <div className="flex items-center gap-1">
+                <Label>{t("wizard.chooseMode")}</Label>
+                <FieldHelp label={t("wizard.chooseMode")} content={tHelp("calculationMode")} />
+              </div>
               <div className="grid gap-2">
                 {AIDAT_CALCULATION_MODES.map((modeOption) => (
                   <button
@@ -240,13 +251,20 @@ export function DueDefinitionWizard({
         </p>
         {calculationMode === DueCalculationMode.FIXED || calculationMode === DueCalculationMode.SHARE_RATIO ? (
           <div className="grid gap-2">
-            <Label htmlFor="wizard-fixed-amount">
-              {calculationMode === DueCalculationMode.SHARE_RATIO ? t("sharePoolAmount") : t("fixedAmount")}
-            </Label>
+            <LabelWithHelp
+              htmlFor="wizard-fixed-amount"
+              label={
+                calculationMode === DueCalculationMode.SHARE_RATIO ? t("sharePoolAmount") : t("fixedAmount")
+              }
+              help={
+                calculationMode === DueCalculationMode.SHARE_RATIO ? tHelp("shareRatio") : tHelp("calculationMode")
+              }
+            />
             <Input
               id="wizard-fixed-amount"
               value={fixedAmount}
               onChange={(e) => setFixedAmount(e.target.value)}
+              placeholder={tPh("fixedAmount")}
               required
             />
           </div>
@@ -254,13 +272,25 @@ export function DueDefinitionWizard({
         {calculationMode === DueCalculationMode.METER_CONSUMPTION ? (
           <div className="grid gap-2">
             <Label htmlFor="wizard-rate">{t("unitPrice")}</Label>
-            <Input id="wizard-rate" value={ratePerM2} onChange={(e) => setRatePerM2(e.target.value)} required />
+            <Input
+              id="wizard-rate"
+              value={ratePerM2}
+              onChange={(e) => setRatePerM2(e.target.value)}
+              placeholder={tPh("ratePerM2")}
+              required
+            />
           </div>
         ) : null}
         {calculationMode === DueCalculationMode.AREA_M2 ? (
           <div className="grid gap-2">
             <Label htmlFor="wizard-rate-area">{t("ratePerM2")}</Label>
-            <Input id="wizard-rate-area" value={ratePerM2} onChange={(e) => setRatePerM2(e.target.value)} required />
+            <Input
+              id="wizard-rate-area"
+              value={ratePerM2}
+              onChange={(e) => setRatePerM2(e.target.value)}
+              placeholder={tPh("ratePerM2")}
+              required
+            />
           </div>
         ) : null}
         {needsMeterKind(calculationMode) ? (

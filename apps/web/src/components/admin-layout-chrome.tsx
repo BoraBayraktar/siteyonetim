@@ -40,11 +40,15 @@ export async function AdminLayoutChrome({
           organizationName={organizationName}
           userName={userName}
           logoutAction={logoutAction}
+          locale={locale}
+          navProfile={navCapabilities.navProfile}
+          canToggleNavProfile={navCapabilities.canToggleNavProfile}
         />
         <AdminShell
           locale={locale}
           propertiesNav={propertiesNav}
           navCapabilities={navCapabilities}
+          userRole={userRole}
         >
           {children}
         </AdminShell>

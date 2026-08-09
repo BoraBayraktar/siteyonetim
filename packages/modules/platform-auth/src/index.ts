@@ -13,6 +13,13 @@ export type {
   ValidateCredentialsInput,
 } from "./contract";
 export { createAuthService, AuthService } from "./service";
+export type {
+  AdminOnboardingStateDto,
+  UserPreferenceContext,
+  UserPreferenceServiceContract,
+  UserUiPreferenceDto,
+} from "./user-preference.contract";
+export { createUserPreferenceService, UserPreferenceService } from "./user-preference.service";
 export {
   DEFAULT_SUPER_ADMIN_EMAIL,
   DEFAULT_SUPER_ADMIN_NAME,

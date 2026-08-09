@@ -49,3 +49,40 @@ export async function invalidatePropertyYearReports(
     cache.delByPrefix(collectionRateCachePrefix(organizationId, propertyId, year)),
   ]);
 }
+
+export const MONTHLY_TASKS_TTL_SECONDS = 300;
+
+export function monthlyTasksCacheKey(propertyId: string, year: number, month: number): string {
+  return `reporting:monthly-tasks:${propertyId}:${year}:${month}`;
+}
+
+export function monthlyWorkflowCacheKey(propertyId: string, year: number, month: number): string {
+  return `reporting:monthly-workflow:${propertyId}:${year}:${month}`;
+}
+
+export function monthlyTasksCachePrefix(propertyId: string): string {
+  return `reporting:monthly-tasks:${propertyId}:`;
+}
+
+export function monthlyWorkflowCachePrefix(propertyId: string): string {
+  return `reporting:monthly-workflow:${propertyId}:`;
+}
+
+export async function invalidatePropertyMonthlyInsights(
+  propertyId: string,
+  year?: number,
+  month?: number,
+): Promise<void> {
+  const cache = getCacheClient();
+  if (year != null && month != null) {
+    await Promise.all([
+      cache.del(monthlyTasksCacheKey(propertyId, year, month)),
+      cache.del(monthlyWorkflowCacheKey(propertyId, year, month)),
+    ]);
+    return;
+  }
+  await Promise.all([
+    cache.delByPrefix(monthlyTasksCachePrefix(propertyId)),
+    cache.delByPrefix(monthlyWorkflowCachePrefix(propertyId)),
+  ]);
+}

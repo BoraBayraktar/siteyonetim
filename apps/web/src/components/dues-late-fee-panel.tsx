@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { useActionState, useMemo, useState } from "react";
 
 import { applyLateFeesAction, upsertLateFeePolicyAction, type DuesActionState } from "@/app/actions/dues";
+import { LateFeeDecisionGuide } from "@/components/late-fee-decision-guide";
 import { YearMonthFormFields } from "@/components/year-month-select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,7 +62,9 @@ export function DuesLateFeePanel({ locale, propertyId, policy, defaultPeriod, ru
   const policySavedActive = Boolean(policy?.active);
 
   return (
-    <Card className="max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-4">
+      <LateFeeDecisionGuide locale={locale} propertyId={propertyId} />
+      <Card>
       <CardHeader>
         <CardTitle>{t("lateFeeCardTitle")}</CardTitle>
         <CardDescription>{t("lateFeeCardSubtitle")}</CardDescription>
@@ -198,5 +201,6 @@ export function DuesLateFeePanel({ locale, propertyId, policy, defaultPeriod, ru
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }

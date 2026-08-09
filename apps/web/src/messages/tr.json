@@ -127,8 +127,8 @@
     "menuModules": "Modüller",
     "menuProperty": "Apartman",
     "menuStructure": "Taşınmazlar",
-    "menuFinance": "Mali işlemler",
-    "menuStructureGroup": "Taşınmazlar",
+    "menuFinance": "Günlük işlemler",
+    "menuStructureGroup": "Apartman yapısı",
     "menuCommunication": "İletişim & arşiv",
     "financeModule": "Gelir gider",
     "duesModule": "Borçlandırma",
@@ -142,22 +142,23 @@
     "usersModule": "Kullanıcılar & roller",
     "securityModule": "Güvenlik",
     "tabBlocks": "Bloklar",
-    "tabUnits": "Taşınmazlar",
+    "tabUnits": "Daireler",
     "tabParties": "Üyeler",
     "tabOccupancy": "Atamalar",
     "tabUtility": "Tesisat",
     "metersModule": "Sayaç endeksleri",
     "dashboardModule": "Genel bakış",
-    "registerModule": "Dönem defteri",
-    "expensesModule": "Gelir gider",
-    "accrualModule": "Borçlandırma",
-    "settingsModule": "Tanımlar",
-    "duesDefinitionsModule": "Borçlandırma grupları",
+    "registerModule": "Tahsilat & borç listesi",
+    "expensesModule": "Gelir & gider kayıtları",
+    "accrualModule": "Aidat / gider borçlandır",
+    "settingsModule": "Apartman tanımları",
+    "duesDefinitionsModule": "Aidat ve gider türleri",
     "lateFeeModule": "Gecikme cezası",
     "cashboxesModule": "Kasa ve banka",
-    "accountsModule": "Cari hesaplar",
-    "staffAccountsModule": "Personel cari",
-    "categoriesModule": "Gider tanımları"
+    "accountsModule": "Malik / kiracı hesapları",
+    "staffAccountsModule": "Kapıcı & personel hesabı",
+    "categoriesModule": "Gider kalemleri",
+    "glossaryModule": "Siteyonetim sözlüğü"
   },
   "dashboard": {
     "title": "Genel bakış",
@@ -265,12 +266,55 @@
     "optionalHint": "Kapıcı veya site personeli varsa önerilir",
     "steps": {
       "BLOCKS": "Blok tanımları",
-      "UNITS": "Taşınmazlar",
+      "UNITS": "Daireler",
       "PARTIES_OCCUPANCY": "Malik ve kiracı atamaları",
-      "DUES_DEFINITIONS": "Borçlandırma grupları",
+      "DUES_DEFINITIONS": "Aidat ve gider türleri",
       "CASHBOX": "Kasa ve banka",
       "FIRST_ACCRUAL": "İlk borçlandırma",
       "STAFF_PROFILE": "Personel carisi"
+    }
+  },
+  "setupHub": {
+    "title": "Apartman tanımları",
+    "subtitle": "Kurulum adımları ve tanım kısayolları",
+    "shortcutsTitle": "Hızlı erişim",
+    "openShortcut": "Sayfayı aç",
+    "shortcutUnits": "Daireler",
+    "shortcutUnitsDesc": "Daire listesi ve malik atamaları",
+    "shortcutDefinitions": "Aidat ve gider türleri",
+    "shortcutDefinitionsDesc": "Borçlandırma grupları",
+    "shortcutCashbox": "Kasa ve banka",
+    "shortcutCashboxDesc": "Tahsilat kasaları",
+    "shortcutBlocks": "Bloklar",
+    "shortcutBlocksDesc": "Blok tanımları"
+  },
+  "uiMode": {
+    "bannerTitle": "Basit moddasınız",
+    "bannerDesc": "Menü sadeleştirildi: tahsilat, borçlandırma ve temel tanımlar öne çıkar.",
+    "bannerDescOverride": "Bu apartman basit modda; siz tam menüyü görebilirsiniz.",
+    "switchToStandard": "Tüm özellikler",
+    "switchToSimple": "Basit moda geç",
+    "recommendedTitle": "Önerilen ayarlar",
+    "recommendedDesc": "Tek blok apartmanlar için hazır kurulum önerileri:",
+    "suggestBlock": "Blok oluştur: {name}",
+    "suggestCashbox": "Kasa oluştur: {name}",
+    "suggestSimpleMode": "Basit mod önerilir",
+    "applySimpleModeCheckbox": "Basit modu da uygula",
+    "applyRecommended": "Önerilen ayarları uygula",
+    "appliedBlock": "Blok oluşturuldu",
+    "appliedCashbox": "Kasa oluşturuldu",
+    "appliedSimpleMode": "Basit mod etkinleştirildi",
+    "appliedNothing": "Uygulanacak yeni ayar kalmadı",
+    "simpleDuesNavLabel": "Aidat işlemleri",
+    "simpleDuesAccrualTitle": "Bu ay aidatı kes",
+    "simpleDuesAccrualDesc": "Dairelere borçlandırma oluşturun",
+    "simpleDuesRegisterTitle": "Tahsilat al",
+    "simpleDuesRegisterDesc": "Ödeme kaydı ve borç listesi",
+    "simpleDuesActive": "Bu adımdasınız",
+    "simpleDuesOpen": "Bu adıma git",
+    "errors": {
+      "UNAUTHORIZED": "Bu işlem için yetkiniz yok.",
+      "PROPERTY_NOT_FOUND": "Apartman bulunamadı."
     }
   },
   "accrualContext": {
@@ -317,7 +361,7 @@
   "propertyDetail": {
     "title": "Apartman detayı",
     "tabBlocks": "Bloklar",
-    "tabUnits": "Taşınmazlar",
+    "tabUnits": "Daireler",
     "tabParties": "Üyeler",
     "tabOccupancy": "Atamalar",
     "unitsBoardTitle": "Taşınmazlar ve atamalar",
@@ -1801,6 +1845,70 @@
       "GOVERNANCE_ACTION_FAILED": "İşlem başarısız."
     }
   },
+  "duesPageTabs": {
+    "navLabel": "Mali işlem sekmeleri",
+    "groupCollection": "Tahsilat",
+    "groupBilling": "Borçlandırma",
+    "groupLedger": "Gelir & gider",
+    "groupSettings": "Tanımlar",
+    "subAccrual": "Aidat / gider borçlandır",
+    "subLateFee": "Gecikme cezası",
+    "subDefinitions": "Aidat ve gider türleri",
+    "subCashboxes": "Kasa ve banka",
+    "subAccounts": "Malik / kiracı hesapları",
+    "subStaffAccounts": "Kapıcı & personel",
+    "subCategories": "Gider kalemleri",
+    "subMeters": "Sayaç endeksleri"
+  },
+  "lateFeeGuide": {
+    "title": "Hangi gecikme türünü uygulayacaksınız?",
+    "intro": "Aidat gecikmesi, tedarikçi faturası cezası ve kanuni faiz farklı işlemlerdir. Doğru yolu seçin:",
+    "aidatTitle": "Aidat gecikme tazminatı (KMK %5)",
+    "aidatDesc": "Maliklerin aidat borcuna uygulanır.",
+    "aidatAction": "Gecikme cezası sekmesine git",
+    "supplierTitle": "Tedarikçi faturası gecikme zammı",
+    "supplierDesc": "IGDAŞ, BEDAŞ, İSKİ vb. fatura cezaları dairelere paylaştırılır.",
+    "supplierAction": "Aidat ve gider türleri",
+    "legalTitle": "Kanuni faiz oranı",
+    "legalDesc": "TCMB oranına göre hesaplama için organizasyon ayarı.",
+    "legalAction": "Kanuni faiz ayarları"
+  },
+  "help": {
+    "calculationMode": "Aidatın nasıl hesaplanacağını belirler: sabit tutar, metrekare, pay oranı veya fatura paylaştırma.",
+    "shareRatio": "Arsa payına göre toplam tutar daireler arasında bölünür.",
+    "draftAccrual": "Taslak borçlandırma henüz maliklere yansımaz; kesinleştirince borç oluşur.",
+    "postAccrual": "Kesinleştirilmiş borçlandırma malik hesaplarına işlenir ve tahsilat alınabilir.",
+    "accountKind": "Malik/kiracı, tedarikçi veya personel — cari hesabın kime bağlı olduğunu gösterir.",
+    "lateFeeTypes": "Aidat cezası, tedarikçi faturası cezası ve kanuni faiz birbirinden farklıdır."
+  },
+  "emptyActions": {
+    "accrualRuns": {
+      "message": "Henüz borçlandırma yapılmadı.",
+      "step1": "Aidat ve gider türlerini tanımlayın",
+      "step2": "Malik / kiracı atamalarını tamamlayın",
+      "step3": "Borçlandır butonu ile taslak oluşturun",
+      "action": "Aidat türlerine git"
+    },
+    "definitions": {
+      "message": "Henüz aidat veya gider türü tanımlanmadı.",
+      "step1": "Standart grup ile aylık aidat tanımlayın",
+      "step2": "Su / ısıtma gibi faturalar için paylaştırma yöntemi seçin",
+      "action": "İlk aidat türünü ekle"
+    },
+    "ledger": {
+      "message": "Henüz gelir veya gider kaydı yok.",
+      "step1": "Gerekirse gider kalemlerini tanımlayın",
+      "step2": "Fiş kaydet ile gelir veya gider girin",
+      "action": "Gider kalemleri"
+    }
+  },
+  "placeholders": {
+    "definitionName": "Örn. 2026 A Blok aidatı",
+    "fixedAmount": "Örn. 850",
+    "blockName": "Örn. A Blok",
+    "ratePerM2": "Örn. 12.50",
+    "cashboxName": "Örn. Ana kasa"
+  },
   "enums": {
     "PropertyKind": {
       "APARTMAN": "Apartman",
@@ -2082,6 +2190,137 @@
       "EXPENSE": "Gider",
       "SUMMARY": "Özet",
       "BUDGET": "Bütçe"
+    }
+  },
+  "monthlyTasks": {
+    "title": "{period} aylık görevler",
+    "priority": {
+      "high": "Acil",
+      "medium": "Önemli",
+      "low": "Bilgi"
+    },
+    "codes": {
+      "ACCRUAL_NOT_RUN": "{period} aidatı henüz borçlandırılmadı",
+      "METER_READINGS_MISSING": "{count} dairede sayaç endeksi eksik",
+      "DRAFT_ACCRUAL_PENDING": "Taslak borçlandırma onay bekliyor ({count})",
+      "OVERDUE_UNITS": "{count} dairede gecikmiş borç var",
+      "PERIOD_NOT_CLOSED": "Geçen ay mali dönemi kapatılabilir"
+    }
+  },
+  "workflow": {
+    "title": "{period} ay sonu iş akışı",
+    "progress": "{completed}/{total} adım tamamlandı (%{percent})",
+    "optional": "isteğe bağlı",
+    "goToStep": "Git",
+    "steps": {
+      "METER_READINGS": "Sayaç endekslerini gir",
+      "GENERATE_ACCRUAL": "Aidat / ortak gider borçlandır",
+      "POST_ACCRUAL": "Borçlandırmayı kesinleştir",
+      "SEND_REMINDERS": "SMS / e-posta hatırlatma gönder",
+      "REVIEW_OVERDUE": "Geciken borçları incele",
+      "DOWNLOAD_REPORT": "Aylık raporu indir"
+    }
+  },
+  "onboarding": {
+    "title": "Site yönetimine hoş geldiniz",
+    "stepProgress": "Adım {current} / {total}",
+    "openStep": "İlgili sayfayı aç",
+    "next": "Sonraki adım",
+    "finish": "Turu tamamla",
+    "skip": "Atla",
+    "steps": {
+      "units": {
+        "title": "Daireleri tanımlayın",
+        "body": "Blok ve daire numaralarını girerek apartman yapısını oluşturun."
+      },
+      "occupancy": {
+        "title": "Malik / kiracı atayın",
+        "body": "Her daireye malik veya kiracı atayın; borçlandırma ve tahsilat buna bağlıdır."
+      },
+      "definitions": {
+        "title": "Aidat türü oluşturun",
+        "body": "Aylık aidat ve ortak gider türlerini tanımlayın."
+      },
+      "cashboxes": {
+        "title": "Kasa açın",
+        "body": "Nakit veya banka kasası tanımlayarak tahsilat kaydı alın."
+      },
+      "accrual": {
+        "title": "İlk aidatı kesin",
+        "body": "Borçlandırma oluşturup kesinleştirerek malik hesaplarına yansıtın."
+      }
+    }
+  },
+  "navProfile": {
+    "switchToFull": "Tam görünüm",
+    "switchToDaily": "Basit görünüm"
+  },
+  "helpLinks": {
+    "dashboard": {
+      "label": "Nasıl kullanılır?",
+      "anchor": "dashboard"
+    },
+    "dues": {
+      "label": "Nasıl kullanılır?",
+      "anchor": "dues"
+    },
+    "register": {
+      "label": "Nasıl kullanılır?",
+      "anchor": "register"
+    },
+    "accrual": {
+      "label": "Nasıl kullanılır?",
+      "anchor": "accrual"
+    },
+    "reports": {
+      "label": "Nasıl kullanılır?",
+      "anchor": "reports"
+    }
+  },
+  "glossary": {
+    "title": "Siteyonetim sözlüğü",
+    "intro": "Site yönetiminde sık kullanılan terimlerin kısa açıklamaları.",
+    "terms": {
+      "register": {
+        "title": "Tahsilat & borç listesi",
+        "body": "Daire bazında açık borçları görüp tahsilat kaydı aldığınız ekran. Eski adıyla dönem defteri."
+      },
+      "accrual": {
+        "title": "Borçlandırma",
+        "body": "Aidat ve ortak giderlerin dairelere dağıtılıp malik hesaplarına yansıtılması süreci."
+      },
+      "postAccrual": {
+        "title": "Kesinleştirme",
+        "body": "Taslak borçlandırmanın malik hesaplarına işlenmesi. Kesinleştirmeden tahsilat alınamaz."
+      },
+      "draftAccrual": {
+        "title": "Taslak borçlandırma",
+        "body": "Henüz maliklere yansımamış borçlandırma taslağı. Kontrol edilip kesinleştirilir."
+      },
+      "account": {
+        "title": "Cari hesap",
+        "body": "Malik, kiracı, tedarikçi veya personel ile ilişkili muhasebe hesabı."
+      },
+      "collection": {
+        "title": "Tahsilat",
+        "body": "Malikten alınan ödemenin sisteme kaydedilmesi."
+      },
+      "lateFee": {
+        "title": "Gecikme cezası",
+        "body": "Aidat ödemelerinde gecikme tazminatı. Tedarikçi faturası cezası ve kanuni faizden farklıdır."
+      },
+      "dues": {
+        "title": "Aidat ve gider türleri",
+        "body": "Borçlandırılacak kalemlerin tanımı: aylık aidat, su/ısıtma paylaştırması vb."
+      },
+      "dashboard": {
+        "title": "Genel bakış",
+        "body": "Apartmanın güncel borç, tahsilat ve görev özetini gösteren ana ekran."
+      },
+      "reports": {
+        "title": "Raporlar",
+        "body": "Borçlandırma, tahsilat, gider ve yıllık gelir-gider raporlarının alındığı bölüm."
+      }
     }
   }
 }

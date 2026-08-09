@@ -127,8 +127,8 @@
     "menuModules": "Modules",
     "menuProperty": "Property",
     "menuStructure": "Properties",
-    "menuFinance": "Financial operations",
-    "menuStructureGroup": "Properties",
+    "menuFinance": "Daily operations",
+    "menuStructureGroup": "Property structure",
     "menuCommunication": "Communication & archive",
     "financeModule": "Income & expense",
     "duesModule": "Billing",
@@ -142,22 +142,23 @@
     "usersModule": "Users & roles",
     "securityModule": "Security",
     "tabBlocks": "Blocks",
-    "tabUnits": "Properties",
+    "tabUnits": "Units",
     "tabParties": "Members",
     "tabOccupancy": "Assignments",
     "tabUtility": "Utilities",
     "metersModule": "Meter readings",
     "dashboardModule": "Overview",
-    "registerModule": "Period register",
-    "expensesModule": "Income & expense",
-    "accrualModule": "Billing",
-    "settingsModule": "Definitions",
-    "duesDefinitionsModule": "Billing groups",
+    "registerModule": "Collections & debt list",
+    "expensesModule": "Income & expense entries",
+    "accrualModule": "Bill charges",
+    "settingsModule": "Property definitions",
+    "duesDefinitionsModule": "Charge types",
     "lateFeeModule": "Late penalty",
     "cashboxesModule": "Cash & bank",
-    "accountsModule": "Accounts",
+    "accountsModule": "Owner / tenant accounts",
     "staffAccountsModule": "Staff accounts",
-    "categoriesModule": "Expense definitions"
+    "categoriesModule": "Expense categories",
+    "glossaryModule": "Glossary"
   },
   "dashboard": {
     "title": "Overview",
@@ -265,12 +266,55 @@
     "optionalHint": "Recommended when you employ on-site staff",
     "steps": {
       "BLOCKS": "Block definitions",
-      "UNITS": "Properties",
+      "UNITS": "Units",
       "PARTIES_OCCUPANCY": "Owner and tenant assignments",
-      "DUES_DEFINITIONS": "Billing groups",
+      "DUES_DEFINITIONS": "Charge types",
       "CASHBOX": "Cash & bank",
       "FIRST_ACCRUAL": "First billing",
       "STAFF_PROFILE": "Staff account"
+    }
+  },
+  "setupHub": {
+    "title": "Property definitions",
+    "subtitle": "Setup steps and definition shortcuts",
+    "shortcutsTitle": "Quick access",
+    "openShortcut": "Open page",
+    "shortcutUnits": "Units",
+    "shortcutUnitsDesc": "Unit list and owner assignments",
+    "shortcutDefinitions": "Charge types",
+    "shortcutDefinitionsDesc": "Billing groups",
+    "shortcutCashbox": "Cash & bank",
+    "shortcutCashboxDesc": "Collection cashboxes",
+    "shortcutBlocks": "Blocks",
+    "shortcutBlocksDesc": "Block definitions"
+  },
+  "uiMode": {
+    "bannerTitle": "Simple mode is on",
+    "bannerDesc": "The menu is simplified: collections, billing, and core definitions are highlighted.",
+    "bannerDescOverride": "This property uses simple mode; you still see the full menu.",
+    "switchToStandard": "All features",
+    "switchToSimple": "Switch to simple mode",
+    "recommendedTitle": "Recommended settings",
+    "recommendedDesc": "Ready-made setup suggestions for single-block apartments:",
+    "suggestBlock": "Create block: {name}",
+    "suggestCashbox": "Create cashbox: {name}",
+    "suggestSimpleMode": "Simple mode is recommended",
+    "applySimpleModeCheckbox": "Also enable simple mode",
+    "applyRecommended": "Apply recommended settings",
+    "appliedBlock": "Block created",
+    "appliedCashbox": "Cashbox created",
+    "appliedSimpleMode": "Simple mode enabled",
+    "appliedNothing": "Nothing new to apply",
+    "simpleDuesNavLabel": "Dues workflow",
+    "simpleDuesAccrualTitle": "Bill this month",
+    "simpleDuesAccrualDesc": "Create charges for units",
+    "simpleDuesRegisterTitle": "Record payment",
+    "simpleDuesRegisterDesc": "Payment entry and debt list",
+    "simpleDuesActive": "You are here",
+    "simpleDuesOpen": "Go to this step",
+    "errors": {
+      "UNAUTHORIZED": "You are not allowed to perform this action.",
+      "PROPERTY_NOT_FOUND": "Property not found."
     }
   },
   "accrualContext": {
@@ -317,7 +361,7 @@
   "propertyDetail": {
     "title": "Property details",
     "tabBlocks": "Blocks",
-    "tabUnits": "Properties",
+    "tabUnits": "Units",
     "tabParties": "Members",
     "tabOccupancy": "Assignments",
     "unitsBoardTitle": "Properties & assignments",
@@ -1801,6 +1845,70 @@
       "GOVERNANCE_ACTION_FAILED": "Action failed."
     }
   },
+  "duesPageTabs": {
+    "navLabel": "Financial operation tabs",
+    "groupCollection": "Collections",
+    "groupBilling": "Billing",
+    "groupLedger": "Income & expense",
+    "groupSettings": "Setup",
+    "subAccrual": "Bill charges",
+    "subLateFee": "Late penalty",
+    "subDefinitions": "Charge types",
+    "subCashboxes": "Cash & bank",
+    "subAccounts": "Owner / tenant accounts",
+    "subStaffAccounts": "Staff accounts",
+    "subCategories": "Expense categories",
+    "subMeters": "Meter readings"
+  },
+  "lateFeeGuide": {
+    "title": "Which late charge applies?",
+    "intro": "Due late fees, supplier invoice penalties, and legal interest are different processes. Pick the right path:",
+    "aidatTitle": "Due late compensation (by-laws %5)",
+    "aidatDesc": "Applied to owners' outstanding due balances.",
+    "aidatAction": "Open late penalty tab",
+    "supplierTitle": "Supplier invoice penalty",
+    "supplierDesc": "Utility penalties (gas, power, water) allocated to units.",
+    "supplierAction": "Charge types",
+    "legalTitle": "Legal interest rate",
+    "legalDesc": "Organization setting for central-bank rate calculations.",
+    "legalAction": "Legal interest settings"
+  },
+  "help": {
+    "calculationMode": "How the charge is calculated: fixed amount, area, share ratio, or bill allocation.",
+    "shareRatio": "The total amount is split across units by land share ratio.",
+    "draftAccrual": "Draft billing is not posted to owners yet; post it to create debt.",
+    "postAccrual": "Posted billing creates debt on owner accounts and enables collection.",
+    "accountKind": "Owner/tenant, supplier, or staff — who the account is linked to.",
+    "lateFeeTypes": "Due penalty, supplier invoice penalty, and legal interest are separate."
+  },
+  "emptyActions": {
+    "accrualRuns": {
+      "message": "No billing runs yet.",
+      "step1": "Define charge types",
+      "step2": "Complete owner / tenant assignments",
+      "step3": "Use Bill to create a draft run",
+      "action": "Go to charge types"
+    },
+    "definitions": {
+      "message": "No charge types defined yet.",
+      "step1": "Add a standard group for monthly dues",
+      "step2": "Choose allocation for utility bills if needed",
+      "action": "Add first charge type"
+    },
+    "ledger": {
+      "message": "No income or expense entries yet.",
+      "step1": "Define expense categories if needed",
+      "step2": "Use Record entry to add income or expense",
+      "action": "Expense categories"
+    }
+  },
+  "placeholders": {
+    "definitionName": "e.g. Block A dues 2026",
+    "fixedAmount": "e.g. 850",
+    "blockName": "e.g. Block A",
+    "ratePerM2": "e.g. 12.50",
+    "cashboxName": "e.g. Main cashbox"
+  },
   "enums": {
     "PropertyKind": {
       "APARTMAN": "Apartment",
@@ -2082,6 +2190,137 @@
       "EXPENSE": "Expense",
       "SUMMARY": "Summary",
       "BUDGET": "Budget"
+    }
+  },
+  "monthlyTasks": {
+    "title": "Monthly tasks — {period}",
+    "priority": {
+      "high": "Urgent",
+      "medium": "Important",
+      "low": "Info"
+    },
+    "codes": {
+      "ACCRUAL_NOT_RUN": "Charges for {period} have not been posted yet",
+      "METER_READINGS_MISSING": "Meter readings missing for {count} units",
+      "DRAFT_ACCRUAL_PENDING": "Draft billing awaiting approval ({count})",
+      "OVERDUE_UNITS": "{count} units have overdue debt",
+      "PERIOD_NOT_CLOSED": "Previous month’s finance period can be closed"
+    }
+  },
+  "workflow": {
+    "title": "Month-end workflow — {period}",
+    "progress": "{completed}/{total} steps done ({percent}%)",
+    "optional": "optional",
+    "goToStep": "Go",
+    "steps": {
+      "METER_READINGS": "Enter meter readings",
+      "GENERATE_ACCRUAL": "Bill charges",
+      "POST_ACCRUAL": "Post billing",
+      "SEND_REMINDERS": "Send SMS / email reminders",
+      "REVIEW_OVERDUE": "Review overdue debt",
+      "DOWNLOAD_REPORT": "Download monthly report"
+    }
+  },
+  "onboarding": {
+    "title": "Welcome to property management",
+    "stepProgress": "Step {current} of {total}",
+    "openStep": "Open related page",
+    "next": "Next step",
+    "finish": "Finish tour",
+    "skip": "Skip",
+    "steps": {
+      "units": {
+        "title": "Define units",
+        "body": "Create blocks and unit numbers to set up the property structure."
+      },
+      "occupancy": {
+        "title": "Assign owners / tenants",
+        "body": "Assign an owner or tenant to each unit — billing and collection depend on this."
+      },
+      "definitions": {
+        "title": "Create charge types",
+        "body": "Define monthly dues and shared expense charge types."
+      },
+      "cashboxes": {
+        "title": "Add a cashbox",
+        "body": "Set up cash or bank accounts to record collections."
+      },
+      "accrual": {
+        "title": "Post first billing",
+        "body": "Generate and post billing so it appears on owner accounts."
+      }
+    }
+  },
+  "navProfile": {
+    "switchToFull": "Full view",
+    "switchToDaily": "Simple view"
+  },
+  "helpLinks": {
+    "dashboard": {
+      "label": "How to use",
+      "anchor": "dashboard"
+    },
+    "dues": {
+      "label": "How to use",
+      "anchor": "dues"
+    },
+    "register": {
+      "label": "How to use",
+      "anchor": "register"
+    },
+    "accrual": {
+      "label": "How to use",
+      "anchor": "accrual"
+    },
+    "reports": {
+      "label": "How to use",
+      "anchor": "reports"
+    }
+  },
+  "glossary": {
+    "title": "Site management glossary",
+    "intro": "Short explanations of common property-management terms.",
+    "terms": {
+      "register": {
+        "title": "Collections & debt list",
+        "body": "Screen to view open debt by unit and record payments. Formerly called the period register."
+      },
+      "accrual": {
+        "title": "Billing",
+        "body": "Process of allocating dues and shared expenses to units and owner accounts."
+      },
+      "postAccrual": {
+        "title": "Posting",
+        "body": "Finalizing draft billing onto owner accounts. Collections require posted billing."
+      },
+      "draftAccrual": {
+        "title": "Draft billing",
+        "body": "Billing run not yet reflected to owners. Review and post when ready."
+      },
+      "account": {
+        "title": "Ledger account",
+        "body": "Finance account linked to an owner, tenant, supplier, or staff member."
+      },
+      "collection": {
+        "title": "Collection",
+        "body": "Recording a payment received from an owner."
+      },
+      "lateFee": {
+        "title": "Late penalty",
+        "body": "Late compensation on dues. Different from supplier invoice penalties and legal interest."
+      },
+      "dues": {
+        "title": "Charge types",
+        "body": "Definitions of billable items: monthly dues, utility allocation, etc."
+      },
+      "dashboard": {
+        "title": "Overview",
+        "body": "Main screen showing current debt, collections, and task summary."
+      },
+      "reports": {
+        "title": "Reports",
+        "body": "Billing, collection, expense, and annual income/expense reports."
+      }
     }
   }
 }
