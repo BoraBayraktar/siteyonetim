@@ -20,6 +20,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import { getUnitDebtDetailAction, recordDuePaymentAction, type DuesActionState } from "@/app/actions/dues";
 import { debtUnitLabel, formatDebtMoney } from "@/components/debt-status-table";
 import { FormDrawer } from "@/components/form-drawer";
+import { HelpButton } from "@/components/help-button";
 import { ServerPagination } from "@/components/server-pagination";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1021,7 +1022,10 @@ export function PeriodRegisterPanel({
           className="flex h-full !w-full max-w-full flex-col gap-0 overflow-hidden p-0 sm:!max-w-4xl"
         >
           <SheetHeader className="border-b px-4 py-4 pr-20 text-left">
-            <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
+            <div className="flex items-center justify-between gap-2">
+              <SheetTitle>{tDebt("detailTitle")}</SheetTitle>
+              <HelpButton topicKey="register" className="size-8 shrink-0" />
+            </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4">
             {detailLoading ? (
@@ -1206,6 +1210,7 @@ export function PeriodRegisterPanel({
         <FormDrawer
           triggerLabel={tDebt("recordPayment")}
           title={paymentDrawerTitle}
+          helpTopicKey="collection"
           disabled={cashboxes.length === 0 || !paymentTarget.partyId}
           open={paymentOpen}
           onOpenChange={setPaymentOpen}

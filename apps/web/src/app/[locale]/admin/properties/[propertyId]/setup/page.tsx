@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-import { ModuleHelpLink } from "@/components/module-help-link";
+import { HelpButton } from "@/components/help-button";
 import { PropertySetupHub } from "@/components/property-setup-hub";
 import { PropertySimpleModeBanner } from "@/components/property-simple-mode-banner";
 import { PropertyUiModeToggle } from "@/components/property-ui-mode-toggle";
@@ -53,7 +53,7 @@ export default async function PropertySetupPage({ params }: Props) {
               size="sm"
             />
           ) : null}
-          <ModuleHelpLink locale={locale} moduleKey="dashboard" />
+          <HelpButton topicKey="setup" />
         </div>
       </div>
 

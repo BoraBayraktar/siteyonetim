@@ -35,7 +35,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useClientSearchParams } from "@/hooks/use-client-search-params";
 import { resolvePropertyNavModules } from "@/lib/admin-nav-capabilities";
 import type { AdminNavCapabilities, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
-import { hasPropertyNavModule } from "@/lib/admin-nav-capabilities-types";
 import { isPilotSinglePropertyMode, type AdminPropertyNavItem } from "@/lib/admin-property-nav";
 import { resolveDuesTab } from "@/lib/dues-tab";
 import { isPropertyStructurePath } from "@/lib/property-nav-paths";
@@ -630,16 +629,6 @@ function AdminNavPanel({
         active: pathname.includes("/users"),
       });
     }
-    if (hasPropertyNavModule(navCapabilities, "helpGlossary")) {
-      orgModuleLinks.push({
-        kind: "link",
-        href: `${base}/help/glossary`,
-        label: t("glossaryModule"),
-        icon: FileText,
-        active: pathname.includes("/help/glossary"),
-      });
-    }
-
     if (navCapabilities.isStaffRestricted) {
       const staffApartmentsGroup: NavGroupItem = {
         kind: "group",

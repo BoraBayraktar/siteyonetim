@@ -157,8 +157,7 @@
     "cashboxesModule": "Cash & bank",
     "accountsModule": "Owner / tenant accounts",
     "staffAccountsModule": "Staff accounts",
-    "categoriesModule": "Expense categories",
-    "glossaryModule": "Glossary"
+    "categoriesModule": "Expense categories"
   },
   "dashboard": {
     "title": "Overview",
@@ -1873,14 +1872,6 @@
     "legalDesc": "Organization setting for central-bank rate calculations.",
     "legalAction": "Legal interest settings"
   },
-  "help": {
-    "calculationMode": "How the charge is calculated: fixed amount, area, share ratio, or bill allocation.",
-    "shareRatio": "The total amount is split across units by land share ratio.",
-    "draftAccrual": "Draft billing is not posted to owners yet; post it to create debt.",
-    "postAccrual": "Posted billing creates debt on owner accounts and enables collection.",
-    "accountKind": "Owner/tenant, supplier, or staff — who the account is linked to.",
-    "lateFeeTypes": "Due penalty, supplier invoice penalty, and legal interest are separate."
-  },
   "emptyActions": {
     "accrualRuns": {
       "message": "No billing runs yet.",
@@ -2255,72 +2246,674 @@
     "switchToFull": "Full view",
     "switchToDaily": "Simple view"
   },
-  "helpLinks": {
-    "dashboard": {
-      "label": "How to use",
-      "anchor": "dashboard"
+  "help": {
+    "calculationMode": "How the charge is calculated: fixed amount, area, share ratio, or bill allocation.",
+    "shareRatio": "The total amount is split across units by land share ratio.",
+    "draftAccrual": "Draft billing is not posted to owners yet; post it to create debt.",
+    "postAccrual": "Posted billing creates debt on owner accounts and enables collection.",
+    "accountKind": "Owner/tenant, supplier, or staff — who the account is linked to.",
+    "lateFeeTypes": "Due penalty, supplier invoice penalty, and legal interest are separate.",
+    "trigger": "Help",
+    "sections": {
+      "guide": "How-to",
+      "where": "Where in the menu?",
+      "screen": "What you see on screen",
+      "screenHint": "Screen map (visual guide)",
+      "howTo": "Step-by-step",
+      "fields": "What do the form fields mean?",
+      "fieldsEmpty": "No dedicated form fields for this topic; use the lists and filters on the related screen.",
+      "buttons": "What do the buttons do?",
+      "buttonsEmpty": "No dedicated button list; use the main actions on the related screen.",
+      "tips": "Things to watch for"
     },
-    "dues": {
-      "label": "How to use",
-      "anchor": "dues"
-    },
-    "register": {
-      "label": "How to use",
-      "anchor": "register"
-    },
-    "accrual": {
-      "label": "How to use",
-      "anchor": "accrual"
-    },
-    "reports": {
-      "label": "How to use",
-      "anchor": "reports"
-    }
-  },
-  "glossary": {
-    "title": "Site management glossary",
-    "intro": "Short explanations of common property-management terms.",
-    "terms": {
-      "register": {
-        "title": "Collections & debt list",
-        "body": "Screen to view open debt by unit and record payments. Formerly called the period register."
-      },
-      "accrual": {
-        "title": "Billing",
-        "body": "Process of allocating dues and shared expenses to units and owner accounts."
-      },
-      "postAccrual": {
-        "title": "Posting",
-        "body": "Finalizing draft billing onto owner accounts. Collections require posted billing."
-      },
-      "draftAccrual": {
-        "title": "Draft billing",
-        "body": "Billing run not yet reflected to owners. Review and post when ready."
-      },
-      "account": {
-        "title": "Ledger account",
-        "body": "Finance account linked to an owner, tenant, supplier, or staff member."
-      },
-      "collection": {
-        "title": "Collection",
-        "body": "Recording a payment received from an owner."
-      },
-      "lateFee": {
-        "title": "Late penalty",
-        "body": "Late compensation on dues. Different from supplier invoice penalties and legal interest."
-      },
-      "dues": {
-        "title": "Charge types",
-        "body": "Definitions of billable items: monthly dues, utility allocation, etc."
+    "topics": {
+      "gettingStarted": {
+        "title": "Getting started from zero",
+        "summary": "If you are moving from Excel or paper, set up the building structure first, then charge types and a cashbox; then bill and collect. Keep that order.",
+        "where": "Left menu → Overview (setup guide and monthly tasks start here). Glossary: Left menu → Glossary.",
+        "screen": "When Overview opens, Setup guide or Recommended settings appear at the top.\nBelow: this month’s tasks and month-end workflow.\nAt the bottom: quick actions — Record collection, Bill, Record expense.",
+        "howTo": [
+          "Select your property (if you manage several, use Apartments in the menu).",
+          "On Overview, if Recommended settings appear, apply them to create a default block/cashbox; optionally enable Simple mode too.",
+          "Complete Setup guide left to right: Blocks → Units → Owner/tenant assignment → Charge type → Cashbox → First billing.",
+          "On each step use Complete or Open page, fill required fields, and save.",
+          "Create the first billing as a draft, post it, then record payments under Collections & debt list.",
+          "When stuck, How to use? on the page header jumps to the matching glossary topic."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Apply recommended settings",
+            "desc": "Creates suggested basics (block, cashbox) so you do less manual setup."
+          },
+          {
+            "name": "Complete",
+            "desc": "Marks a setup-guide step done (the real work happens on the linked page)."
+          },
+          {
+            "name": "How to use?",
+            "desc": "Opens this glossary for the current module with menus, forms, and buttons explained."
+          }
+        ],
+        "tips": [
+          "Without units and owners, billing and collections will not work.",
+          "Simple mode shortens the menu; switch to All features when you need the full set.",
+          "For PROPERTY_MANAGER, Simple view / Full view in the header changes menu density; it is separate from property Simple mode."
+        ]
       },
       "dashboard": {
         "title": "Overview",
-        "body": "Main screen showing current debt, collections, and task summary."
+        "summary": "Home screen for the property: debt, cash, overdue units; setup, monthly tasks, and quick actions start here.",
+        "where": "Left menu → Overview",
+        "screen": "Top: Overview title + How to use?\nMiddle: Setup guide / monthly tasks / month-end workflow cards.\nKPI tiles: Total receivable, Billing this month, Cash balance, Overdue units, Staff ledger.\nBottom: Quick actions and top debtors / recent movements.",
+        "howTo": [
+          "Open Overview each time and check warnings.",
+          "Follow monthly tasks or month-end workflow with Go.",
+          "For daily work use Record collection or Bill under Quick actions.",
+          "Use top debtors to spot problem units; open debt status or collections as needed."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Record collection",
+            "desc": "Opens Collections & debt list to record a payment."
+          },
+          {
+            "name": "Bill",
+            "desc": "Opens billing to create monthly charges."
+          },
+          {
+            "name": "Record expense",
+            "desc": "Opens Income & expense entries."
+          },
+          {
+            "name": "Go to reports",
+            "desc": "Opens the report hub (depends on role and menu profile)."
+          },
+          {
+            "name": "Go (task / workflow)",
+            "desc": "Navigates to the screen for that listed task."
+          }
+        ],
+        "tips": [
+          "KPIs are summaries; open the related menu for detail.",
+          "Incomplete setup can block billing — read the alerts."
+        ]
+      },
+      "setup": {
+        "title": "Property setup / definitions",
+        "summary": "Hub for blocks, units, owners, charge types, and cashboxes. In Simple mode, Apartment definitions in the left menu opens this hub.",
+        "where": "Left menu → Apartment definitions (Simple mode → /setup). In standard mode the same steps live under units, charge types, cashbox; Overview setup guide lists them all.",
+        "screen": "Title: Apartment definitions.\nSetup steps: Blocks, Units, Owner/tenant assignments, Charge types, Cash & bank, First billing, optional Staff ledger.\nShortcuts: Units, Charge types, Cashbox, Blocks — each with Open page.",
+        "howTo": [
+          "Open the first incomplete setup step or use Open page.",
+          "If there is no block, add one under Blocks (name required).",
+          "Add units, then assign owners/tenants.",
+          "Define at least one monthly dues charge type.",
+          "Create a cash or bank cashbox (selected when collecting).",
+          "On First billing, create a draft run and post it."
+        ],
+        "fields": [
+          {
+            "name": "Block / unit name fields",
+            "desc": "Building structure labels shown on debt and collection rows."
+          },
+          {
+            "name": "Owner / tenant assignment",
+            "desc": "Links who pays for the unit; missing assignment can block billing/collection."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Complete",
+            "desc": "Marks the guide step finished."
+          },
+          {
+            "name": "Open page",
+            "desc": "Goes to the related definition screen."
+          },
+          {
+            "name": "Switch to Simple mode / All features",
+            "desc": "Simplifies or restores the property menu."
+          }
+        ],
+        "tips": [
+          "Order matters: structure → charge type → cashbox → billing → collection.",
+          "Staff ledger is optional on day one."
+        ]
+      },
+      "units": {
+        "title": "Units, members, and assignments",
+        "summary": "Building structure: blocks, units, members (owners/tenants), and who occupies which unit.",
+        "where": "Left menu → Apartment definitions / structure → Units (or Blocks, Members, Assignments). Simple mode: Setup shortcuts → Units.",
+        "screen": "Property detail tabs: Blocks, Units, Members, Assignments, Utilities.\nUnit list rows are properties; assignment links a member.",
+        "howTo": [
+          "Add a block first (even for a single-block building).",
+          "Add units with numbers/names.",
+          "Create owner or tenant members.",
+          "Assign the person to the unit; without this, ledger and collection flows are incomplete.",
+          "Add meters later under utilities if you allocate by consumption."
+        ],
+        "fields": [
+          {
+            "name": "Unit name",
+            "desc": "Identity shown on lists and debt lines (e.g. A-12)."
+          },
+          {
+            "name": "Member details",
+            "desc": "Name and contact used for collections and notices."
+          },
+          {
+            "name": "Assignment type (owner / tenant)",
+            "desc": "Who is responsible for charges and payments."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Add / Save",
+            "desc": "Creates or updates block, unit, member, or assignment."
+          },
+          {
+            "name": "Edit",
+            "desc": "Updates an existing record."
+          }
+        ],
+        "tips": [
+          "Do not leave units empty; allocation will be incomplete.",
+          "When tenants change, update the assignment so the wrong person is not billed."
+        ]
+      },
+      "dues": {
+        "title": "Charge types",
+        "summary": "Definitions of billable items (monthly dues, water/heat allocation, etc.). Billing runs use these groups.",
+        "where": "Left menu → Apartment definitions → Charge types. Or finance page Definitions → Charge types. Path: …/dues?tab=definitions",
+        "screen": "Page title is often Billing groups.\nTop: Add standard group and Supplier late-fee group.\nRows: Edit, enable/disable job; badges for monthly job and supplier penalty.\n3-step wizard: name → calculation mode → amount/review.",
+        "howTo": [
+          "Click Add standard group.",
+          "Enter a group name (e.g. Monthly dues).",
+          "Choose a calculation mode; Fixed amount is easiest for beginners.",
+          "Continue to the amount step and enter Monthly amount.",
+          "Optionally enable Monthly automatic billing (job); you can still bill manually.",
+          "Save with Add standard group / Save changes.",
+          "Then bill that group under Bill dues / expenses."
+        ],
+        "fields": [
+          {
+            "name": "Group name",
+            "desc": "Label shown in billing lists."
+          },
+          {
+            "name": "Calculation mode",
+            "desc": "Fixed; per m²; share allocation; invoice/meter share; unit-price meter; supplier late fee."
+          },
+          {
+            "name": "Monthly amount / m² price / total to allocate",
+            "desc": "Required amount fields depending on mode."
+          },
+          {
+            "name": "Meter type",
+            "desc": "For meter modes: hot water, cold water, heating, gas."
+          },
+          {
+            "name": "Monthly automatic billing (job)",
+            "desc": "Schedules periodic billing; still review and post."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Add standard group",
+            "desc": "Opens the wizard or finishes saving."
+          },
+          {
+            "name": "Next / Back",
+            "desc": "Moves between wizard steps."
+          },
+          {
+            "name": "Edit",
+            "desc": "Changes an existing group."
+          },
+          {
+            "name": "Enable / disable job",
+            "desc": "Turns monthly automatic billing on or off."
+          }
+        ],
+        "tips": [
+          "Start with one fixed monthly dues group; add advanced modes later.",
+          "Supplier late-fee groups are not the same as owner dues late penalties."
+        ]
+      },
+      "cashbox": {
+        "title": "Cash & bank",
+        "summary": "Cash drawer or bank account where collections are deposited. Without a cashbox, the collection form is blocked.",
+        "where": "Left menu → Apartment definitions → Cash & bank. Path: …/dues?tab=cashboxes. Setup step: Cash & bank.",
+        "screen": "Cashbox list and add form.\nOn collections, the Cashbox field uses these records.",
+        "howTo": [
+          "Open Cash & bank.",
+          "Add at least one cashbox (e.g. Cash or Bank — …).",
+          "Save; Overview cash balance uses these accounts.",
+          "When collecting, pick the cashbox on the payment form."
+        ],
+        "fields": [
+          {
+            "name": "Cashbox name",
+            "desc": "Option label on the collection form."
+          },
+          {
+            "name": "Type (cash / bank)",
+            "desc": "Where money sits; matters for reports and reconciliation."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Add cashbox / Save",
+            "desc": "Creates a new cashbox."
+          }
+        ],
+        "tips": [
+          "You can use multiple cashboxes; pick the right one each time.",
+          "Recommended settings may create a default cashbox."
+        ]
+      },
+      "accrual": {
+        "title": "Bill dues / expenses",
+        "summary": "Allocate a charge group to units for a year/month. Create a draft first, then post.",
+        "where": "Left menu → Daily work → Bill dues / expenses. Top tabs: Billing. Path: …/dues?tab=accrual. Simple mode: Bill this month’s dues.",
+        "screen": "Title often Member billing.\nBill button opens a drawer.\nBilling periods card: period tabs, Draft / Posted badge, unit-member-amount table.\nAlerts list setup blockers.",
+        "howTo": [
+          "Ensure charge type, units, and assignments are ready (fix alerts first).",
+          "Click Bill.",
+          "Select group, year, and month.",
+          "For invoice/meter modes fill total amount or consumption.",
+          "Submit Bill to create a draft; review unit lines.",
+          "If correct, Post billing → confirm with Post.",
+          "After posting, collect under Collections & debt list."
+        ],
+        "fields": [
+          {
+            "name": "Group name",
+            "desc": "Which charge definition to bill."
+          },
+          {
+            "name": "Year / Month",
+            "desc": "Billing period."
+          },
+          {
+            "name": "Invoice total / consumption",
+            "desc": "Required for share or meter groups."
+          },
+          {
+            "name": "Allocation method / supplier reference",
+            "desc": "Used for supplier late-fee style groups."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Bill",
+            "desc": "Creates a draft period; does not yet hit owner ledgers."
+          },
+          {
+            "name": "Post billing",
+            "desc": "Writes the draft to owner accounts; unlocks collections."
+          },
+          {
+            "name": "Undo posting",
+            "desc": "Reverses posting if no payments/late fees exist."
+          },
+          {
+            "name": "Accrue missing units",
+            "desc": "Completes posted runs that missed units."
+          }
+        ],
+        "tips": [
+          "Learn draft vs posting (see topics below).",
+          "Fix amounts in draft; undoing after posting is harder."
+        ]
+      },
+      "draftAccrual": {
+        "title": "Draft billing",
+        "summary": "Period created by Bill that is not yet on owner ledgers. Use it to review and correct.",
+        "where": "Bill dues / expenses → period card with Draft badge.",
+        "screen": "Period tab badge: Draft.\nLines are visible but not collectible yet.\nPost action is available.",
+        "howTo": [
+          "Select the draft period after billing.",
+          "Check each unit amount.",
+          "Fix wrong group/month before posting.",
+          "When ready, go to posting."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Post billing",
+            "desc": "Turns the draft into real debt."
+          }
+        ],
+        "tips": [
+          "Draft = preview. Owners only see debt after posting."
+        ]
+      },
+      "postAccrual": {
+        "title": "Posting",
+        "summary": "Writing draft billing onto owner ledger accounts. Collections become possible afterward.",
+        "where": "Bill dues / expenses → selected draft → Post billing. Confirm dialog: Confirm posting.",
+        "screen": "Confirm dialog with summary + Cancel / Post.\nAfter success badge becomes Posted.\nLate-fee runs are posted separately when applied.",
+        "howTo": [
+          "Final-check draft lines.",
+          "Click Post billing.",
+          "Read the summary and confirm Post (or Cancel).",
+          "Verify debts appear under Collections & debt list."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Post",
+            "desc": "Confirms; debts hit ledgers."
+          },
+          {
+            "name": "Cancel",
+            "desc": "Closes the dialog; draft remains."
+          },
+          {
+            "name": "Undo posting",
+            "desc": "Reverses if no collection or late fee exists on the run."
+          }
+        ],
+        "tips": [
+          "You cannot collect before posting.",
+          "Undo is not always available after payments."
+        ]
+      },
+      "register": {
+        "title": "Collections & debt list",
+        "summary": "See open debt by unit and record payments. Formerly the period register; the page title may still say Period register.",
+        "where": "Left menu → Daily work → Collections & debt list. Top tab: Collections. Path: …/dues?tab=register. Simple mode: Collect payment.",
+        "screen": "Filters: Year, Month, search, Block, Overdue only / Debtors only, Filter.\nTable: Unit, Member, Period remaining, Total open debt; late-fee badge.\nPayment form: Cashbox, Amount, Payment date, Document no.\nActions: Bulk collect, CSV/Excel/PDF export.",
+        "howTo": [
+          "Set year/month and Filter.",
+          "Open the unit row or Record collection / unit — Collect.",
+          "Choose cashbox; enter amount (open-debt hint / auto-allocate may apply).",
+          "Set payment date and optional document no.",
+          "Submit Record collection.",
+          "For many rows: Bulk collect → select → Collect selected."
+        ],
+        "fields": [
+          {
+            "name": "Year / Month",
+            "desc": "Which period list to show."
+          },
+          {
+            "name": "Search / Block / Overdue only",
+            "desc": "Narrows the list."
+          },
+          {
+            "name": "Cashbox",
+            "desc": "Where money is recorded; required."
+          },
+          {
+            "name": "Amount",
+            "desc": "Payment received."
+          },
+          {
+            "name": "Payment date",
+            "desc": "Actual collection date."
+          },
+          {
+            "name": "Document no",
+            "desc": "Receipt/reference (optional)."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Record collection",
+            "desc": "Saves a single payment."
+          },
+          {
+            "name": "Bulk collect / Collect selected",
+            "desc": "Collects several units at once."
+          },
+          {
+            "name": "View detail / Open debts / Account statement",
+            "desc": "Drills into unit or member detail."
+          },
+          {
+            "name": "Download CSV / Excel / PDF",
+            "desc": "Exports the list."
+          }
+        ],
+        "tips": [
+          "Missing cashbox or assignment blocks payment — read the on-screen message.",
+          "The period must be posted before you can collect."
+        ]
+      },
+      "collection": {
+        "title": "Collection (payment entry)",
+        "summary": "Recording money received from an owner/tenant. Done from Collections & debt list.",
+        "where": "Payment form or bulk collect inside Collections & debt list. Overview → Record collection.",
+        "screen": "Drawer/row form: Cashbox, Amount, Payment date, Document no + Record collection.\nOn success debt falls and cashbox balance rises.",
+        "howTo": [
+          "Pick the correct unit and period.",
+          "Enter cashbox and amount, then Record collection.",
+          "Partial payments leave remaining debt on the list.",
+          "Use Document no for receipts and audit trails."
+        ],
+        "fields": [
+          {
+            "name": "Cashbox / Amount / Payment date / Document no",
+            "desc": "Core payment fields (see Collections & debt list)."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Record collection",
+            "desc": "Saves the payment and updates balances."
+          }
+        ],
+        "tips": [
+          "Wrong cashbox skews reports — check before saving."
+        ]
+      },
+      "account": {
+        "title": "Owner / tenant accounts (ledger)",
+        "summary": "Finance account linked to an owner, tenant, supplier, or staff member. Debt and collections track through these accounts.",
+        "where": "Left menu → Apartment definitions → Owner / tenant accounts. Path: …/dues?tab=accounts. Staff: Staff accounts. Usually hidden in Simple mode.",
+        "screen": "Title: Ledger accounts.\nTable: code, name, balance.\nDrawer: Add account — code, name, type, member link.",
+        "howTo": [
+          "Most owner accounts are created with occupancy; open the list to check balances.",
+          "Add supplier/general accounts when needed.",
+          "Choose type: Owner/tenant, Supplier, Staff, or General.",
+          "Link a member when applicable, or None.",
+          "Use Staff accounts for janitor/payroll-style ledgers."
+        ],
+        "fields": [
+          {
+            "name": "Account code",
+            "desc": "Short ledger code."
+          },
+          {
+            "name": "Account name",
+            "desc": "Display name."
+          },
+          {
+            "name": "Account type",
+            "desc": "Owner/tenant, supplier, staff, general."
+          },
+          {
+            "name": "Member link",
+            "desc": "Ties the account to a person record."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Add account",
+            "desc": "Creates a new ledger account."
+          },
+          {
+            "name": "Save",
+            "desc": "Saves the form."
+          }
+        ],
+        "tips": [
+          "Daily work often needs only the collections screen.",
+          "Use statements / debt list to understand balances."
+        ]
+      },
+      "expenses": {
+        "title": "Income & expense entries",
+        "summary": "Cash movements for property expenses and income slips. Separate from dues billing.",
+        "where": "Left menu → Daily work → Income & expense entries. Top tab: Income & expense. Path: …/dues?tab=expenses.",
+        "screen": "Entry list and new slip form.\nExpense categories live under Definitions → Expense items.\nOverview recent movements link here.",
+        "howTo": [
+          "Open Income & expense entries.",
+          "Add an expense or income slip with amount, cashbox, category, and date.",
+          "Save; cashbox balance and reports update.",
+          "Predefine frequent categories under Expense items."
+        ],
+        "fields": [
+          {
+            "name": "Amount / Date / Cashbox",
+            "desc": "Core slip fields."
+          },
+          {
+            "name": "Expense item / category",
+            "desc": "Used for report breakdowns."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Record expense / Save",
+            "desc": "Saves a new slip."
+          }
+        ],
+        "tips": [
+          "To allocate a shared cost to units, usually use a charge type + billing; use this screen for one-off cash movements."
+        ]
+      },
+      "lateFee": {
+        "title": "Late penalty",
+        "summary": "Penalty when dues payments are late. Different from supplier invoice penalties and the legal-interest screen.",
+        "where": "Left menu → Daily work → Late penalty. Under Billing top tab. Path: …/dues?tab=lateFee. May be hidden in Simple mode.",
+        "screen": "Decision guide separates dues late fee / supplier late fee / legal interest.\nPolicy card: mode, monthly rate, grace days, due day → Save policy.\nApply: Year/Month → Apply late fee for this month → post the resulting run.",
+        "howTo": [
+          "Confirm the decision guide: you want dues late compensation here.",
+          "Choose how late fees apply: none, fixed monthly rate, or legal interest (CBRT).",
+          "For fixed rate enter Monthly rate (%); set grace days and due day.",
+          "Save policy.",
+          "Pick year/month and Apply late fee for this month.",
+          "Post the generated late-fee billing run."
+        ],
+        "fields": [
+          {
+            "name": "How should late fees apply?",
+            "desc": "Off / fixed rate / legal interest."
+          },
+          {
+            "name": "Monthly rate (%)",
+            "desc": "Percent when fixed rate is selected."
+          },
+          {
+            "name": "Grace (days)",
+            "desc": "Penalty-free days after due date."
+          },
+          {
+            "name": "Due day (in month)",
+            "desc": "Expected payment day of month."
+          },
+          {
+            "name": "Year / Month",
+            "desc": "Period to calculate."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Save policy",
+            "desc": "Stores the rules."
+          },
+          {
+            "name": "Apply late fee for this month",
+            "desc": "Creates penalty lines for the period (then post)."
+          },
+          {
+            "name": "Post late-fee billing",
+            "desc": "Writes penalties to ledgers."
+          }
+        ],
+        "tips": [
+          "Condo-law dues late fee ≠ supplier invoice surcharge.",
+          "Legal interest rates are managed under Legal interest at org level."
+        ]
       },
       "reports": {
         "title": "Reports",
-        "body": "Billing, collection, expense, and annual income/expense reports."
+        "summary": "Billing, collection, expense, cash, and annual income-expense outputs.",
+        "where": "Left menu → Reports. Path: …/reports. May be hidden in daily/simple profiles; use Full view or standard menu.",
+        "screen": "Report hub with report types.\nFilters: Year, Month, Block, (annual) Quarter.\nDownloads: CSV, Excel, PDF, ZIP; some Export in background + queue Download.\nExtras: operating plan, bank reconciliation, auditor templates (role-based).",
+        "howTo": [
+          "Pick a report (e.g. Billing summary or Collections).",
+          "Set year, month, and optional block.",
+          "Download CSV / Excel / PDF.",
+          "For heavy packages use Export in background, then Download when ready.",
+          "Month-end workflow also has Download monthly report."
+        ],
+        "fields": [
+          {
+            "name": "Year / Month / Block",
+            "desc": "Report scope."
+          },
+          {
+            "name": "Quarter",
+            "desc": "Period for annual income-expense style reports."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Download CSV / Excel / PDF / ZIP",
+            "desc": "Downloads the file."
+          },
+          {
+            "name": "Export in background",
+            "desc": "Queues a heavy export."
+          },
+          {
+            "name": "Save operating plan",
+            "desc": "Stores operating-plan data on that panel."
+          }
+        ],
+        "tips": [
+          "For board meetings, Billing summary and Collections are usually enough.",
+          "If Reports is missing, switch to Full view or check role permissions."
+        ]
+      },
+      "simpleMode": {
+        "title": "Simple mode and menu views",
+        "summary": "Fewer menus: property Simple mode vs user Simple view / Full view. They are different settings.",
+        "where": "Property: Overview or Setup → Switch to Simple mode / All features. User (manager): header → Simple view / Full view.",
+        "screen": "Banner: You are in Simple mode — menu simplified… plus All features.\nSimple sidebar: Overview, Collections, Billing, Expenses, Apartment definitions (setup), Announcements.\nFinance page cards: Bill this month’s dues / Collect payment.\nAccountant roles may still see full menu on a simple property (info banner).",
+        "howTo": [
+          "On new/small properties, Recommended settings can also enable Simple mode.",
+          "Daily path: Bill this month’s dues → draft/post; Collect payment → pay.",
+          "If you miss menus (Reports, Late fee), switch to All features or Full view.",
+          "Return to Simple mode / Simple view when you want fewer items again."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Switch to Simple mode",
+            "desc": "Simplifies the property menu."
+          },
+          {
+            "name": "All features",
+            "desc": "Restores the standard property menu."
+          },
+          {
+            "name": "Simple view / Full view",
+            "desc": "Changes your personal menu profile (independent of property mode)."
+          }
+        ],
+        "tips": [
+          "Missing Reports or Late fee? Check mode/view first.",
+          "Simple mode does not remove business rules; it hides menus/tabs."
+        ]
       }
     }
   }
 }
+

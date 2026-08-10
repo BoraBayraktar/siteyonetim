@@ -19,7 +19,12 @@ export function CreatePropertyForm() {
   const [kind, setKind] = useState<PropertyKind>(PropertyKind.APARTMAN);
 
   return (
-    <FormDrawer triggerLabel={t("createTitle")} title={t("createTitle")} success={state.success}>
+    <FormDrawer
+      triggerLabel={t("createTitle")}
+      title={t("createTitle")}
+      helpTopicKey="createProperty"
+      success={state.success}
+    >
       <form action={formAction} className="grid gap-4">
         <div className="grid gap-2">
           <Label htmlFor="name">{t("name")}</Label>

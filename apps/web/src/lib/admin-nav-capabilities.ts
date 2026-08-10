@@ -34,7 +34,6 @@ const FULL_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "notifications",
   "documents",
   "incidents",
-  "helpGlossary",
 ]);
 
 const DAILY_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
@@ -46,7 +45,6 @@ const DAILY_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "announcements",
   "documents",
   "incidents",
-  "helpGlossary",
 ]);
 
 const READONLY_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
@@ -58,7 +56,6 @@ const READONLY_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "announcements",
   "documents",
   "incidents",
-  "helpGlossary",
 ]);
 
 const STAFF_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
@@ -75,7 +72,6 @@ export const SIMPLE_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "financeExpenses",
   "announcements",
   "propertySetup",
-  "helpGlossary",
 ]);
 
 export function resolveDefaultNavProfile(role: string | null | undefined): AdminNavProfile {

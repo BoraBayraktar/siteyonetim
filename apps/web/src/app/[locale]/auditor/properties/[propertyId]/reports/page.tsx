@@ -8,6 +8,7 @@ import { Suspense } from "react";
 
 import { OperatingBudgetPanel } from "@/components/operating-budget-panel";
 import { AuditorMyAssignmentsPanel } from "@/components/auditor-my-assignments-panel";
+import { HelpButton } from "@/components/help-button";
 import { ReportsPanel } from "@/components/reports-panel";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
@@ -109,14 +110,17 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-          <Link href={auditorPortalPath(locale)}>← {tCommon("back")}</Link>
-        </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {property.name} — {t("title")}
-        </h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
+            <Link href={auditorPortalPath(locale)}>← {tCommon("back")}</Link>
+          </Button>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {property.name} — {t("title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <HelpButton topicKey="reports" />
       </div>
 
       <OperatingBudgetPanel

@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 
+import { HelpButton } from "@/components/help-button";
 import { StaffResidentsPanel } from "@/components/staff-residents-panel";
 import { resolveStaffPropertyCapabilities } from "@/lib/staff-property-capabilities";
 import { requireStaffPropertyScope } from "@/lib/staff-property-scope";
@@ -30,9 +31,12 @@ export default async function StaffResidentsPage({ params }: Props) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("residentsTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{property.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("residentsTitle")}</h1>
+          <p className="text-sm text-muted-foreground">{property.name}</p>
+        </div>
+        <HelpButton topicKey="staffResidents" />
       </div>
       <StaffResidentsPanel items={board.items} showPartyPhone={capabilities.staffCanViewPartyPhone} />
     </div>

@@ -7,7 +7,7 @@ import { propertyUiModeFromDb } from "@/lib/admin-nav-capabilities-types";
 import { isTenantDatabaseIsolationEnabled } from "@/lib/platform-features";
 import { PaymentSettingsPanel } from "@/components/payment-settings-panel";
 import { AdminOnboardingTour } from "@/components/admin-onboarding-tour";
-import { ModuleHelpLink } from "@/components/module-help-link";
+import { HelpButton } from "@/components/help-button";
 import { PropertyDashboardPanel } from "@/components/property-dashboard-panel";
 import { PropertySimpleModeBanner } from "@/components/property-simple-mode-banner";
 import { PropertyTenantPanel } from "@/components/property-tenant-panel";
@@ -110,7 +110,7 @@ export default async function PropertyDashboardPage({ params }: Props) {
               size="sm"
             />
           ) : null}
-          <ModuleHelpLink locale={locale} moduleKey="dashboard" />
+          <HelpButton topicKey="dashboard" />
         </div>
       </div>
 

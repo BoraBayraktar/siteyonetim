@@ -158,6 +158,7 @@ export function DuesAccrualPanel({
           <FormDrawer
             triggerLabel={t("generateAccrual")}
             title={t("generateAccrual")}
+            helpTopicKey="accrual"
             success={genState.success}
             disabled={definitions.length === 0 || !accrualWarnings.canGenerateAccrual}
           >

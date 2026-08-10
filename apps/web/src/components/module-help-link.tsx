@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
@@ -37,26 +36,6 @@ export function AdminNavProfileToggle({ locale, navProfile, canToggle }: Props) 
       }}
     >
       {navProfile === "daily" ? t("switchToFull") : t("switchToDaily")}
-    </Button>
-  );
-}
-
-export function ModuleHelpLink({
-  locale,
-  moduleKey,
-  className,
-}: {
-  locale: string;
-  moduleKey: "dues" | "register" | "dashboard" | "accrual" | "reports";
-  className?: string;
-}) {
-  const t = useTranslations("helpLinks");
-  const anchor = t(`${moduleKey}.anchor`);
-  const href = `/${locale}/admin/help/glossary${anchor ? `#${anchor}` : ""}`;
-
-  return (
-    <Button variant="ghost" size="sm" className={className} asChild>
-      <Link href={href}>{t(`${moduleKey}.label`)}</Link>
     </Button>
   );
 }

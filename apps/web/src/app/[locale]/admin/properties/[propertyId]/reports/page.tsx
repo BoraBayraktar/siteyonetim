@@ -11,7 +11,7 @@ import { BankWebhookSettingsPanel } from "@/components/bank-webhook-settings-pan
 import { OperatingBudgetPanel } from "@/components/operating-budget-panel";
 import { AuditorAssignmentPanel } from "@/components/auditor-assignment-panel";
 import { ReportsPanel } from "@/components/reports-panel";
-import { ModuleHelpLink } from "@/components/module-help-link";
+import { HelpButton } from "@/components/help-button";
 import { getAdminSession } from "@/lib/cached-admin";
 import { canManageAuditorAssignments, isAuditorRole } from "@/lib/auth-context";
 import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
@@ -178,7 +178,7 @@ export default async function PropertyReportsPage({ params, searchParams }: Prop
           </h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <ModuleHelpLink locale={locale} moduleKey="reports" />
+        <HelpButton topicKey="reports" />
       </div>
 
       <OperatingBudgetPanel

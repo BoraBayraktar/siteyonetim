@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { DuesTabs } from "@/components/dues-tabs";
 import { DuesPageTabs } from "@/components/dues-page-tabs";
-import { ModuleHelpLink } from "@/components/module-help-link";
+import { HelpButton } from "@/components/help-button";
 import { SimpleDuesHub } from "@/components/simple-dues-hub";
 import { Button } from "@/components/ui/button";
 import { getAdminSession } from "@/lib/cached-admin";
@@ -177,7 +177,7 @@ export default async function PropertyDuesPage({ params, searchParams }: Props) 
           </h1>
           <p className="text-sm text-muted-foreground">{pageSubtitle}</p>
         </div>
-        {!isStaffUser ? <ModuleHelpLink locale={locale} moduleKey={helpModuleKey} /> : null}
+        {!isStaffUser ? <HelpButton topicKey={helpModuleKey} /> : null}
       </div>
 
       {!isStaffUser && !isSimpleUiMode ? (

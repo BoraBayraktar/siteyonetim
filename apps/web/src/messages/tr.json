@@ -157,8 +157,7 @@
     "cashboxesModule": "Kasa ve banka",
     "accountsModule": "Malik / kiracı hesapları",
     "staffAccountsModule": "Kapıcı & personel hesabı",
-    "categoriesModule": "Gider kalemleri",
-    "glossaryModule": "Siteyonetim sözlüğü"
+    "categoriesModule": "Gider kalemleri"
   },
   "dashboard": {
     "title": "Genel bakış",
@@ -1873,14 +1872,6 @@
     "legalDesc": "TCMB oranına göre hesaplama için organizasyon ayarı.",
     "legalAction": "Kanuni faiz ayarları"
   },
-  "help": {
-    "calculationMode": "Aidatın nasıl hesaplanacağını belirler: sabit tutar, metrekare, pay oranı veya fatura paylaştırma.",
-    "shareRatio": "Arsa payına göre toplam tutar daireler arasında bölünür.",
-    "draftAccrual": "Taslak borçlandırma henüz maliklere yansımaz; kesinleştirince borç oluşur.",
-    "postAccrual": "Kesinleştirilmiş borçlandırma malik hesaplarına işlenir ve tahsilat alınabilir.",
-    "accountKind": "Malik/kiracı, tedarikçi veya personel — cari hesabın kime bağlı olduğunu gösterir.",
-    "lateFeeTypes": "Aidat cezası, tedarikçi faturası cezası ve kanuni faiz birbirinden farklıdır."
-  },
   "emptyActions": {
     "accrualRuns": {
       "message": "Henüz borçlandırma yapılmadı.",
@@ -2255,72 +2246,776 @@
     "switchToFull": "Tam görünüm",
     "switchToDaily": "Basit görünüm"
   },
-  "helpLinks": {
-    "dashboard": {
-      "label": "Nasıl kullanılır?",
-      "anchor": "dashboard"
+  "help": {
+    "calculationMode": "Aidatın nasıl hesaplanacağını belirler: sabit tutar, metrekare, pay oranı veya fatura paylaştırma.",
+    "shareRatio": "Arsa payına göre toplam tutar daireler arasında bölünür.",
+    "draftAccrual": "Taslak borçlandırma henüz maliklere yansımaz; kesinleştirince borç oluşur.",
+    "postAccrual": "Kesinleştirilmiş borçlandırma malik hesaplarına işlenir ve tahsilat alınabilir.",
+    "accountKind": "Malik/kiracı, tedarikçi veya personel — cari hesabın kime bağlı olduğunu gösterir.",
+    "lateFeeTypes": "Aidat cezası, tedarikçi faturası cezası ve kanuni faiz birbirinden farklıdır.",
+    "trigger": "Yardım",
+    "sections": {
+      "guide": "Nasıl yapılır",
+      "where": "Menüde nerede?",
+      "screen": "Ekranda ne görürsünüz?",
+      "screenHint": "Ekran haritası (görsel rehber)",
+      "howTo": "Adım adım nasıl yapılır?",
+      "fields": "Form alanları ne işe yarar?",
+      "fieldsEmpty": "Bu konuda ayrı bir form alanı yoktur; ilgili ekrandaki listeler ve filtreler kullanılır.",
+      "buttons": "Butonlar ne yapar?",
+      "buttonsEmpty": "Bu konuda özel bir buton listesi yoktur; ilgili ekranın ana aksiyonları kullanılır.",
+      "tips": "Dikkat edilmesi gerekenler"
     },
-    "dues": {
-      "label": "Nasıl kullanılır?",
-      "anchor": "dues"
-    },
-    "register": {
-      "label": "Nasıl kullanılır?",
-      "anchor": "register"
-    },
-    "accrual": {
-      "label": "Nasıl kullanılır?",
-      "anchor": "accrual"
-    },
-    "reports": {
-      "label": "Nasıl kullanılır?",
-      "anchor": "reports"
-    }
-  },
-  "glossary": {
-    "title": "Siteyonetim sözlüğü",
-    "intro": "Site yönetiminde sık kullanılan terimlerin kısa açıklamaları.",
-    "terms": {
-      "register": {
-        "title": "Tahsilat & borç listesi",
-        "body": "Daire bazında açık borçları görüp tahsilat kaydı aldığınız ekran. Eski adıyla dönem defteri."
-      },
-      "accrual": {
-        "title": "Borçlandırma",
-        "body": "Aidat ve ortak giderlerin dairelere dağıtılıp malik hesaplarına yansıtılması süreci."
-      },
-      "postAccrual": {
-        "title": "Kesinleştirme",
-        "body": "Taslak borçlandırmanın malik hesaplarına işlenmesi. Kesinleştirmeden tahsilat alınamaz."
-      },
-      "draftAccrual": {
-        "title": "Taslak borçlandırma",
-        "body": "Henüz maliklere yansımamış borçlandırma taslağı. Kontrol edilip kesinleştirilir."
-      },
-      "account": {
-        "title": "Cari hesap",
-        "body": "Malik, kiracı, tedarikçi veya personel ile ilişkili muhasebe hesabı."
-      },
-      "collection": {
-        "title": "Tahsilat",
-        "body": "Malikten alınan ödemenin sisteme kaydedilmesi."
-      },
-      "lateFee": {
-        "title": "Gecikme cezası",
-        "body": "Aidat ödemelerinde gecikme tazminatı. Tedarikçi faturası cezası ve kanuni faizden farklıdır."
-      },
-      "dues": {
-        "title": "Aidat ve gider türleri",
-        "body": "Borçlandırılacak kalemlerin tanımı: aylık aidat, su/ısıtma paylaştırması vb."
+    "topics": {
+      "gettingStarted": {
+        "title": "İlk kullanım — sıfırdan başlangıç",
+        "summary": "Excel veya kağıt defterden geçiyorsanız önce apartman yapısını kurun, sonra aidat türü ve kasa tanımlayın; ardından borçlandırıp tahsilat alın. Bu sırayı bozmayın.",
+        "where": "Sol menü → Genel bakış (kurulum rehberi ve aylık görevler burada başlar). Sözlük: Sol menü → Siteyonetim sözlüğü.",
+        "screen": "Genel bakış açıldığında üstte Kurulum rehberi veya Önerilen ayarlar görünür.\nAltında bu ayın görevleri ve ay sonu iş akışı listelenir.\nEn altta hızlı işlemler: Tahsilat gir, Borçlandır, Gider gir.",
+        "howTo": [
+          "Apartmanınızı seçin (birden fazla apartman varsa üstte veya sol menüde Apartmanlar listesinden).",
+          "Genel bakış’ta Önerilen ayarlar varsa Önerilen ayarları uygula ile varsayılan blok/kasa oluşturabilirsiniz; isteğe bağlı Basit modu da uygula işaretlenebilir.",
+          "Kurulum rehberi adımlarını soldan sağa tamamlayın: Bloklar → Daireler → Malik/kiracı ataması → Aidat türü → Kasa → İlk borçlandırma.",
+          "Her adımda Tamamla veya ilgili Sayfayı aç ile ilgili forma gidin; zorunlu alanları doldurup kaydedin.",
+          "İlk borçlandırmayı taslak oluşturup kesinleştirin; ardından Tahsilat & borç listesi’nden ödeme kaydedin.",
+          "Takıldığınızda sayfa başlığındaki Nasıl kullanılır? linki sizi bu sözlüğün ilgili başlığına götürür."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Önerilen ayarları uygula",
+            "desc": "Sistemin önerdiği temel blok, kasa gibi tanımları otomatik oluşturur; sıfırdan elle kurulum ihtiyacını azaltır."
+          },
+          {
+            "name": "Tamamla",
+            "desc": "Kurulum rehberindeki bir adımı tamamlandı olarak işaretler (adımın gerçek işi ilgili sayfada yapılır)."
+          },
+          {
+            "name": "Nasıl kullanılır?",
+            "desc": "Bulunduğunuz modülün sözlük maddesine atlar; menü, form ve buton açıklamalarını gösterir."
+          }
+        ],
+        "tips": [
+          "Önce daire ve malik yoksa borçlandırma ve tahsilat çalışmaz.",
+          "Basit mod menüyü sadeleştirir; tüm menülere ihtiyaç duyarsanız Genel bakış veya kurulumdan Tüm özellikler ile standarta dönün.",
+          "PROPERTY_MANAGER rolünde üst barda Basit görünüm / Tam görünüm menü yoğunluğunu değiştirir; apartman Basit modundan ayrıdır."
+        ]
       },
       "dashboard": {
         "title": "Genel bakış",
-        "body": "Apartmanın güncel borç, tahsilat ve görev özetini gösteren ana ekran."
+        "summary": "Apartmanın ana ekranı: borç, kasa, geciken daire özeti; kurulum, aylık görevler ve hızlı işlemler buradan başlar.",
+        "where": "Sol menü → Genel bakış",
+        "screen": "Üst: sayfa başlığı Genel bakış + Nasıl kullanılır?\nOrta: Kurulum rehberi / aylık görevler / ay sonu iş akışı kartları.\nKPI kutuları: Toplam alacak, Bu ay borçlandırma, Kasa bakiyesi, Geciken taşınmaz, Personel cari.\nAlt: Hızlı işlemler ve borçlu daire / son hareket listeleri.",
+        "howTo": [
+          "Her girişte Genel bakış’ı açıp kırmızı/uyarı durumlarını kontrol edin.",
+          "Aylık görevler veya ay sonu iş akışında sıradaki adıma Git ile gidin.",
+          "Günlük iş için Hızlı işlemler’den Tahsilat gir veya Borçlandır’ı kullanın.",
+          "En yüksek borçlu taşınmazlar listesinden sorunlu daireleri görün; gerekirse Borç durumu veya Tahsilat ekranına geçin."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Tahsilat gir",
+            "desc": "Tahsilat & borç listesi ekranına gider; ödeme kaydı için."
+          },
+          {
+            "name": "Borçlandır",
+            "desc": "Aidat / gider borçlandır ekranına gider; aylık borç oluşturmak için."
+          },
+          {
+            "name": "Gider gir",
+            "desc": "Gelir & gider kayıtları sekmesine gider."
+          },
+          {
+            "name": "Raporlara git",
+            "desc": "Rapor merkezini açar (yetki ve menü profiline bağlı)."
+          },
+          {
+            "name": "Git (görev / iş akışı)",
+            "desc": "Listelenen görevin ilgili ekranına yönlendirir."
+          }
+        ],
+        "tips": [
+          "KPI’lar anlık özet içindir; ayrıntı için ilgili menüye gidin.",
+          "Kurulum tamamlanmadan borçlandırma engellenebilir; uyarı metinlerini okuyun."
+        ]
+      },
+      "setup": {
+        "title": "Apartman tanımları / kurulum",
+        "summary": "Blok, daire, malik, aidat türü ve kasa gibi temel tanımların tamamlandığı kurulum merkezi. Basit modda sol menüdeki Apartman tanımları buraya gider.",
+        "where": "Sol menü → Apartman tanımları (basit modda tek link → /setup). Standart modda aynı adımlar daireler, aidat türleri, kasa menülerinde dağılır; Genel bakış’taki Kurulum rehberi hepsini listeler.",
+        "screen": "Başlık: Apartman tanımları.\nKurulum adımları dikey/yatay liste: Blok tanımları, Daireler, Malik ve kiracı atamaları, Aidat ve gider türleri, Kasa ve banka, İlk borçlandırma, isteğe bağlı Personel carisi.\nHızlı erişim: Daireler, Aidat türleri, Kasa, Bloklar — her birinde Sayfayı aç.",
+        "howTo": [
+          "Kurulum rehberinde tamamlanmamış ilk adıma tıklayın veya Sayfayı aç kullanın.",
+          "Blok yoksa önce Blok tanımları formundan blok ekleyin (ad zorunludur).",
+          "Daireler ekranında her daireyi ekleyin; ardından malik/kiracı atamasını yapın.",
+          "Aidat ve gider türleri’nde en az bir aylık aidat grubu tanımlayın.",
+          "Kasa ve banka’da nakit veya banka kasası oluşturun (tahsilatta seçilir).",
+          "İlk borçlandırma adımına gelince borçlandırma ekranında taslak oluşturup kesinleştirin."
+        ],
+        "fields": [
+          {
+            "name": "Blok / daire adı alanları",
+            "desc": "Apartman yapısını tanımlar; borç ve tahsilat satırlarında bu isimler görünür."
+          },
+          {
+            "name": "Malik / kiracı ataması",
+            "desc": "Daireye ödeme sorumlusunu bağlar; atama yoksa tahsilat ve borçlandırma engellenebilir."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Tamamla",
+            "desc": "Rehber adımını bitti işaretler."
+          },
+          {
+            "name": "Sayfayı aç",
+            "desc": "İlgili tanım ekranına gider."
+          },
+          {
+            "name": "Basit moda geç / Tüm özellikler",
+            "desc": "Menüyü sadeleştirir veya tam menüye döner (apartman ayarı)."
+          }
+        ],
+        "tips": [
+          "Sıra önemlidir: yapı → aidat türü → kasa → borçlandırma → tahsilat.",
+          "İsteğe bağlı Personel carisi kapıcı maaşı gibi işlemler içindir; ilk günde zorunlu değildir."
+        ]
+      },
+      "units": {
+        "title": "Daireler, üyeler ve atamalar",
+        "summary": "Apartman yapısı: bloklar, daireler (taşınmazlar), üyeler (malik/kiracı) ve hangi dairenin kime ait olduğu.",
+        "where": "Sol menü → Apartman tanımları / Apartman yapısı → Daireler (veya Bloklar, Üyeler, Atamalar sekmeleri). Basit modda Kurulum / Hızlı erişim → Daireler.",
+        "screen": "Apartman detayında sekmeler: Bloklar, Daireler, Üyeler, Atamalar, Tesisat.\nDaire listesinde her satır bir taşınmazdır; atama ile üye bağlanır.",
+        "howTo": [
+          "Önce Bloklar sekmesinden blok ekleyin (tek bloklu apartmanda bile bir blok gerekir).",
+          "Daireler sekmesinden daire numarası/adı ile kayıt ekleyin.",
+          "Üyeler sekmesinden malik veya kiracı kişiyi oluşturun.",
+          "Atamalar (veya daire detayı) üzerinden kişiyi daireye bağlayın; bu bağ olmadan cari ve tahsilat akışı tamamlanmaz.",
+          "Tesisat / sayaç kullanacaksanız ilgili daireye sayaç tanımlarını sonra ekleyin."
+        ],
+        "fields": [
+          {
+            "name": "Daire / taşınmaz adı",
+            "desc": "Listelerde ve borç satırlarında görünen kimlik (ör. A-12)."
+          },
+          {
+            "name": "Üye bilgileri",
+            "desc": "Ad, iletişim vb.; tahsilat ve duyuru için kullanılır."
+          },
+          {
+            "name": "Atama türü (malik / kiracı)",
+            "desc": "Borç ve ödeme sorumluluğunu belirler."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Ekle / Kaydet",
+            "desc": "Yeni blok, daire, üye veya atamayı kaydeder."
+          },
+          {
+            "name": "Düzenle",
+            "desc": "Mevcut kaydı günceller."
+          }
+        ],
+        "tips": [
+          "Boş daire bırakmayın; aidat dağılımı eksik kalır.",
+          "Kiracı değişiminde atamayı güncelleyin; eski atama açık kalırsa yanlış kişi borçlanır."
+        ]
+      },
+      "dues": {
+        "title": "Aidat ve gider türleri",
+        "summary": "Borçlandırılacak kalemlerin tanımı (aylık aidat, su/ısı paylaşımı vb.). Borçlandırma bu gruplar üzerinden çalışır.",
+        "where": "Sol menü → Apartman tanımları → Aidat ve gider türleri. Veya mali sayfada Tanımlar sekmesi → Aidat ve gider türleri. Path: …/dues?tab=definitions",
+        "screen": "Sayfa başlığı çoğu zaman Borçlandırma grupları.\nÜstte Standart grup ekle ve Tedarikçi gecikme faizi grubu.\nListe satırlarında Düzenle, Job’u aç/kapat; rozetler: Aylık job aktif, Tedarikçi cezası.\nSihirbaz 3 adımlı çekmece/form: ad → hesaplama yöntemi → tutar/inceleme.",
+        "howTo": [
+          "Standart grup ekle’ye tıklayın.",
+          "Grup adı girin (ör. Aylık aidat).",
+          "Hesaplama yöntemini seçin: yeni başlayanlar için Sabit tutar en kolayıdır.",
+          "İleri ile tutar alanına geçin; Aylık tutar yazın.",
+          "İsterseniz Aylık otomatik borçlandırma (job) açın; manuel de çalışabilirsiniz.",
+          "Standart grup ekle / Değişiklikleri kaydet ile kaydedin.",
+          "Sonra Aidat / gider borçlandır menüsünden bu grubu seçerek dönem borçlandırması yapın."
+        ],
+        "fields": [
+          {
+            "name": "Grup adı",
+            "desc": "Borçlandırma listesinde görünen ad."
+          },
+          {
+            "name": "Hesaplama yöntemi",
+            "desc": "Sabit tutar; m² bazlı; dağıtım payı; fatura/sayaç paylaşımı; birim fiyatlı sayaç; tedarikçi gecikme faizi."
+          },
+          {
+            "name": "Aylık tutar / m² birim fiyat / paylaştırılacak toplam",
+            "desc": "Seçilen yönteme göre zorunlu tutar alanı."
+          },
+          {
+            "name": "Sayaç türü",
+            "desc": "Sayaçlı yöntemlerde: sıcak su, soğuk su, ısıtma, gaz."
+          },
+          {
+            "name": "Aylık otomatik borçlandırma (job)",
+            "desc": "Açıksa sistem periyodik borçlandırma işi planlar; yine de kesinleştirmeyi kontrol edin."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Standart grup ekle",
+            "desc": "Yeni aidat/gider grubu sihirbazını açar veya kaydı tamamlar."
+          },
+          {
+            "name": "İleri / Geri",
+            "desc": "Sihirbaz adımları arasında gezer."
+          },
+          {
+            "name": "Düzenle",
+            "desc": "Mevcut grubu değiştirir."
+          },
+          {
+            "name": "Job’u aç / Job’u kapat",
+            "desc": "Otomatik aylık borçlandırmayı açıp kapatır."
+          }
+        ],
+        "tips": [
+          "İlk kurulumda tek sabit tutarlı aylık aidat yeterlidir; karma yöntemleri sonra ekleyin.",
+          "Tedarikçi gecikme faizi grubu, malik aidat gecikme cezasından farklıdır."
+        ]
+      },
+      "cashbox": {
+        "title": "Kasa ve banka",
+        "summary": "Tahsilatın yatırıldığı nakit kasa veya banka hesabı. Kasa yoksa tahsilat formu engellenir.",
+        "where": "Sol menü → Apartman tanımları → Kasa ve banka. Path: …/dues?tab=cashboxes. Kurulum rehberi adımı: Kasa ve banka.",
+        "screen": "Kasa listesi ve yeni kasa ekleme formu.\nTahsilat ekranında her ödeme satırında Kasa seçimi bu listedeki kayıtları kullanır.",
+        "howTo": [
+          "Kasa ve banka sekmesini açın.",
+          "En az bir kasa ekleyin (ör. Nakit kasa veya Banka — İş Bankası).",
+          "Kaydedin; Genel bakış KPI’sında Kasa bakiyesi bu kayıtlardan beslenir.",
+          "Tahsilat alırken formdaki Kasa alanından ilgili kasayı seçin."
+        ],
+        "fields": [
+          {
+            "name": "Kasa adı",
+            "desc": "Tahsilat formunda görünen seçenek adı."
+          },
+          {
+            "name": "Tür (nakit / banka)",
+            "desc": "Paranın tutulduğu yer; rapor ve mutabakat için önemlidir."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Kasa ekle / Kaydet",
+            "desc": "Yeni kasayı sisteme ekler."
+          }
+        ],
+        "tips": [
+          "Birden fazla kasa kullanabilirsiniz (nakit + banka); her tahsilatta doğru kasayı seçin.",
+          "Önerilen ayarlar varsayılan kasa oluşturabilir."
+        ]
+      },
+      "accrual": {
+        "title": "Aidat / gider borçlandır",
+        "summary": "Seçilen aidat grubunu bir yıl/ay için dairelere dağıtıp borç satırları oluşturma. Önce taslak, sonra kesinleştirme gerekir.",
+        "where": "Sol menü → Günlük işlemler → Aidat / gider borçlandır. Üst sekmelerde Borçlandırma. Path: …/dues?tab=accrual. Basit modda: Bu ay aidatı kes.",
+        "screen": "Başlık çoğunlukla Üye borçlandırma.\nÜstte Borçlandır butonu (çekmece açar).\nAltta Borçlandırma dönemleri kartı: dönem sekmeleri, Taslak / Kesinleşti rozeti, daire-üye-tutar tablosu.\nUyarılar: eksik kurulum veya engeller burada listelenir.",
+        "howTo": [
+          "Aidat türü, daire ve malik atamasının tamam olduğundan emin olun (uyarı varsa önce düzeltin).",
+          "Borçlandır’a tıklayın.",
+          "Grup adı’ndan aidat grubunu seçin; Yıl ve Ay’ı seçin.",
+          "Fatura/sayaç yönteminde istenen toplam tutar veya tüketim alanlarını doldurun.",
+          "Borçlandır ile taslak oluşturun; satırları daire bazında kontrol edin.",
+          "Doğruysa Borçlandırmayı kesinleştir → onay penceresinde Kesinleştir.",
+          "Kesinleştikten sonra Tahsilat & borç listesi’nden ödeme alabilirsiniz."
+        ],
+        "fields": [
+          {
+            "name": "Grup adı",
+            "desc": "Hangi aidat/gider tanımının borçlandırılacağı."
+          },
+          {
+            "name": "Yıl / Ay",
+            "desc": "Borçlandırma dönemi."
+          },
+          {
+            "name": "Toplam fatura tutarı / tüketim",
+            "desc": "Paylaştırmalı veya sayaçlı gruplarda zorunlu girdi."
+          },
+          {
+            "name": "Dağıtım yöntemi / tedarikçi referansı",
+            "desc": "Tedarikçi gecikme tipi gruplarda kullanılır."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Borçlandır",
+            "desc": "Taslak dönem oluşturur; henüz malik hesabına işlemez."
+          },
+          {
+            "name": "Borçlandırmayı kesinleştir",
+            "desc": "Taslağı malik hesaplarına işler; tahsilata açar."
+          },
+          {
+            "name": "Kesinleştirmeyi geri al",
+            "desc": "Ödeme/gecikme yoksa kesinleştirmeyi bozar."
+          },
+          {
+            "name": "Eksik taşınmazları tahakkuk et",
+            "desc": "Kesinleşmiş ama eksik daire kalan koşularda tamamlar."
+          }
+        ],
+        "tips": [
+          "Taslak ile kesinleştirme farkını mutlaka bilin (aşağıdaki maddeler).",
+          "Yanlış tutarı taslak aşamasında düzeltmek, kesinleştikten sonra geri almaktan kolaydır."
+        ]
+      },
+      "draftAccrual": {
+        "title": "Taslak borçlandırma",
+        "summary": "Borçlandır ile oluşan, henüz maliklere yansımamış dönem. Kontrol ve düzeltme için vardır.",
+        "where": "Aidat / gider borçlandır ekranı → dönem kartında Taslak rozeti.",
+        "screen": "Dönem sekmesinde rozet: Taslak.\nTablo satırları görünür ama tahsilat ekranında bu borçlar henüz alınamaz.\nÜstte Kesinleştir aksiyonu aktiftir.",
+        "howTo": [
+          "Borçlandır sonrası oluşan taslak dönemi seçin.",
+          "Her daire satırındaki tutarı kontrol edin.",
+          "Hata varsa (yanlış grup/ay) taslağı düzeltme veya yeniden oluşturma yolunu kullanın; emin olmadan kesinleştirmeyin.",
+          "Kontrol bitince kesinleştirme adımına geçin."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Borçlandırmayı kesinleştir",
+            "desc": "Taslağı gerçek borca çevirir."
+          }
+        ],
+        "tips": [
+          "Taslak = önizleme. Malik portalında / resmi borçta görünmesi için kesinleştirme şarttır."
+        ]
+      },
+      "postAccrual": {
+        "title": "Kesinleştirme",
+        "summary": "Taslak borçlandırmanın malik cari hesaplarına işlenmesi. Bundan sonra tahsilat alınabilir.",
+        "where": "Aidat / gider borçlandır → seçili taslak dönem → Borçlandırmayı kesinleştir. Onay diyaloğu: Kesinleştirmeyi onayla.",
+        "screen": "Onay penceresinde özet (dönem, satır sayısı, toplam) + Vazgeç / Kesinleştir.\nBaşarı sonrası rozet Kesinleşti olur.\nGecikme cezası uygulandıysa oluşan run da ayrıca kesinleştirilir.",
+        "howTo": [
+          "Taslak satırlarını son kez kontrol edin.",
+          "Borçlandırmayı kesinleştir’e tıklayın.",
+          "Özeti okuyup Kesinleştir’i onaylayın (Vazgeç ile iptal).",
+          "Tahsilat & borç listesi’nde ilgili dönem borçlarının göründüğünü doğrulayın."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Kesinleştir",
+            "desc": "Onayı verir; borçlar carilere işlenir."
+          },
+          {
+            "name": "Vazgeç",
+            "desc": "Onay penceresini kapatır; taslak kalır."
+          },
+          {
+            "name": "Kesinleştirmeyi geri al",
+            "desc": "Üzerinde tahsilat veya gecikme yoksa geri alır."
+          }
+        ],
+        "tips": [
+          "Kesinleştirmeden tahsilat alınamaz.",
+          "Geri alma her zaman mümkün değildir; ödeme girdikten sonra muhasebe düzeltmesi gerekir."
+        ]
+      },
+      "register": {
+        "title": "Tahsilat & borç listesi",
+        "summary": "Daire bazında açık borçları görme ve ödeme kaydetme ekranı. Eski adıyla dönem defteri; sayfa başlığı hâlâ Dönem defteri olabilir.",
+        "where": "Sol menü → Günlük işlemler → Tahsilat & borç listesi. Üst sekme: Tahsilat. Path: …/dues?tab=register. Basit mod: Tahsilat al.",
+        "screen": "Üst filtre: Yıl, Ay, arama, Blok, Yalnızca gecikenler / Yalnızca borçlular, Filtrele.\nTablo: Taşınmaz, Üye, Dönem kalan, Toplam açık borç; gecikme faizi rozeti.\nSatır/detayda tahsilat formu: Kasa, Tutar, Ödeme tarihi, Belge no.\nÜst aksiyonlar: Toplu tahsilat, CSV/Excel/PDF indir.",
+        "howTo": [
+          "Yıl ve ayı seçip Filtrele ile listeyi daraltın.",
+          "Ödeme alınan daire satırına tıklayın veya Tahsilat gir / daire — Tahsilat aksiyonunu açın.",
+          "Kasa seçin; Tutar girin (açık borç ipucu gösterilir; otomatik mahsup edilebilir).",
+          "Ödeme tarihi ve isteğe bağlı Belge no doldurun.",
+          "Tahsilat gir ile kaydedin.",
+          "Birden fazla satır için Toplu tahsilat → satırları seç → Seçilenleri tahsil et."
+        ],
+        "fields": [
+          {
+            "name": "Yıl / Ay",
+            "desc": "Hangi dönem listesinin gösterileceği."
+          },
+          {
+            "name": "Ara / Blok / Yalnızca gecikenler",
+            "desc": "Listeyi daraltır."
+          },
+          {
+            "name": "Kasa",
+            "desc": "Paranın girdiği kasa/banka; zorunlu."
+          },
+          {
+            "name": "Tutar",
+            "desc": "Alınan ödeme miktarı."
+          },
+          {
+            "name": "Ödeme tarihi",
+            "desc": "Fiili tahsilat günü."
+          },
+          {
+            "name": "Belge no",
+            "desc": "Makbuz/dekont referansı (isteğe bağlı)."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Tahsilat gir",
+            "desc": "Tek satır ödemeyi kaydeder."
+          },
+          {
+            "name": "Toplu tahsilat / Seçilenleri tahsil et",
+            "desc": "Birden fazla daireyi aynı anda tahsil eder."
+          },
+          {
+            "name": "Detayı gör / Açık borçlar / Hesap dökümü",
+            "desc": "Daire veya üye detayına iner."
+          },
+          {
+            "name": "CSV / Excel / PDF indir",
+            "desc": "Listeyi dışa aktarır."
+          }
+        ],
+        "tips": [
+          "Kasa veya malik ataması eksikse ödeme engellenir; ekrandaki uyarıyı okuyun.",
+          "Önce ilgili dönemin borçlandırması kesinleşmiş olmalıdır."
+        ]
+      },
+      "collection": {
+        "title": "Tahsilat (ödeme kaydı)",
+        "summary": "Malikten/kiracıdan alınan paranın sisteme işlenmesi. Tahsilat & borç listesi üzerinden yapılır.",
+        "where": "Tahsilat & borç listesi içindeki tahsilat formu veya toplu tahsilat. Genel bakış → Tahsilat gir.",
+        "screen": "Çekmece veya satır formu: Kasa, Tutar, Ödeme tarihi, Belge no + Tahsilat gir butonu.\nBaşarıda borç bakiyesi düşer; kasa bakiyesi artar.",
+        "howTo": [
+          "Doğru daireyi ve dönemi seçin.",
+          "Kasa ve tutarı girip Tahsilat gir’e basın.",
+          "Kısmi ödeme mümkünse tutarı açık borçtan az girebilirsiniz; kalan borç listede durur.",
+          "Makbuz için Belge no kullanın; raporlarda izlenebilir."
+        ],
+        "fields": [
+          {
+            "name": "Kasa / Tutar / Ödeme tarihi / Belge no",
+            "desc": "Tahsilat formunun zorunlu ve isteğe bağlı alanları (ayrıntı: Tahsilat & borç listesi)."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Tahsilat gir",
+            "desc": "Ödemeyi kaydeder ve bakiyeleri günceller."
+          }
+        ],
+        "tips": [
+          "Yanlış kasaya alınan tahsilat raporları bozar; düzeltmeden önce kasayı kontrol edin."
+        ]
+      },
+      "account": {
+        "title": "Malik / kiracı hesapları (cari)",
+        "summary": "Malik, kiracı, tedarikçi veya personel ile ilişkili muhasebe hesabı. Borç ve tahsilat bu cariler üzerinden izlenir.",
+        "where": "Sol menü → Apartman tanımları → Malik / kiracı hesapları. Path: …/dues?tab=accounts. Personel için: Kapıcı & personel hesabı. Basit mod menüsünde genelde gizlidir.",
+        "screen": "Başlık: Cari hesaplar.\nTablo: Cari kodu, ad, bakiye.\nÇekmece: Cari hesap ekle — Cari kodu, Cari hesap (ad), Cari türü, Üye bağlantısı.",
+        "howTo": [
+          "Çoğu malik carisi daire atamasıyla otomatik oluşur; listeyi bakiyeleri kontrol için açın.",
+          "Tedarikçi veya genel cari gerekiyorsa Cari hesap ekle ile oluşturun.",
+          "Cari türü’nden Malik/kiracı, Tedarikçi, Personel veya Genel seçin.",
+          "Üye bağlantısı varsa ilgili üyeyi bağlayın; yoksa Yok seçin.",
+          "Personel işlemleri için Kapıcı & personel hesabı menüsünü kullanın."
+        ],
+        "fields": [
+          {
+            "name": "Cari kodu",
+            "desc": "Kısa muhasebe kodu."
+          },
+          {
+            "name": "Cari hesap",
+            "desc": "Görünen hesap adı."
+          },
+          {
+            "name": "Cari türü",
+            "desc": "Malik/kiracı, tedarikçi, personel, genel."
+          },
+          {
+            "name": "Üye bağlantısı",
+            "desc": "Hesabı kişi kaydına bağlar."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Cari hesap ekle",
+            "desc": "Yeni cari oluşturur."
+          },
+          {
+            "name": "Kaydet",
+            "desc": "Formu kaydeder."
+          }
+        ],
+        "tips": [
+          "Günlük iş için cari listesini ezberlemeniz gerekmez; tahsilat ekranı yeterli olabilir.",
+          "Bakiyeyi anlamak için Hesap dökümü / borç listesini kullanın."
+        ]
+      },
+      "expenses": {
+        "title": "Gelir & gider kayıtları",
+        "summary": "Apartman kasasından yapılan giderler ve gelir fişlerinin kaydı. Aidat borçlandırmasından ayrıdır.",
+        "where": "Sol menü → Günlük işlemler → Gelir & gider kayıtları. Üst sekme: Gelir & gider. Path: …/dues?tab=expenses.",
+        "screen": "Gelir/gider fiş listesi ve yeni kayıt formu.\nGider kalemleri Tanımlar → Gider kalemleri’nden yönetilir.\nGenel bakış’ta Son hareketler buraya bağlanır.",
+        "howTo": [
+          "Gelir & gider kayıtları’nı açın.",
+          "Yeni gider veya gelir fişi ekleyin; tutar, kasa, kategori/kalem ve tarihi doldurun.",
+          "Kaydedin; kasa bakiyesi ve raporlar güncellenir.",
+          "Sık kullanılan kalemleri Gider kalemleri tanımından önceden ekleyin."
+        ],
+        "fields": [
+          {
+            "name": "Tutar / Tarih / Kasa",
+            "desc": "Fişin mali bilgileri."
+          },
+          {
+            "name": "Gider kalemi / kategori",
+            "desc": "Raporlarda kırılım için; Tanımlar → Gider kalemleri’nden gelir."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Gider gir / Kaydet",
+            "desc": "Yeni fişi kaydeder."
+          }
+        ],
+        "tips": [
+          "Ortak gideri dairelere dağıtmak istiyorsanız çoğu zaman Aidat türü + borçlandırma kullanın; tek seferlik kasa çıkışı için bu ekran uygundur."
+        ]
+      },
+      "lateFee": {
+        "title": "Gecikme cezası",
+        "summary": "Aidat ödemesi gecikince malike uygulanan gecikme tazminatı. Tedarikçi faturası zammı ve kanuni faiz ekranından farklıdır.",
+        "where": "Sol menü → Günlük işlemler → Gecikme cezası. Borçlandırma üst sekmesi altında. Path: …/dues?tab=lateFee. Basit modda menüde olmayabilir.",
+        "screen": "Üstte karar rehberi: Aidat gecikme tazminatı (bu ekran) / Tedarikçi gecikme / Kanuni faiz ayrımı.\nPolitika kartı: nasıl uygulansın, aylık oran, tolerans günü, vade günü → Politikayı kaydet.\nUygulama: Yıl/Ay → Bu ay için gecikme uygula → oluşan borçlandırmayı kesinleştir.",
+        "howTo": [
+          "Karar rehberinden aidat gecikmesi için bu ekranda kaldığınızı doğrulayın.",
+          "Gecikme cezası nasıl uygulansın? seçin: uygulanmasın, sabit aylık oran veya kanuni faiz (TCMB).",
+          "Sabit oranda Aylık oran (%) girin; Tolerans (gün) ve Vade günü’nü ayarlayın.",
+          "Politikayı kaydet’e basın.",
+          "İlgili yıl/ayı seçip Bu ay için gecikme uygula ile çalıştırın.",
+          "Oluşan gecikme borçlandırmasını Aidat borçlandır ekranından kesinleştirin."
+        ],
+        "fields": [
+          {
+            "name": "Gecikme cezası nasıl uygulansın?",
+            "desc": "Kapalı / sabit oran / kanuni faiz."
+          },
+          {
+            "name": "Aylık oran (%)",
+            "desc": "Sabit oran seçildiyse aylık yüzde."
+          },
+          {
+            "name": "Tolerans (gün)",
+            "desc": "Vade sonrası cezasız gün sayısı."
+          },
+          {
+            "name": "Vade günü (ay içi)",
+            "desc": "Ayın kaçında ödeme beklenir."
+          },
+          {
+            "name": "Yıl / Ay",
+            "desc": "Hangi dönem için ceza hesaplanacağı."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Politikayı kaydet",
+            "desc": "Kuralları saklar."
+          },
+          {
+            "name": "Bu ay için gecikme uygula",
+            "desc": "Seçilen dönem için ceza satırlarını üretir (sonra kesinleştirilir)."
+          },
+          {
+            "name": "Gecikme borçlandırmasını kesinleştir",
+            "desc": "Üretilen cezayı carilere işler."
+          }
+        ],
+        "tips": [
+          "KMK %5 aidat gecikmesi ile tedarikçi faturası gecikmesi aynı şey değildir.",
+          "Kanuni faiz oranı org seviyesinde Kanuni faiz menüsünden yönetilir."
+        ]
       },
       "reports": {
         "title": "Raporlar",
-        "body": "Borçlandırma, tahsilat, gider ve yıllık gelir-gider raporlarının alındığı bölüm."
+        "summary": "Borçlandırma, tahsilat, gider, kasa ve yıllık gelir-gider çıktılarının alındığı rapor merkezi.",
+        "where": "Sol menü → Raporlar. Path: …/reports. Günlük/basit menü profilinde gizlenebilir; Tam görünüm veya standart menü gerekir.",
+        "screen": "Rapor merkezi: rapor türü kartları/listesi.\nFiltreler: Yıl, Ay, Blok, (yıllıkta) Çeyrek dönem.\nİndirme: CSV, Excel, PDF, ZIP; bazıları Arka planda dışa aktar + kuyruk İndir.\nEk: İşletme projesi, banka mutabakatı, denetçi şablonları (role bağlı).",
+        "howTo": [
+          "İhtiyacınız olan raporu seçin (ör. Borçlandırma özeti veya Tahsilat).",
+          "Yıl, ay ve gerekirse blok filtresini ayarlayın.",
+          "CSV / Excel / PDF indir ile dosyayı alın.",
+          "Büyük paketlerde Arka planda dışa aktar’ı kullanıp tamamlanınca İndir’e tıklayın.",
+          "Ay sonu için iş akışındaki Aylık raporu indir adımını da kullanabilirsiniz."
+        ],
+        "fields": [
+          {
+            "name": "Yıl / Ay / Blok",
+            "desc": "Rapor kapsamı."
+          },
+          {
+            "name": "Çeyrek dönem",
+            "desc": "Yıllık gelir-gider tipinde dönem seçimi."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "CSV / Excel / PDF / ZIP indir",
+            "desc": "Anında veya hazır dosyayı indirir."
+          },
+          {
+            "name": "Arka planda dışa aktar",
+            "desc": "Ağır raporu kuyruğa alır."
+          },
+          {
+            "name": "İşletme projesini kaydet",
+            "desc": "İşletme projesi bilgisini saklar (ilgili panelde)."
+          }
+        ],
+        "tips": [
+          "Yönetici toplantısı için önce Borçlandırma özeti ve Tahsilat raporları yeterlidir.",
+          "Menüde Raporlar yoksa üstten Tam görünüm’e geçin veya rol yetkinizi kontrol edin."
+        ]
+      },
+      "simpleMode": {
+        "title": "Basit mod ve menü görünümleri",
+        "summary": "Az menüyle çalışma: apartman Basit modu ve kullanıcı Basit görünüm / Tam görünüm tercihi. İkisi farklıdır.",
+        "where": "Apartman: Genel bakış veya Kurulum’da Basit moda geç / Tüm özellikler. Kullanıcı (site yöneticisi): üst bar → Basit görünüm / Tam görünüm.",
+        "screen": "Basit mod bandı: Basit moddasınız — menü sadeleştirildi… ve Tüm özellikler linki.\nBasit modda sol menü yalın: Genel bakış, Tahsilat, Borçlandır, Gelir-gider, Apartman tanımları (kurulum), Duyurular.\nMali sayfada büyük kartlar: Bu ay aidatı kes / Tahsilat al.\nMuhasebeci rolleri basit apartmanda bile tam menüyü görebilir (bilgi bandı ile).",
+        "howTo": [
+          "Yeni veya küçük apartmanda Önerilen ayarlar ile Basit modu da uygula seçebilirsiniz.",
+          "Günlük iş: Bu ay aidatı kes → taslak/kesinleştir; Tahsilat al → ödeme.",
+          "Eksik menü görürseniz (ör. Raporlar, Gecikme cezası) Tüm özellikler veya Tam görünüm’e geçin.",
+          "Tekrar sadeleştirmek için Basit moda geç / Basit görünüm kullanın."
+        ],
+        "fields": [],
+        "buttons": [
+          {
+            "name": "Basit moda geç",
+            "desc": "Apartman menüsünü sadeleştirir."
+          },
+          {
+            "name": "Tüm özellikler",
+            "desc": "Apartmanı standart menüye alır."
+          },
+          {
+            "name": "Basit görünüm / Tam görünüm",
+            "desc": "Sizin kullanıcı menü profilinizi değiştirir (apartman ayarından bağımsız)."
+          }
+        ],
+        "tips": [
+          "Rapor veya gecikme cezası bulamıyorsanız önce görünüm/mod kontrolü yapın.",
+          "Basit mod iş kurallarını silmez; yalnızca menü ve bazı sekmeleri gizler."
+        ]
+      },
+      "staffResidents": {
+        "title": "Sakinler (görevli görünümü)",
+        "summary": "Tam admin erişimi olmadan iletişim ve daire bilgisine ihtiyaç duyan görevliler için, her dairenin malik ve kiracısını gösteren salt okunur bir liste.",
+        "where": "Görevli menüsü → Sakinler.",
+        "screen": "Başlık: Sakinler.\nDaire, blok veya isme göre filtreleyen arama kutusu.\nListe: her daire için blok/daire kodu, malik ve kiracı (telefon yalnızca rolünüzün yetkisi varsa görünür).",
+        "howTo": [
+          "Görevli menüsünden Sakinler'i açın.",
+          "Arama kutusuyla daire, blok veya kişi adına göre filtreleyin.",
+          "Rolünüz telefon numaralarını görüntüleyebiliyorsa numaraya dokunarak arayabilirsiniz."
+        ],
+        "fields": [
+          {
+            "name": "Arama",
+            "desc": "Listeyi daire kodu, blok adı veya malik/kiracı adına göre filtreler."
+          }
+        ],
+        "buttons": [],
+        "tips": [
+          "Bu liste salt okunurdur — atamalar ve tahakkuklar burada değil, yönetici tarafında yapılır.",
+          "Telefon numaraları görünmüyorsa rolünüzün bu yetkisi yoktur; site yöneticinizle görüşün."
+        ]
+      },
+      "createProperty": {
+        "title": "Apartman / site oluştur",
+        "summary": "Organizasyonunuza yeni bir apartman veya site ekler. Yapı, aidat ve finans kurulumundan önceki ilk adımdır.",
+        "where": "Sol menü → Apartmanlar (apartman listesi) → Oluştur.",
+        "screen": "Drawer form: Ad, Adres, Tür (Apartman / Apartman sitesi), Oluştur butonu.",
+        "howTo": [
+          "Sol menüden Apartmanlar'ı açın.",
+          "Bu drawer'ı açmak için Oluştur butonuna tıklayın.",
+          "Bir ad girin (zorunlu).",
+          "İsteğe bağlı olarak adresi girin.",
+          "Türü seçin: Apartman (tek bina) veya Apartman sitesi (birden çok blok).",
+          "Kaydedin, ardından apartmanın detay sayfasını açarak kuruluma (bloklar, daireler, aidat, kasa) devam edin."
+        ],
+        "fields": [
+          {
+            "name": "Ad",
+            "desc": "Zorunlu; apartmanın listelendiği her yerde görünür."
+          },
+          {
+            "name": "Adres",
+            "desc": "İsteğe bağlı, apartman detay sayfasında gösterilir."
+          },
+          {
+            "name": "Tür",
+            "desc": "Tek bina için Apartman, birden çok blok için Apartman sitesi — varsayılan yapı önerilerini etkiler."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Oluştur",
+            "desc": "Yeni apartmanı kaydeder ve drawer'ı kapatır."
+          }
+        ],
+        "tips": [
+          "Oluşturduktan sonra, faturalamadan önce bloklar, daireler, malikler, aidat türleri ve bir kasa tanımlamak için apartmanın Kurulum sayfasına gidin."
+        ]
+      },
+      "orgUserInvite": {
+        "title": "Kullanıcı ekle (ekip üyesi)",
+        "summary": "Organizasyonunuza bir rol ile yeni bir kullanıcı davet eder; apartman bazlı roller için belirli apartmanlara erişim de tanımlanır.",
+        "where": "Sol menü → Kullanıcılar & roller → Kullanıcı ekle.",
+        "screen": "Drawer form: Ad, E-posta, Rol, Apartman kapsamı (org admin için gizli onay kutusu listesi), Şifre (isteğe bağlı — kullanıcı şifre sıfırlama ile de belirleyebilir).",
+        "howTo": [
+          "Kullanıcılar & roller'i açın.",
+          "Kullanıcı ekle'ye tıklayın.",
+          "Ad ve e-posta girin.",
+          "Bir rol seçin: Org admin, Site yöneticisi, Muhasebeci, Denetçi, Yönetim kurulu üyesi veya Görevli.",
+          "Org admin dışındaki roller için bu kullanıcının erişebileceği apartmanları seçin.",
+          "İsteğe bağlı olarak bir şifre belirleyin, ya da boş bırakıp kullanıcının şifre sıfırlama ile belirlemesine izin verin.",
+          "Kaydedin."
+        ],
+        "fields": [
+          {
+            "name": "Ad / E-posta",
+            "desc": "Kimlik ve giriş e-postası; e-posta bu formdan sonradan değiştirilemez."
+          },
+          {
+            "name": "Rol",
+            "desc": "Menü erişimini ve yetkileri belirler; apartman bazlı roller apartman seçimi gerektirir."
+          },
+          {
+            "name": "Apartman kapsamı",
+            "desc": "Bu kullanıcının görebileceği ve yönetebileceği apartmanlar; tüm apartmanlara erişimi olan Org admin için gösterilmez."
+          },
+          {
+            "name": "Şifre",
+            "desc": "Oluşturma sırasında isteğe bağlıdır — boş bırakılırsa kullanıcı şifre sıfırlama ile belirlemelidir."
+          }
+        ],
+        "buttons": [
+          {
+            "name": "Kaydet",
+            "desc": "Kullanıcıyı oluşturur ve seçilen rol/apartmanlara göre erişim tanımlar."
+          }
+        ],
+        "tips": [
+          "Org admin her şeyi görür ve apartman kapsamına ihtiyaç duymaz.",
+          "Denetçi ve Görevli rolleri tasarım gereği kısıtlı, çoğunlukla salt okunur erişime sahiptir."
+        ]
       }
     }
   }
 }
+

@@ -4,6 +4,7 @@ import { Pencil, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { HelpButton } from "@/components/help-button";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -13,12 +14,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import type { HelpTopicKey } from "@/lib/help";
 
 type FormDrawerProps = {
   mode?: "insert" | "edit";
   triggerLabel?: string;
   title: string;
   description?: string;
+  helpTopicKey?: HelpTopicKey;
   success?: boolean;
   disabled?: boolean;
   defaultOpen?: boolean;
@@ -33,6 +36,7 @@ export function FormDrawer({
   triggerLabel,
   title,
   description,
+  helpTopicKey,
   success,
   disabled,
   defaultOpen = false,
@@ -74,7 +78,10 @@ export function FormDrawer({
           className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-xl"
         >
           <SheetHeader className="border-b px-4 py-4 pr-20 text-left">
-            <SheetTitle>{title}</SheetTitle>
+            <div className="flex items-center justify-between gap-2">
+              <SheetTitle>{title}</SheetTitle>
+              {helpTopicKey ? <HelpButton topicKey={helpTopicKey} className="size-8 shrink-0" /> : null}
+            </div>
             {description ? <SheetDescription>{description}</SheetDescription> : null}
           </SheetHeader>
           <ScrollArea className="flex-1 px-4 py-4">

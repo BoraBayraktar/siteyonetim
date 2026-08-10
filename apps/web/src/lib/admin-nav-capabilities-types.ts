@@ -20,7 +20,6 @@ export type PropertyNavModule =
   | "notifications"
   | "documents"
   | "incidents"
-  | "helpGlossary"
   | "propertySetup";
 
 export type AdminNavProfile = "daily" | "full" | "readonly";

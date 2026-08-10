@@ -190,7 +190,13 @@ function CreateOrgUserDrawer({ locale, properties }: { locale: string; propertie
   const [propertyIds, setPropertyIds] = useState<string[]>([]);
 
   return (
-    <FormDrawer triggerLabel={t("addUser")} title={t("addUser")} description={t("addUserSubtitle")} success={state.success}>
+    <FormDrawer
+      triggerLabel={t("addUser")}
+      title={t("addUser")}
+      description={t("addUserSubtitle")}
+      helpTopicKey="orgUserInvite"
+      success={state.success}
+    >
       <form action={action} className="grid gap-4">
         <OrgUserFormFields
           locale={locale}
