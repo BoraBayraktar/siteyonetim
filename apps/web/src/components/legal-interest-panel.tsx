@@ -62,7 +62,7 @@ export function LegalInterestPanel({ locale, year, years, rates }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <FormDrawer triggerLabel={t("addRate")} title={t("addRate")} success={state.success}>
+            <FormDrawer triggerLabel={t("addRate")} title={t("addRate")} helpTopicKey="legalInterest" success={state.success}>
               <form action={action} className="grid gap-3">
                 <input type="hidden" name="year" value={year} />
                 <YearMonthFormFields

@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getAdminSession } from "@/lib/cached-admin";
 import { resolveStaffPropertyAccess } from "@/lib/staff-admin-access";
+import { HelpButton } from "@/components/help-button";
 import { NotificationsAdminPanel } from "@/components/notifications-admin-panel";
 import { PropertyWhatsAppPanel } from "@/components/property-whatsapp-panel";
 import { Button } from "@/components/ui/button";
@@ -48,12 +49,15 @@ export default async function PropertyNotificationsPage({ params, searchParams }
 
   return (
     <div className="space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-          <Link href={`/${locale}/admin/properties/${propertyId}`}>← {tCommon("back")}</Link>
-        </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{property.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
+            <Link href={`/${locale}/admin/properties/${propertyId}`}>← {tCommon("back")}</Link>
+          </Button>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{property.name}</p>
+        </div>
+        <HelpButton topicKey="notifications" />
       </div>
       <PropertyWhatsAppPanel locale={locale} propertyId={propertyId} profile={whatsAppProfile} />
       <NotificationsAdminPanel

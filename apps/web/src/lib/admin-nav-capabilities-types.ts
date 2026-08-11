@@ -19,12 +19,9 @@ export type PropertyNavModule =
   | "announcements"
   | "notifications"
   | "documents"
-  | "incidents"
-  | "propertySetup";
+  | "incidents";
 
 export type AdminNavProfile = "daily" | "full" | "readonly";
-
-export type PropertyUiMode = "standard" | "simple";
 
 export type AdminNavCapabilities = {
   isStaffRestricted: boolean;
@@ -69,14 +66,4 @@ export function adminNavProfileToDb(profile: AdminNavProfile): import("@siteyone
     case "readonly":
       return "READONLY";
   }
-}
-
-export function propertyUiModeFromDb(
-  mode: import("@siteyonetim/db").AdminUiMode | null | undefined,
-): PropertyUiMode {
-  return mode === "SIMPLE" ? "simple" : "standard";
-}
-
-export function propertyUiModeToDb(mode: PropertyUiMode): import("@siteyonetim/db").AdminUiMode {
-  return mode === "simple" ? "SIMPLE" : "STANDARD";
 }

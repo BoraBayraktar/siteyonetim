@@ -76,7 +76,7 @@ export function GovernanceMeetingsPanel({
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("meetingsTitle")}</CardTitle>
         {!readOnly ? (
-          <FormDrawer triggerLabel={t("createMeeting")} title={t("createMeeting")} success={state.success}>
+          <FormDrawer triggerLabel={t("createMeeting")} title={t("createMeeting")} helpTopicKey="governance" success={state.success}>
             <form action={action} className="grid gap-4">
               <input type="hidden" name="meetingType" value={meetingType} />
               <input type="hidden" name="linkedReportId" value={linkedReportId} />

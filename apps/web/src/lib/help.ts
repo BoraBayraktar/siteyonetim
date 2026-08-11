@@ -14,10 +14,19 @@ export const HELP_TOPIC_KEYS = [
   "expenses",
   "lateFee",
   "reports",
-  "simpleMode",
   "staffResidents",
   "createProperty",
   "orgUserInvite",
+  "governance",
+  "incidents",
+  "announcements",
+  "documents",
+  "notifications",
+  "financeCategories",
+  "staffAccount",
+  "legalInterest",
+  "auditorAssignment",
+  "meters",
 ] as const;
 
 export type HelpTopicKey = (typeof HELP_TOPIC_KEYS)[number];

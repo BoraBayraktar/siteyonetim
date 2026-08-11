@@ -12,6 +12,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { HomeDashboardPreview } from "@/components/home-dashboard-preview";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,6 +98,7 @@ export async function HomeLanding({ locale }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" asChild>
               <Link href={`/${alternateLocale}`}>{alternateLocale.toUpperCase()}</Link>
             </Button>

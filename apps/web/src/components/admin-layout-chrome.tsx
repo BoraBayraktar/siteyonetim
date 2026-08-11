@@ -35,20 +35,17 @@ export async function AdminLayoutChrome({
   return (
     <AdminNavProvider>
       <div className="min-h-screen bg-background">
-        <AdminHeader
+        <AdminHeader adminHomePath={adminHomePath} organizationName={organizationName} />
+        <AdminShell
+          locale={locale}
           adminHomePath={adminHomePath}
           organizationName={organizationName}
           userName={userName}
           logoutAction={logoutAction}
-          locale={locale}
           navProfile={navCapabilities.navProfile}
           canToggleNavProfile={navCapabilities.canToggleNavProfile}
-        />
-        <AdminShell
-          locale={locale}
           propertiesNav={propertiesNav}
           navCapabilities={navCapabilities}
-          userRole={userRole}
         >
           {children}
         </AdminShell>

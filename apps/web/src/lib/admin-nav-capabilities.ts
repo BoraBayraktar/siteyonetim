@@ -4,13 +4,8 @@ import type { AdminNavCapabilities, AdminNavProfile, PropertyNavModule } from "@
 import { adminNavProfileFromDb } from "@/lib/admin-nav-capabilities-types";
 import { isStaffRole } from "@/lib/organization-roles";
 
-export type { AdminNavCapabilities, AdminNavProfile, PropertyNavModule, PropertyUiMode } from "@/lib/admin-nav-capabilities-types";
-export {
-  adminNavProfileToDb,
-  hasPropertyNavModule,
-  propertyUiModeFromDb,
-  propertyUiModeToDb,
-} from "@/lib/admin-nav-capabilities-types";
+export type { AdminNavCapabilities, AdminNavProfile, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
+export { adminNavProfileToDb, hasPropertyNavModule } from "@/lib/admin-nav-capabilities-types";
 
 const FULL_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "dashboard",
@@ -65,15 +60,6 @@ const STAFF_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
   "incidents",
 ]);
 
-export const SIMPLE_PROPERTY_MODULES: ReadonlySet<PropertyNavModule> = new Set([
-  "dashboard",
-  "financeRegister",
-  "financeAccrual",
-  "financeExpenses",
-  "announcements",
-  "propertySetup",
-]);
-
 export function resolveDefaultNavProfile(role: string | null | undefined): AdminNavProfile {
   if (role === OrganizationRole.ACCOUNTANT || role === OrganizationRole.ORG_ADMIN) {
     return "full";
@@ -110,26 +96,6 @@ export function resolveEffectiveNavProfile(
 
 export function canToggleNavProfile(role: string | null | undefined): boolean {
   return role === OrganizationRole.PROPERTY_MANAGER;
-}
-
-export function canOverrideSimpleUiMode(role: string | null | undefined): boolean {
-  return role === OrganizationRole.ACCOUNTANT || role === OrganizationRole.ORG_ADMIN;
-}
-
-export function resolvePropertyNavModules(
-  capabilities: AdminNavCapabilities,
-  options: {
-    propertyUiMode: import("@/lib/admin-nav-capabilities-types").PropertyUiMode;
-    role: string | null | undefined;
-  },
-): ReadonlySet<PropertyNavModule> {
-  if (
-    options.propertyUiMode === "simple" &&
-    !canOverrideSimpleUiMode(options.role)
-  ) {
-    return SIMPLE_PROPERTY_MODULES;
-  }
-  return capabilities.propertyModules;
 }
 
 export function resolveAdminNavCapabilities(

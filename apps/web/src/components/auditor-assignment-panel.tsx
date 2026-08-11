@@ -88,7 +88,7 @@ function AssignAuditorDrawer({
   const [auditorUserId, setAuditorUserId] = useState(auditors[0]?.userId ?? "");
 
   return (
-    <FormDrawer triggerLabel={t("assignAuditor")} title={t("assignTitle")} success={state.success}>
+    <FormDrawer triggerLabel={t("assignAuditor")} title={t("assignTitle")} helpTopicKey="auditorAssignment" success={state.success}>
       <form action={action} className="grid gap-4">
         <input type="hidden" name="locale" value={locale} />
         <input type="hidden" name="propertyId" value={propertyId} />
@@ -257,6 +257,7 @@ function AssignmentRowActions({
         <FormDrawer
           triggerLabel={t("reopen")}
           title={t("reopenTitle")}
+          helpTopicKey="auditorAssignment"
           open={reopenOpen}
           onOpenChange={setReopenOpen}
           hideTrigger

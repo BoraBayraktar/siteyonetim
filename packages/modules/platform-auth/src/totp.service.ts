@@ -3,7 +3,7 @@ import { createAuditService } from "@siteyonetim/platform-audit";
 import { Secret } from "otpauth";
 
 import type { AuthSessionUserDto, AuthUserDto, ValidateCredentialsInput } from "./contract";
-import { AuthRepository } from "./repository";
+import { AuthRepository, extractOrganizationId } from "./repository";
 import { isSuperAdminUser } from "./super-admin";
 import {
   buildTotp,
@@ -53,6 +53,18 @@ export class TotpService {
   async beginAdminLogin(input: ValidateCredentialsInput, rememberMe: boolean): Promise<AdminLoginBeginResult | null> {
     const user = await this.authRepository.validateAdminCredentials(input);
     if (!user) {
+      const rawUser = await this.authRepository.findByEmail(input.email.trim());
+      const organizationId = rawUser ? extractOrganizationId(rawUser) : null;
+      if (rawUser && organizationId) {
+        await this.audit.record({
+          organizationId,
+          userId: rawUser.id,
+          action: "auth.login.failed",
+          entityType: "User",
+          entityId: rawUser.id,
+          metadata: { reason: "invalid_credentials" },
+        });
+      }
       return null;
     }
 
@@ -200,6 +212,18 @@ export class TotpService {
         ...challenge,
         attempts: challenge.attempts + 1,
       });
+      const failedUser = await this.authRepository.findById(user.id);
+      const organizationId = failedUser ? extractOrganizationId(failedUser) : null;
+      if (failedUser && organizationId) {
+        await this.audit.record({
+          organizationId,
+          userId: failedUser.id,
+          action: "auth.login.failed",
+          entityType: "User",
+          entityId: failedUser.id,
+          metadata: { reason: "invalid_totp_code" },
+        });
+      }
       throw new LoginChallengeFailedError("INVALID_TOTP_CODE", nextChallengeId);
     }
 
@@ -213,6 +237,15 @@ export class TotpService {
     if (!dto || dto.sessionKind !== "ADMIN") {
       return null;
     }
+
+    await this.audit.record({
+      organizationId: dto.organizationId,
+      userId: dto.id,
+      action: "auth.login.success",
+      entityType: "User",
+      entityId: dto.id,
+      metadata: { sessionKind: dto.sessionKind, via: "totp" },
+    });
 
     return { ...dto, rememberMe: challenge.rememberMe, setupBackupCodes };
   }

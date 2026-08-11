@@ -28,13 +28,15 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { AdminSidebarBrand } from "@/components/admin-sidebar-brand";
+import { AdminSidebarFooter } from "@/components/admin-sidebar-footer";
+import { AdminSidebarSearch } from "@/components/admin-sidebar-search";
 import { useAdminNav } from "@/components/admin-nav-provider";
-import { usePropertyUiMode } from "@/components/property-ui-mode-context";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useClientSearchParams } from "@/hooks/use-client-search-params";
-import { resolvePropertyNavModules } from "@/lib/admin-nav-capabilities";
-import type { AdminNavCapabilities, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
+import type { AdminNavCapabilities, AdminNavProfile, PropertyNavModule } from "@/lib/admin-nav-capabilities-types";
 import { isPilotSinglePropertyMode, type AdminPropertyNavItem } from "@/lib/admin-property-nav";
 import { resolveDuesTab } from "@/lib/dues-tab";
 import { isPropertyStructurePath } from "@/lib/property-nav-paths";
@@ -43,9 +45,14 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   locale: string;
+  adminHomePath: string;
+  organizationName: string;
+  userName: string;
+  logoutAction: () => Promise<void>;
+  navProfile: AdminNavProfile;
+  canToggleNavProfile: boolean;
   propertiesNav: AdminPropertyNavItem[];
   navCapabilities: AdminNavCapabilities;
-  userRole?: string | null;
 };
 
 type NavLinkItem = {
@@ -80,18 +87,83 @@ function paddingForDepth(depth: number) {
   return "pl-6";
 }
 
+function CollapsedNavTree({
+  nodes,
+  onNavigate,
+  onExpandGroup,
+}: {
+  nodes: NavNode[];
+  onNavigate: () => void;
+  onExpandGroup: (id: string) => void;
+}) {
+  return (
+    <TooltipProvider delayDuration={0}>
+      <ul className="space-y-1">
+        {nodes.map((node) => {
+          if (node.kind === "link") {
+            return (
+              <li key={node.href}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={node.href}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex size-10 items-center justify-center rounded-lg transition-colors hover:bg-accent",
+                        node.active && "bg-accent text-accent-foreground",
+                      )}
+                    >
+                      <node.icon className="size-4.5 shrink-0" aria-hidden />
+                      <span className="sr-only">{node.label}</span>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{node.label}</TooltipContent>
+                </Tooltip>
+              </li>
+            );
+          }
+
+          const childActive = hasActiveDescendant(node.children);
+          return (
+            <li key={node.id}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onExpandGroup(node.id)}
+                    className={cn(
+                      "flex size-10 w-full items-center justify-center rounded-lg transition-colors hover:bg-accent",
+                      childActive && "text-accent-foreground",
+                    )}
+                  >
+                    {node.icon ? <node.icon className="size-4.5 shrink-0" aria-hidden /> : null}
+                    <span className="sr-only">{node.label}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{node.label}</TooltipContent>
+              </Tooltip>
+            </li>
+          );
+        })}
+      </ul>
+    </TooltipProvider>
+  );
+}
+
 function AdminNavTree({
   nodes,
   depth,
   openGroups,
   toggleGroup,
   onNavigate,
+  searchActive = false,
 }: {
   nodes: NavNode[];
   depth: number;
   openGroups: Record<string, boolean>;
   toggleGroup: (id: string) => void;
   onNavigate: () => void;
+  searchActive?: boolean;
 }) {
   return (
     <ul className={cn("space-y-0.5", depth > 0 && "ml-2 border-l border-border/60")}>
@@ -109,13 +181,13 @@ function AdminNavTree({
                 )}
               >
                 <node.icon className="size-4 shrink-0 opacity-70" aria-hidden />
-                <span className="truncate">{node.label}</span>
+                <span className="flex-1 truncate">{node.label}</span>
               </Link>
             </li>
           );
         }
 
-        const open = openGroups[node.id] ?? false;
+        const open = searchActive || (openGroups[node.id] ?? false);
         const childActive = hasActiveDescendant(node.children);
 
         return (
@@ -124,18 +196,21 @@ function AdminNavTree({
               type="button"
               onClick={() => toggleGroup(node.id)}
               aria-expanded={open}
+              disabled={searchActive}
               className={cn(
                 "flex w-full items-center gap-2 rounded-lg py-2 pr-2 text-left text-sm font-medium transition-colors hover:bg-accent",
                 paddingForDepth(depth),
                 childActive && "text-accent-foreground",
               )}
             >
-              <ChevronRight
-                className={cn("size-4 shrink-0 opacity-70 transition-transform", open && "rotate-90")}
-                aria-hidden
-              />
               {node.icon ? <node.icon className="size-4 shrink-0 opacity-70" aria-hidden /> : null}
-              <span className="truncate">{node.label}</span>
+              <span className="flex-1 truncate">{node.label}</span>
+              {searchActive ? null : (
+                <ChevronRight
+                  className={cn("size-4 shrink-0 opacity-70 transition-transform", open && "rotate-90")}
+                  aria-hidden
+                />
+              )}
             </button>
             {open ? (
               <AdminNavTree
@@ -144,6 +219,7 @@ function AdminNavTree({
                 openGroups={openGroups}
                 toggleGroup={toggleGroup}
                 onNavigate={onNavigate}
+                searchActive={searchActive}
               />
             ) : null}
           </li>
@@ -169,6 +245,28 @@ function collectGroupIds(nodes: NavNode[]): string[] {
     }
   }
   return ids;
+}
+
+function filterNavNodes(nodes: NavNode[], query: string): NavNode[] {
+  const result: NavNode[] = [];
+  for (const node of nodes) {
+    if (node.kind === "link") {
+      if (node.label.toLowerCase().includes(query)) {
+        result.push(node);
+      }
+      continue;
+    }
+
+    const selfMatches = node.label.toLowerCase().includes(query);
+    const filteredChildren = filterNavNodes(node.children, query);
+    if (selfMatches || filteredChildren.length > 0) {
+      result.push({
+        ...node,
+        children: selfMatches && filteredChildren.length === 0 ? node.children : filteredChildren,
+      });
+    }
+  }
+  return result;
 }
 
 function isPropertiesListPath(pathname: string, base: string) {
@@ -256,8 +354,6 @@ function buildPropertyModuleLinks({
   const onDuesPage = pathname.includes(`/admin/properties/${propertyId}/dues`);
   const onSetupPage = pathname.includes(`/admin/properties/${propertyId}/setup`);
   const nodes: NavNode[] = [];
-  const isSimpleNavLayout =
-    propertyModules.has("propertySetup") && !propertyModules.has("structureUnits");
 
   if (propertyModules.has("dashboard")) {
     nodes.push({
@@ -307,9 +403,7 @@ function buildPropertyModuleLinks({
     });
   }
 
-  if (isSimpleNavLayout) {
-    nodes.push(...financeLinks);
-  } else if (financeLinks.length > 0) {
+  if (financeLinks.length > 0) {
     nodes.push({
       kind: "group",
       id: "finance",
@@ -339,15 +433,7 @@ function buildPropertyModuleLinks({
     });
   }
 
-  if (propertyModules.has("propertySetup") && isSimpleNavLayout) {
-    nodes.push({
-      kind: "link",
-      href: `${propertyBase}/setup`,
-      label: t("settingsModule"),
-      icon: Settings,
-      active: onSetupPage,
-    });
-  } else {
+  {
     const propertySetupChildren: NavLinkItem[] = [];
     if (propertyModules.has("structureUnits")) {
       propertySetupChildren.push({
@@ -439,6 +525,15 @@ function buildPropertyModuleLinks({
         active: onStructurePage && resolvedTab === "utility",
       });
     }
+    if (propertyModules.has("dashboard")) {
+      propertySetupChildren.push({
+        kind: "link",
+        href: `${propertyBase}/setup`,
+        label: t("propertySettingsModule"),
+        icon: Settings,
+        active: onSetupPage,
+      });
+    }
     if (propertySetupChildren.length > 0) {
       nodes.push({
         kind: "group",
@@ -488,15 +583,7 @@ function buildPropertyModuleLinks({
     });
   }
 
-  if (isSimpleNavLayout && propertyModules.has("announcements")) {
-    nodes.push({
-      kind: "link",
-      href: `${propertyBase}/announcements`,
-      label: t("announcementsModule"),
-      icon: Megaphone,
-      active: pathname.includes("/announcements"),
-    });
-  } else if (communicationChildren.length > 0) {
+  if (communicationChildren.length > 0) {
     nodes.push({
       kind: "group",
       id: "communication",
@@ -558,24 +645,23 @@ function AdminNavPanel({
   locale,
   propertiesNav,
   navCapabilities,
-  userRole = null,
   onNavigate,
+  forceExpanded = false,
+  searchQuery = "",
 }: {
   locale: string;
   propertiesNav: AdminPropertyNavItem[];
   navCapabilities: AdminNavCapabilities;
-  userRole?: string | null;
   onNavigate: () => void;
+  forceExpanded?: boolean;
+  searchQuery?: string;
 }) {
+  const { collapsed, setCollapsed } = useAdminNav();
+  const effectiveCollapsed = !forceExpanded && collapsed;
   const pathname = usePathname();
   const searchParams = useClientSearchParams();
   const t = useTranslations("nav");
-  const { propertyUiMode } = usePropertyUiMode();
-
-  const propertyModules = useMemo(
-    () => resolvePropertyNavModules(navCapabilities, { propertyUiMode, role: userRole }),
-    [navCapabilities, propertyUiMode, userRole],
-  );
+  const propertyModules = navCapabilities.propertyModules;
 
   const propertyId = useMemo(() => parsePropertyId(pathname), [pathname]);
   const queryString = searchParams.toString();
@@ -816,13 +902,31 @@ function AdminNavPanel({
     setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const expandGroup = (id: string) => {
+    setCollapsed(false);
+    setOpenGroups((prev) => ({ ...prev, [id]: true }));
+  };
+
+  if (effectiveCollapsed) {
+    return <CollapsedNavTree nodes={tree} onNavigate={onNavigate} onExpandGroup={expandGroup} />;
+  }
+
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const searchActive = trimmedQuery.length > 0;
+  const visibleTree = searchActive ? filterNavNodes(tree, trimmedQuery) : tree;
+
+  if (searchActive && visibleTree.length === 0) {
+    return <p className="px-2 py-6 text-center text-sm text-muted-foreground">{t("searchNoResults")}</p>;
+  }
+
   return (
     <AdminNavTree
-      nodes={tree}
+      nodes={visibleTree}
       depth={0}
       openGroups={openGroups}
       toggleGroup={toggleGroup}
       onNavigate={onNavigate}
+      searchActive={searchActive}
     />
   );
 }
@@ -837,43 +941,72 @@ function NavScroll({ children }: { children: ReactNode }) {
 
 export function AdminSidebar({
   locale,
+  adminHomePath,
+  organizationName,
+  userName,
+  logoutAction,
+  navProfile,
+  canToggleNavProfile,
   propertiesNav,
   navCapabilities,
-  userRole = null,
 }: Props) {
-  const t = useTranslations("nav");
-  const { mobileOpen, setMobileOpen } = useAdminNav();
+  const { mobileOpen, setMobileOpen, collapsed } = useAdminNav();
+  const [desktopSearch, setDesktopSearch] = useState("");
+  const [mobileSearch, setMobileSearch] = useState("");
 
   const closeMobile = () => setMobileOpen(false);
 
   return (
     <>
-      <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-64 shrink-0 border-r bg-card md:block">
+      <aside
+        className={cn(
+          "sticky top-2 hidden h-[calc(100dvh-1rem)] shrink-0 flex-col rounded-2xl border bg-card shadow-sm transition-[width] duration-200 md:ml-2 md:flex",
+          collapsed ? "w-[4.5rem]" : "w-64",
+        )}
+      >
+        <AdminSidebarBrand adminHomePath={adminHomePath} organizationName={organizationName} />
+        {collapsed ? null : <AdminSidebarSearch value={desktopSearch} onChange={setDesktopSearch} />}
         <NavScroll>
           <AdminNavPanel
             locale={locale}
             propertiesNav={propertiesNav}
             navCapabilities={navCapabilities}
-            userRole={userRole}
             onNavigate={() => undefined}
+            searchQuery={desktopSearch}
           />
         </NavScroll>
+        <AdminSidebarFooter
+          locale={locale}
+          organizationName={organizationName}
+          userName={userName}
+          logoutAction={logoutAction}
+          navProfile={navProfile}
+          canToggleNavProfile={canToggleNavProfile}
+        />
       </aside>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="flex w-[min(100vw,20rem)] flex-col gap-0 p-0 sm:max-w-xs">
-          <SheetHeader className="border-b px-4 py-3 text-left">
-            <SheetTitle>{t("admin")}</SheetTitle>
-          </SheetHeader>
+          <AdminSidebarBrand adminHomePath={adminHomePath} organizationName={organizationName} />
+          <AdminSidebarSearch value={mobileSearch} onChange={setMobileSearch} />
           <NavScroll>
             <AdminNavPanel
               locale={locale}
               propertiesNav={propertiesNav}
               navCapabilities={navCapabilities}
-              userRole={userRole}
               onNavigate={closeMobile}
+              forceExpanded
+              searchQuery={mobileSearch}
             />
           </NavScroll>
+          <AdminSidebarFooter
+            locale={locale}
+            organizationName={organizationName}
+            userName={userName}
+            logoutAction={logoutAction}
+            navProfile={navProfile}
+            canToggleNavProfile={canToggleNavProfile}
+          />
         </SheetContent>
       </Sheet>
     </>

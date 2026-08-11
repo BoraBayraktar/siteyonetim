@@ -9,8 +9,6 @@ import { useState, useTransition } from "react";
 import { applyRecommendedDefaultsAction } from "@/app/actions/property-settings";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 
 type Props = {
   locale: string;
@@ -23,14 +21,10 @@ export function PropertyRecommendedDefaultsPanel({ locale, propertyId, recommend
   const t = useTranslations("uiMode");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [applySimpleMode, setApplySimpleMode] = useState(recommendations.suggestSimpleMode);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const hasSuggestions =
-    recommendations.suggestDefaultBlock ||
-    recommendations.suggestDefaultCashbox ||
-    recommendations.suggestSimpleMode;
+  const hasSuggestions = recommendations.suggestDefaultBlock || recommendations.suggestDefaultCashbox;
 
   if (!hasSuggestions || !canMutate) {
     return null;
@@ -42,9 +36,6 @@ export function PropertyRecommendedDefaultsPanel({ locale, propertyId, recommend
   }
   if (recommendations.suggestDefaultCashbox) {
     suggestionLines.push(t("suggestCashbox", { name: recommendations.defaultCashboxName }));
-  }
-  if (recommendations.suggestSimpleMode) {
-    suggestionLines.push(t("suggestSimpleMode"));
   }
 
   return (
@@ -58,18 +49,6 @@ export function PropertyRecommendedDefaultsPanel({ locale, propertyId, recommend
             <li key={line}>{line}</li>
           ))}
         </ul>
-        {recommendations.suggestSimpleMode ? (
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="apply-simple-mode"
-              checked={applySimpleMode}
-              onCheckedChange={(checked) => setApplySimpleMode(checked === true)}
-            />
-            <Label htmlFor="apply-simple-mode" className="text-sm font-normal">
-              {t("applySimpleModeCheckbox")}
-            </Label>
-          </div>
-        ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {message ? <p className="text-sm text-primary">{message}</p> : null}
         <Button
@@ -80,7 +59,7 @@ export function PropertyRecommendedDefaultsPanel({ locale, propertyId, recommend
             setError(null);
             setMessage(null);
             startTransition(async () => {
-              const result = await applyRecommendedDefaultsAction(locale, propertyId, applySimpleMode);
+              const result = await applyRecommendedDefaultsAction(locale, propertyId);
               if (result.error) {
                 setError(t(`errors.${result.error}` as "errors.UNAUTHORIZED"));
                 return;
@@ -88,7 +67,6 @@ export function PropertyRecommendedDefaultsPanel({ locale, propertyId, recommend
               const parts: string[] = [];
               if (result.createdBlock) parts.push(t("appliedBlock"));
               if (result.createdCashbox) parts.push(t("appliedCashbox"));
-              if (result.appliedSimpleMode) parts.push(t("appliedSimpleMode"));
               setMessage(parts.length > 0 ? parts.join(" · ") : t("appliedNothing"));
               router.refresh();
             });

@@ -252,6 +252,7 @@ function EditOrgUserDrawer({
       mode="edit"
       title={t("editUser")}
       description={user.email}
+      helpTopicKey="orgUserInvite"
       success={state.success}
       open={open}
       onOpenChange={onOpenChange}

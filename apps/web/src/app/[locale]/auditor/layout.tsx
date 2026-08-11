@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 import { auth, signOut } from "@/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { isAuditorRole } from "@/lib/auth-context";
 
@@ -30,6 +31,7 @@ export default async function AuditorLayout({ children, params }: Props) {
               <p className="text-xs text-muted-foreground">{tAuditor("readOnlyNotice")}</p>
             </div>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <Button variant="ghost" size="sm" asChild>
                 <Link href={`/${locale}/auditor/security`}>{tAuth("securityTitle")}</Link>
               </Button>

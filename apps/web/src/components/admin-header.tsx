@@ -4,54 +4,24 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { AdminMobileMenuTrigger } from "@/components/admin-mobile-menu-trigger";
-import { AdminNavProfileToggle } from "@/components/module-help-link";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import type { AdminNavProfile } from "@/lib/admin-nav-capabilities-types";
 
 type Props = {
   adminHomePath: string;
   organizationName: string;
-  userName: string;
-  logoutAction: () => Promise<void>;
-  locale: string;
-  navProfile: AdminNavProfile;
-  canToggleNavProfile: boolean;
 };
 
-export function AdminHeader({
-  adminHomePath,
-  organizationName,
-  userName,
-  logoutAction,
-  locale,
-  navProfile,
-  canToggleNavProfile,
-}: Props) {
+export function AdminHeader({ adminHomePath, organizationName }: Props) {
   const t = useTranslations("nav");
-  const tAuth = useTranslations("auth");
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-      <div className="flex h-14 items-center justify-between gap-3 px-4 md:px-6">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <AdminMobileMenuTrigger />
-          <div className="min-w-0">
-            <Link href={adminHomePath} className="text-sm font-semibold tracking-tight">
-              {t("admin")}
-            </Link>
-            <p className="truncate text-xs text-muted-foreground">{organizationName}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <AdminNavProfileToggle locale={locale} navProfile={navProfile} canToggle={canToggleNavProfile} />
-          <span className="hidden max-w-[8rem] truncate text-xs text-muted-foreground sm:inline">{userName}</span>
-          <Separator orientation="vertical" className="hidden h-6 sm:block" />
-          <form action={logoutAction}>
-            <Button variant="outline" size="sm" type="submit">
-              {tAuth("logout")}
-            </Button>
-          </form>
+    <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:hidden">
+      <div className="flex h-14 items-center gap-3 px-4">
+        <AdminMobileMenuTrigger />
+        <div className="min-w-0">
+          <Link href={adminHomePath} className="text-sm font-semibold tracking-tight">
+            {t("admin")}
+          </Link>
+          <p className="truncate text-xs text-muted-foreground">{organizationName}</p>
         </div>
       </div>
     </header>

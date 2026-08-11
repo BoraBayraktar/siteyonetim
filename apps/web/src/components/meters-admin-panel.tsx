@@ -63,7 +63,7 @@ function EditMeterDrawer({
   );
 
   return (
-    <FormDrawer mode="edit" title={t("editMeter")} success={state.success}>
+    <FormDrawer mode="edit" title={t("editMeter")} helpTopicKey="meters" success={state.success}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="unitId" value={meter.unitId} />
         <input type="hidden" name="kind" value={meter.kind} />
@@ -175,6 +175,7 @@ export function MetersAdminPanel({
             <FormDrawer
               triggerLabel={t("addMeter")}
               title={t("addMeter")}
+              helpTopicKey="meters"
               success={meterState.success || bulkState.success}
             >
             <Tabs defaultValue="single" className="w-full">

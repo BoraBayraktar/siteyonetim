@@ -117,6 +117,13 @@
   },
   "nav": {
     "admin": "Admin",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "switchToLightMode": "Switch to light mode",
+    "switchToDarkMode": "Switch to dark mode",
+    "searchPlaceholder": "Search menu…",
+    "searchClear": "Clear search",
+    "searchNoResults": "No results found",
     "properties": "Properties",
     "propertiesAll": "All properties",
     "portal": "Owner portal",
@@ -152,6 +159,7 @@
     "expensesModule": "Income & expense entries",
     "accrualModule": "Bill charges",
     "settingsModule": "Property definitions",
+    "propertySettingsModule": "Portal & payment settings",
     "duesDefinitionsModule": "Charge types",
     "lateFeeModule": "Late penalty",
     "cashboxesModule": "Cash & bank",
@@ -288,29 +296,14 @@
     "shortcutBlocksDesc": "Block definitions"
   },
   "uiMode": {
-    "bannerTitle": "Simple mode is on",
-    "bannerDesc": "The menu is simplified: collections, billing, and core definitions are highlighted.",
-    "bannerDescOverride": "This property uses simple mode; you still see the full menu.",
-    "switchToStandard": "All features",
-    "switchToSimple": "Switch to simple mode",
     "recommendedTitle": "Recommended settings",
     "recommendedDesc": "Ready-made setup suggestions for single-block apartments:",
     "suggestBlock": "Create block: {name}",
     "suggestCashbox": "Create cashbox: {name}",
-    "suggestSimpleMode": "Simple mode is recommended",
-    "applySimpleModeCheckbox": "Also enable simple mode",
     "applyRecommended": "Apply recommended settings",
     "appliedBlock": "Block created",
     "appliedCashbox": "Cashbox created",
-    "appliedSimpleMode": "Simple mode enabled",
     "appliedNothing": "Nothing new to apply",
-    "simpleDuesNavLabel": "Dues workflow",
-    "simpleDuesAccrualTitle": "Bill this month",
-    "simpleDuesAccrualDesc": "Create charges for units",
-    "simpleDuesRegisterTitle": "Record payment",
-    "simpleDuesRegisterDesc": "Payment entry and debt list",
-    "simpleDuesActive": "You are here",
-    "simpleDuesOpen": "Go to this step",
     "errors": {
       "UNAUTHORIZED": "You are not allowed to perform this action.",
       "PROPERTY_NOT_FOUND": "Property not found."
@@ -2274,7 +2267,7 @@
         "screen": "When Overview opens, Setup guide or Recommended settings appear at the top.\nBelow: this month’s tasks and month-end workflow.\nAt the bottom: quick actions — Record collection, Bill, Record expense.",
         "howTo": [
           "Select your property (if you manage several, use Apartments in the menu).",
-          "On Overview, if Recommended settings appear, apply them to create a default block/cashbox; optionally enable Simple mode too.",
+          "On Overview, if Recommended settings appear, apply them to create a default block/cashbox.",
           "Complete Setup guide left to right: Blocks → Units → Owner/tenant assignment → Charge type → Cashbox → First billing.",
           "On each step use Complete or Open page, fill required fields, and save.",
           "Create the first billing as a draft, post it, then record payments under Collections & debt list.",
@@ -2297,8 +2290,7 @@
         ],
         "tips": [
           "Without units and owners, billing and collections will not work.",
-          "Simple mode shortens the menu; switch to All features when you need the full set.",
-          "For PROPERTY_MANAGER, Simple view / Full view in the header changes menu density; it is separate from property Simple mode."
+          "For PROPERTY_MANAGER, Simple view / Full view in the header changes menu density."
         ]
       },
       "dashboard": {
@@ -2342,8 +2334,8 @@
       },
       "setup": {
         "title": "Property setup / definitions",
-        "summary": "Hub for blocks, units, owners, charge types, and cashboxes. In Simple mode, Apartment definitions in the left menu opens this hub.",
-        "where": "Left menu → Apartment definitions (Simple mode → /setup). In standard mode the same steps live under units, charge types, cashbox; Overview setup guide lists them all.",
+        "summary": "Hub for blocks, units, owners, charge types, and cashboxes.",
+        "where": "Left menu → Apartment definitions. The same steps also live under units, charge types, cashbox; Overview setup guide lists them all.",
         "screen": "Title: Apartment definitions.\nSetup steps: Blocks, Units, Owner/tenant assignments, Charge types, Cash & bank, First billing, optional Staff ledger.\nShortcuts: Units, Charge types, Cashbox, Blocks — each with Open page.",
         "howTo": [
           "Open the first incomplete setup step or use Open page.",
@@ -2371,10 +2363,6 @@
           {
             "name": "Open page",
             "desc": "Goes to the related definition screen."
-          },
-          {
-            "name": "Switch to Simple mode / All features",
-            "desc": "Simplifies or restores the property menu."
           }
         ],
         "tips": [
@@ -2385,7 +2373,7 @@
       "units": {
         "title": "Units, members, and assignments",
         "summary": "Building structure: blocks, units, members (owners/tenants), and who occupies which unit.",
-        "where": "Left menu → Apartment definitions / structure → Units (or Blocks, Members, Assignments). Simple mode: Setup shortcuts → Units.",
+        "where": "Left menu → Apartment definitions / structure → Units (or Blocks, Members, Assignments).",
         "screen": "Property detail tabs: Blocks, Units, Members, Assignments, Utilities.\nUnit list rows are properties; assignment links a member.",
         "howTo": [
           "Add a block first (even for a single-block building).",
@@ -2517,7 +2505,7 @@
       "accrual": {
         "title": "Bill dues / expenses",
         "summary": "Allocate a charge group to units for a year/month. Create a draft first, then post.",
-        "where": "Left menu → Daily work → Bill dues / expenses. Top tabs: Billing. Path: …/dues?tab=accrual. Simple mode: Bill this month’s dues.",
+        "where": "Left menu → Daily work → Bill dues / expenses. Top tabs: Billing. Path: …/dues?tab=accrual.",
         "screen": "Title often Member billing.\nBill button opens a drawer.\nBilling periods card: period tabs, Draft / Posted badge, unit-member-amount table.\nAlerts list setup blockers.",
         "howTo": [
           "Ensure charge type, units, and assignments are ready (fix alerts first).",
@@ -2625,7 +2613,7 @@
       "register": {
         "title": "Collections & debt list",
         "summary": "See open debt by unit and record payments. Formerly the period register; the page title may still say Period register.",
-        "where": "Left menu → Daily work → Collections & debt list. Top tab: Collections. Path: …/dues?tab=register. Simple mode: Collect payment.",
+        "where": "Left menu → Daily work → Collections & debt list. Top tab: Collections. Path: …/dues?tab=register.",
         "screen": "Filters: Year, Month, search, Block, Overdue only / Debtors only, Filter.\nTable: Unit, Member, Period remaining, Total open debt; late-fee badge.\nPayment form: Cashbox, Amount, Payment date, Document no.\nActions: Bulk collect, CSV/Excel/PDF export.",
         "howTo": [
           "Set year/month and Filter.",
@@ -2714,7 +2702,7 @@
       "account": {
         "title": "Owner / tenant accounts (ledger)",
         "summary": "Finance account linked to an owner, tenant, supplier, or staff member. Debt and collections track through these accounts.",
-        "where": "Left menu → Apartment definitions → Owner / tenant accounts. Path: …/dues?tab=accounts. Staff: Staff accounts. Usually hidden in Simple mode.",
+        "where": "Left menu → Apartment definitions → Owner / tenant accounts. Path: …/dues?tab=accounts. Staff: Staff accounts.",
         "screen": "Title: Ledger accounts.\nTable: code, name, balance.\nDrawer: Add account — code, name, type, member link.",
         "howTo": [
           "Most owner accounts are created with occupancy; open the list to check balances.",
@@ -2790,7 +2778,7 @@
       "lateFee": {
         "title": "Late penalty",
         "summary": "Penalty when dues payments are late. Different from supplier invoice penalties and the legal-interest screen.",
-        "where": "Left menu → Daily work → Late penalty. Under Billing top tab. Path: …/dues?tab=lateFee. May be hidden in Simple mode.",
+        "where": "Left menu → Daily work → Late penalty. Under Billing top tab. Path: …/dues?tab=lateFee.",
         "screen": "Decision guide separates dues late fee / supplier late fee / legal interest.\nPolicy card: mode, monthly rate, grace days, due day → Save policy.\nApply: Year/Month → Apply late fee for this month → post the resulting run.",
         "howTo": [
           "Confirm the decision guide: you want dues late compensation here.",
@@ -2844,7 +2832,7 @@
       "reports": {
         "title": "Reports",
         "summary": "Billing, collection, expense, cash, and annual income-expense outputs.",
-        "where": "Left menu → Reports. Path: …/reports. May be hidden in daily/simple profiles; use Full view or standard menu.",
+        "where": "Left menu → Reports. Path: …/reports. May be hidden in the daily profile; use Full view.",
         "screen": "Report hub with report types.\nFilters: Year, Month, Block, (annual) Quarter.\nDownloads: CSV, Excel, PDF, ZIP; some Export in background + queue Download.\nExtras: operating plan, bank reconciliation, auditor templates (role-based).",
         "howTo": [
           "Pick a report (e.g. Billing summary or Collections).",
@@ -2880,37 +2868,6 @@
         "tips": [
           "For board meetings, Billing summary and Collections are usually enough.",
           "If Reports is missing, switch to Full view or check role permissions."
-        ]
-      },
-      "simpleMode": {
-        "title": "Simple mode and menu views",
-        "summary": "Fewer menus: property Simple mode vs user Simple view / Full view. They are different settings.",
-        "where": "Property: Overview or Setup → Switch to Simple mode / All features. User (manager): header → Simple view / Full view.",
-        "screen": "Banner: You are in Simple mode — menu simplified… plus All features.\nSimple sidebar: Overview, Collections, Billing, Expenses, Apartment definitions (setup), Announcements.\nFinance page cards: Bill this month’s dues / Collect payment.\nAccountant roles may still see full menu on a simple property (info banner).",
-        "howTo": [
-          "On new/small properties, Recommended settings can also enable Simple mode.",
-          "Daily path: Bill this month’s dues → draft/post; Collect payment → pay.",
-          "If you miss menus (Reports, Late fee), switch to All features or Full view.",
-          "Return to Simple mode / Simple view when you want fewer items again."
-        ],
-        "fields": [],
-        "buttons": [
-          {
-            "name": "Switch to Simple mode",
-            "desc": "Simplifies the property menu."
-          },
-          {
-            "name": "All features",
-            "desc": "Restores the standard property menu."
-          },
-          {
-            "name": "Simple view / Full view",
-            "desc": "Changes your personal menu profile (independent of property mode)."
-          }
-        ],
-        "tips": [
-          "Missing Reports or Late fee? Check mode/view first.",
-          "Simple mode does not remove business rules; it hides menus/tabs."
         ]
       }
     }

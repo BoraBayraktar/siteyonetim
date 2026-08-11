@@ -7,6 +7,7 @@ import { canMutateAdminData, canPublishAnnouncements, isStaffRole } from "@/lib/
 import { requireAdminPropertyScope } from "@/lib/admin-property-scope";
 import { staffPropertyHomePath } from "@/lib/staff-admin-access";
 import { AnnouncementsAdminPanel } from "@/components/announcements-admin-panel";
+import { HelpButton } from "@/components/help-button";
 import { Button } from "@/components/ui/button";
 import { getAnnouncementService, getBlockService, getPropertyService, getUnitService } from "@/lib/services";
 
@@ -55,12 +56,15 @@ export default async function PropertyAnnouncementsPage({ params, searchParams }
 
   return (
     <div className="space-y-6">
-      <div>
-        <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-          <Link href={backHref}>← {tCommon("back")}</Link>
-        </Button>
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{property.name}</p>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
+            <Link href={backHref}>← {tCommon("back")}</Link>
+          </Button>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{property.name}</p>
+        </div>
+        <HelpButton topicKey="announcements" />
       </div>
       <AnnouncementsAdminPanel
         locale={locale}

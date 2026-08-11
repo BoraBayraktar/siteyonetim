@@ -12,11 +12,6 @@ enum PropertyKind {
   APARTMAN_SITE
 }
 
-enum AdminUiMode {
-  STANDARD
-  SIMPLE
-}
-
 enum AdminNavProfile {
   DAILY
   FULL
@@ -470,7 +465,6 @@ model Property {
   kind           PropertyKind @default(APARTMAN)
   name           String
   address        String?
-  adminUiMode    AdminUiMode  @default(STANDARD)
   settings       Json         @default("{}")
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

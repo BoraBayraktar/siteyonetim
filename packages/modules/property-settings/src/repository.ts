@@ -1,4 +1,4 @@
-import { AdminUiMode, DueCalculationMode, prisma, PropertyKind } from "@siteyonetim/db";
+import { prisma } from "@siteyonetim/db";
 
 import type { PropertyUtilityProfileDto, PropertyWhatsAppProfileDto, PropertyStaffOpsProfileDto, UpsertUtilityProfileInput, UpsertStaffOpsProfileInput } from "./contract";
 import { DEFAULT_STAFF_OPS_PROFILE } from "./contract";
@@ -156,7 +156,6 @@ export class PropertySettingsRepository {
       select: {
         id: true,
         kind: true,
-        adminUiMode: true,
         _count: {
           select: {
             blocks: { where: notDeleted },
@@ -165,14 +164,6 @@ export class PropertySettingsRepository {
           },
         },
       },
-    });
-  }
-
-  async setAdminUiMode(propertyId: string, adminUiMode: AdminUiMode) {
-    return prisma.property.update({
-      where: { id: propertyId },
-      data: { adminUiMode },
-      select: { id: true, adminUiMode: true },
     });
   }
 }

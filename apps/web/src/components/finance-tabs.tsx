@@ -173,6 +173,7 @@ function LedgerPanel({
         <FormDrawer
           triggerLabel={t("addEntry")}
           title={t("addEntry")}
+          helpTopicKey="expenses"
           success={ledgerState.success}
           disabled={period.status !== FinancePeriodStatus.OPEN}
         >
@@ -323,7 +324,7 @@ function CashboxesPanel({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("tabCashboxes")}</CardTitle>
-        <FormDrawer triggerLabel={t("addCashbox")} title={t("addCashbox")} success={cashboxState.success}>
+        <FormDrawer triggerLabel={t("addCashbox")} title={t("addCashbox")} helpTopicKey="cashbox" success={cashboxState.success}>
           <form action={cashboxAction} className="grid gap-3">
             <div className="grid gap-2">
               <Label htmlFor="cashbox-name">{t("cashbox")}</Label>
@@ -375,7 +376,7 @@ function AccountsPanel({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("tabAccounts")}</CardTitle>
-        <FormDrawer triggerLabel={t("addAccount")} title={t("addAccount")} success={accountState.success}>
+        <FormDrawer triggerLabel={t("addAccount")} title={t("addAccount")} helpTopicKey="account" success={accountState.success}>
           <form action={accountAction} className="grid gap-3">
             <input type="hidden" name="kind" value={accountKind} />
             <input type="hidden" name="partyId" value={partyId} />
@@ -507,7 +508,7 @@ function StaffMovementForm({
   }, [cashboxAllowed]);
 
   return (
-    <FormDrawer triggerLabel={t("addStaffMovement")} title={profile.partyName} success={state.success}>
+    <FormDrawer triggerLabel={t("addStaffMovement")} title={profile.partyName} helpTopicKey="staffAccount" success={state.success}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="movementType" value={movementType} />
         <input type="hidden" name="categoryId" value={categoryId} />
@@ -599,7 +600,7 @@ function StaffProfileEditForm({
   const [status, setStatus] = useState<StaffEmploymentStatus>(profile.status);
 
   return (
-    <FormDrawer triggerLabel={t("editStaffProfile")} title={profile.partyName} success={state.success}>
+    <FormDrawer triggerLabel={t("editStaffProfile")} title={profile.partyName} helpTopicKey="staffAccount" success={state.success}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="status" value={status} />
         <div className="grid gap-2">
@@ -674,7 +675,7 @@ function StaffAccountsPanel({
               {t("exportStaffBalances")}
             </Link>
           </Button>
-          <FormDrawer triggerLabel={t("addStaffProfile")} title={t("addStaffProfile")} success={state.success}>
+          <FormDrawer triggerLabel={t("addStaffProfile")} title={t("addStaffProfile")} helpTopicKey="staffAccount" success={state.success}>
             <form action={action} className="grid gap-3">
               <input type="hidden" name="partyId" value={partyId} />
               <div className="grid gap-2">
@@ -845,7 +846,7 @@ function CategoriesPanel({
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("tabCategories")}</CardTitle>
-        <FormDrawer triggerLabel={t("addCategory")} title={t("addCategory")} success={categoryState.success}>
+        <FormDrawer triggerLabel={t("addCategory")} title={t("addCategory")} helpTopicKey="financeCategories" success={categoryState.success}>
           <form action={categoryAction} className="grid gap-3">
             <input type="hidden" name="type" value={catType} />
             <div className="grid gap-2">

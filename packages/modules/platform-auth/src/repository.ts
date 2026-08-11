@@ -4,7 +4,11 @@ import { OrganizationRole, prisma } from "@siteyonetim/db";
 import type { AuthUserDto } from "./contract";
 import { isSuperAdminUser } from "./super-admin";
 
-type UserWithRelations = NonNullable<Awaited<ReturnType<AuthRepository["findByEmail"]>>>;
+export type UserWithRelations = NonNullable<Awaited<ReturnType<AuthRepository["findByEmail"]>>>;
+
+export function extractOrganizationId(user: UserWithRelations): string | null {
+  return user.organizations[0]?.organizationId ?? user.portalParty?.organizationId ?? null;
+}
 
 export class AuthRepository {
   async findByEmail(email: string) {

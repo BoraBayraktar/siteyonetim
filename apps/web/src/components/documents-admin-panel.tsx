@@ -74,7 +74,7 @@ export function DocumentsAdminPanel({
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("title")}</CardTitle>
         {canUpload ? (
-        <FormDrawer triggerLabel={t("uploadTitle")} title={t("uploadTitle")} success={state.success}>
+        <FormDrawer triggerLabel={t("uploadTitle")} title={t("uploadTitle")} helpTopicKey="documents" success={state.success}>
           <form action={action} className="grid gap-4" encType="multipart/form-data">
             <input type="hidden" name="visibility" value={staffUploadMode ? DocumentVisibility.PORTAL_SHARED : visibility} />
             <input type="hidden" name="category" value={category} />

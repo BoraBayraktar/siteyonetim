@@ -96,7 +96,7 @@ export function PropertyDetailTabs({
         <Card>
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>{t("tabBlocks")}</CardTitle>
-            <FormDrawer triggerLabel={t("addBlock")} title={t("addBlock")} success={blockState.success}>
+            <FormDrawer triggerLabel={t("addBlock")} title={t("addBlock")} helpTopicKey="units" success={blockState.success}>
               <form action={blockAction} className="grid gap-3">
                 <div className="grid gap-2">
                   <Label htmlFor="block-name">{t("blockName")}</Label>
@@ -227,7 +227,7 @@ function UnitCreateDrawer({
   const [blockId, setBlockId] = useState("");
 
   return (
-    <FormDrawer triggerLabel={t("addUnit")} title={t("addUnit")} success={state.success}>
+    <FormDrawer triggerLabel={t("addUnit")} title={t("addUnit")} helpTopicKey="units" success={state.success}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="blockId" value={blockId} />
         <div className="grid gap-2">
@@ -285,7 +285,7 @@ function PartyCreateDrawer({
   const [communicationConsent, setCommunicationConsent] = useState(false);
 
   return (
-    <FormDrawer triggerLabel={t("addParty")} title={t("addParty")} success={state.success}>
+    <FormDrawer triggerLabel={t("addParty")} title={t("addParty")} helpTopicKey="units" success={state.success}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="type" value={partyType} />
         <input type="hidden" name="communicationConsent" value={communicationConsent ? "on" : ""} />
@@ -351,6 +351,7 @@ function PartyInviteDrawer({
     <FormDrawer
       triggerLabel={t("portalInvite")}
       title={t("portalInvite")}
+      helpTopicKey="units"
       success={state.success}
       disabled={parties.length === 0}
     >
@@ -532,7 +533,7 @@ function BlockEditDrawer({
   const done = state.success || deleteState.success;
 
   return (
-    <FormDrawer mode="edit" title={t("editBlock")} success={done}>
+    <FormDrawer mode="edit" title={t("editBlock")} helpTopicKey="units" success={done}>
       <form action={action} className="grid gap-3">
         <div className="grid gap-2">
           <Label htmlFor={`block-name-${block.id}`}>{t("blockName")}</Label>
@@ -590,7 +591,7 @@ function UnitEditDrawer({
   const done = state.success || deleteState.success;
 
   return (
-    <FormDrawer mode="edit" title={t("editUnit")} success={done}>
+    <FormDrawer mode="edit" title={t("editUnit")} helpTopicKey="units" success={done}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="blockId" value={blockId} />
         <div className="grid gap-2">
@@ -666,7 +667,7 @@ function PartyExcelImportDrawer({
   const importParts = state.info?.match(/^IMPORT_(\d+)_(\d+)_(\d+)_(\d+)_(\d+)$/) ?? null;
 
   return (
-    <FormDrawer triggerLabel={t("importPartiesExcel")} title={t("importPartiesExcel")} success={state.success}>
+    <FormDrawer triggerLabel={t("importPartiesExcel")} title={t("importPartiesExcel")} helpTopicKey="units" success={state.success}>
       <form action={action} className="grid gap-3">
         <p className="text-sm text-muted-foreground">{t("importPartiesExcelHint")}</p>
         <div className="grid gap-2">
@@ -722,7 +723,7 @@ function UnitExcelImportDrawer({
   const importParts = state.info?.match(/^IMPORT_(\d+)_(\d+)_(\d+)_(\d+)_(\d+)$/) ?? null;
 
   return (
-    <FormDrawer triggerLabel={t("importUnitsExcel")} title={t("importUnitsExcel")} success={state.success}>
+    <FormDrawer triggerLabel={t("importUnitsExcel")} title={t("importUnitsExcel")} helpTopicKey="units" success={state.success}>
       <form action={action} className="grid gap-3">
         <p className="text-sm text-muted-foreground">{t("importUnitsExcelHint")}</p>
         <div className="grid gap-2">
@@ -787,7 +788,7 @@ function PartyEditDrawer({
   const done = state.success || deleteState.success;
 
   return (
-    <FormDrawer mode="edit" title={t("editParty")} success={done}>
+    <FormDrawer mode="edit" title={t("editParty")} helpTopicKey="units" success={done}>
       <form action={action} className="grid gap-3">
         <input type="hidden" name="type" value={partyType} />
         <input type="hidden" name="communicationConsent" value={communicationConsent ? "on" : ""} />

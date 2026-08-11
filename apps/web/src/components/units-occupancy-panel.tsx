@@ -81,6 +81,7 @@ function UnitRoleAssignDrawer({
     <FormDrawer
       triggerLabel={slot ? slot.partyName : t("assignRole", { role: roleLabel })}
       title={t("assignRoleTitle", { unit: unit.code, role: roleLabel })}
+      helpTopicKey="units"
       success={state.success}
     >
       <form action={action} className="grid gap-3">

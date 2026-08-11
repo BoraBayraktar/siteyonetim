@@ -97,6 +97,7 @@ function CloseIncidentWithExpenseDrawer({
     <FormDrawer
       triggerLabel={t("closeWithExpense")}
       title={t("closeWithExpenseTitle")}
+      helpTopicKey="incidents"
       success={state.success}
     >
       <form action={action} className="grid gap-3">
@@ -274,7 +275,7 @@ export function IncidentsPanel({
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
         <CardTitle>{t("title")}</CardTitle>
         {canCreate ? (
-          <FormDrawer triggerLabel={t("createTitle")} title={t("createTitle")} success={state.success}>
+          <FormDrawer triggerLabel={t("createTitle")} title={t("createTitle")} helpTopicKey="incidents" success={state.success}>
             <form action={action} className="grid gap-4">
               <input type="hidden" name="category" value={category} />
               <input type="hidden" name="priority" value={priority} />

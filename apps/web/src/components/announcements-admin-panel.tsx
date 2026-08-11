@@ -100,7 +100,7 @@ function AnnouncementCreateForm({
   }
 
   return (
-    <FormDrawer triggerLabel={drawerTitle} title={drawerTitle} success={state.success}>
+    <FormDrawer triggerLabel={drawerTitle} title={drawerTitle} helpTopicKey="announcements" success={state.success}>
       <form action={action} className="grid gap-4">
         <input type="hidden" name="audience" value={audience} />
         <input type="hidden" name="blockId" value={blockId} />

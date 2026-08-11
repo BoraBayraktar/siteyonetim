@@ -1,4 +1,4 @@
-import { prisma, PropertyKind, type AdminUiMode } from "@siteyonetim/db";
+import { prisma, PropertyKind } from "@siteyonetim/db";
 
 import type { CreatePropertyInput, ListPropertiesInput, PropertyDto } from "./contract";
 
@@ -36,7 +36,6 @@ export class PropertyRepository {
       kind: p.kind,
       name: p.name,
       address: p.address,
-      adminUiMode: p.adminUiMode,
       blockCount: p._count.blocks,
       unitCount: p._count.units,
       createdAt: p.createdAt,
@@ -69,7 +68,6 @@ export class PropertyRepository {
       kind: created.kind,
       name: created.name,
       address: created.address,
-      adminUiMode: created.adminUiMode,
       blockCount: created._count.blocks,
       unitCount: created._count.units,
       createdAt: created.createdAt,
@@ -103,7 +101,6 @@ export class PropertyRepository {
       kind: property.kind,
       name: property.name,
       address: property.address,
-      adminUiMode: property.adminUiMode,
       blockCount: property._count.blocks,
       unitCount: property._count.units,
       createdAt: property.createdAt,
@@ -117,7 +114,6 @@ export class PropertyRepository {
       kind: PropertyKind;
       name: string;
       address: string | null;
-      adminUiMode: AdminUiMode;
       createdAt: Date;
       _count: { blocks: number; units: number };
     },
@@ -128,7 +124,6 @@ export class PropertyRepository {
       kind: property.kind,
       name: property.name,
       address: property.address,
-      adminUiMode: property.adminUiMode,
       blockCount: property._count.blocks,
       unitCount: property._count.units,
       createdAt: property.createdAt,

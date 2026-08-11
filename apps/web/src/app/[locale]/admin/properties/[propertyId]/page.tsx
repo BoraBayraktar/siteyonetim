@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
+import { HelpButton } from "@/components/help-button";
 import { PropertyDetailTabs } from "@/components/property-detail-tabs";
 import { Button } from "@/components/ui/button";
 import { getAdminSession } from "@/lib/cached-admin";
@@ -65,13 +66,14 @@ export default async function PropertyDetailPage({ params, searchParams }: Props
           <p className="text-sm font-medium text-foreground/80">{sectionTitle}</p>
           <p className="text-sm text-muted-foreground">{property.address ?? tCommon("none")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild>
             <Link href={`/${locale}/admin/properties/${propertyId}/dues?tab=expenses`}>{tFinance("openFinance")}</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href={`/${locale}/admin/properties/${propertyId}/dues`}>{tDues("openDues")}</Link>
           </Button>
+          <HelpButton topicKey="units" />
         </div>
       </div>
 

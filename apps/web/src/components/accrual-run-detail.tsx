@@ -374,6 +374,7 @@ function RecalculateAccrualDrawer({
       mode="edit"
       triggerLabel={t("recalculateAccrual")}
       title={t("recalculateAccrualTitle", { period: `${run.month}/${run.year}` })}
+      helpTopicKey="accrual"
       success={state.success}
     >
       <form action={action} className="grid gap-3">

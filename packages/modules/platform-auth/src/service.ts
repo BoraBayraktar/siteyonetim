@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { createAuditService, type AuditServiceContract } from "@siteyonetim/platform-audit";
 
 import type {
   AuthServiceContract,
@@ -13,7 +14,7 @@ import type {
   TotpStatusDto,
   ValidateCredentialsInput,
 } from "./contract";
-import { AuthRepository } from "./repository";
+import { AuthRepository, extractOrganizationId } from "./repository";
 import { createPasswordResetService, PasswordResetService } from "./password-reset.service";
 import { isSuperAdminUser } from "./super-admin";
 import { createTotpService, TotpService } from "./totp.service";
@@ -23,21 +24,42 @@ export class AuthService implements AuthServiceContract {
     private readonly repository = new AuthRepository(),
     private readonly passwordReset: PasswordResetService = createPasswordResetService(),
     private readonly totp: TotpService = createTotpService(),
+    private readonly audit: AuditServiceContract = createAuditService(),
   ) {}
 
   async validateCredentials(input: ValidateCredentialsInput): Promise<AuthUserDto | null> {
     const user = await this.repository.findByEmail(input.email.trim());
     if (!user) {
+      // Unknown e-posta: hangi organizasyona ait olduğu bilinmediğinden AuditLog'a (organizationId zorunlu) yazılamaz.
       return null;
     }
     const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) {
+      const organizationId = extractOrganizationId(user);
+      if (organizationId) {
+        await this.audit.record({
+          organizationId,
+          userId: user.id,
+          action: "auth.login.failed",
+          entityType: "User",
+          entityId: user.id,
+          metadata: { reason: "invalid_password" },
+        });
+      }
       return null;
     }
-    if (isSuperAdminUser(user)) {
-      return this.repository.toSuperAdminDto(user);
+    const dto = isSuperAdminUser(user) ? await this.repository.toSuperAdminDto(user) : this.repository.toDto(user);
+    if (dto) {
+      await this.audit.record({
+        organizationId: dto.organizationId,
+        userId: dto.id,
+        action: "auth.login.success",
+        entityType: "User",
+        entityId: dto.id,
+        metadata: { sessionKind: dto.sessionKind },
+      });
     }
-    return this.repository.toDto(user);
+    return dto;
   }
 
   async findUserById(userId: string): Promise<AuthUserDto | null> {

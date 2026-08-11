@@ -105,6 +105,8 @@ Tüm yeni geliştirmeler, refactor’lar, kod incelemeleri ve mimari kararlar bu
 ## 29) Dark mode
 
 - Dark mode için **CSS class**’ları **`globals.css`** üzerinden yönetilir.
+- Tema durumu merkezi `ThemeProvider`/`useTheme` (`apps/web/src/components/theme-provider.tsx`) ile yönetilir; kullanıcının son seçimi `localStorage`’da kalıcıdır.
+- Açık/koyu tema geçişi için tüm ekranlarda **tek bir merkezi bileşen** kullanılır: `apps/web/src/components/theme-toggle.tsx` (`ThemeToggle`). Yeni bir sayfa/header/shell eklerken paralel bir tema butonu **yazılmaz**; mevcut `ThemeToggle` import edilip üst bar/header'ın sağ tarafına yerleştirilir.
 
 ## 30) Silme politikası
 

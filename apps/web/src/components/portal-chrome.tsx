@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { signOut } from "@/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -32,6 +33,7 @@ export async function PortalChrome({ locale, userName, organizationName }: Props
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <ThemeToggle />
           <p className="hidden max-w-[180px] truncate text-sm text-muted-foreground sm:block">{userName}</p>
           <Separator orientation="vertical" className="hidden h-5 sm:block" />
           <Button variant="ghost" size="sm" asChild>

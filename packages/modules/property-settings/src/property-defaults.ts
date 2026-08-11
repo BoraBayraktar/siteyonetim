@@ -13,10 +13,6 @@ export function recommendCalculationMode(input: {
   return DueCalculationMode.FIXED;
 }
 
-export function shouldSuggestSimpleMode(kind: PropertyKind, adminUiMode: string): boolean {
-  return kind === PropertyKind.APARTMAN && adminUiMode !== "SIMPLE";
-}
-
 export function shouldSuggestDefaultBlock(kind: PropertyKind, blockCount: number): boolean {
   return kind === PropertyKind.APARTMAN && blockCount === 0;
 }

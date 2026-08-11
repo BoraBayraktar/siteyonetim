@@ -1,4 +1,4 @@
-import type { AdminUiMode, DueCalculationMode, HeatingSystemType, HotWaterSystemType } from "@siteyonetim/db";
+import type { DueCalculationMode, HeatingSystemType, HotWaterSystemType } from "@siteyonetim/db";
 
 export type PropertyUtilityProfileDto = {
   propertyId: string;
@@ -59,21 +59,8 @@ export type UpsertWhatsAppProfileInput = {
   actorUserId?: string | null;
 };
 
-export type PropertyUiModeDto = {
-  propertyId: string;
-  adminUiMode: AdminUiMode;
-};
-
-export type SetUiModeInput = {
-  organizationId: string;
-  propertyId: string;
-  adminUiMode: AdminUiMode;
-  actorUserId?: string | null;
-};
-
 export type PropertyRecommendedDefaultsDto = {
   propertyId: string;
-  suggestSimpleMode: boolean;
   suggestDefaultBlock: boolean;
   suggestDefaultCashbox: boolean;
   recommendedCalculationMode: DueCalculationMode;
@@ -84,14 +71,12 @@ export type PropertyRecommendedDefaultsDto = {
 export type ApplyRecommendedDefaultsInput = {
   organizationId: string;
   propertyId: string;
-  applySimpleMode?: boolean;
   actorUserId?: string | null;
 };
 
 export type ApplyRecommendedDefaultsResult = {
   createdBlock: boolean;
   createdCashbox: boolean;
-  appliedSimpleMode: boolean;
 };
 
 export interface PropertySettingsServiceContract {
@@ -102,8 +87,6 @@ export interface PropertySettingsServiceContract {
   resolveWhatsAppPhoneNumberId(organizationId: string, propertyId: string): Promise<string | null>;
   getStaffOpsProfile(organizationId: string, propertyId: string): Promise<PropertyStaffOpsProfileDto>;
   upsertStaffOpsProfile(input: UpsertStaffOpsProfileInput): Promise<PropertyStaffOpsProfileDto>;
-  getUiMode(organizationId: string, propertyId: string): Promise<PropertyUiModeDto>;
-  setUiMode(input: SetUiModeInput): Promise<PropertyUiModeDto>;
   getRecommendedDefaults(organizationId: string, propertyId: string): Promise<PropertyRecommendedDefaultsDto>;
   applyRecommendedDefaults(input: ApplyRecommendedDefaultsInput): Promise<ApplyRecommendedDefaultsResult>;
 }
