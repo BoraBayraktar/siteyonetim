@@ -1366,9 +1366,11 @@ export class DuesService implements DuesServiceContract {
         accruedUnitCount < totalUnitCount
       ) {
         const definition = defById.get(run.dueDefinitionId);
-        if (definition && definition.id === lateFeeDefinitionId) {
+        if (run.dueDefinitionId === lateFeeDefinitionId) {
           // Gecikme faizi satırları generic tahakkuk hattından değil, applyLateFees'in
           // gecikmiş borç taramasından gelir; borcu olmayan daire gerçek bir eksiklik değildir.
+          // Bu tanım isSystem=true olduğu için listDefinitions/defById'de yer almaz,
+          // dolayısıyla eşleşme run.dueDefinitionId üzerinden doğrudan yapılmalı.
           missingUnits = [];
         } else if (definition) {
           missingUnits = await this.resolveMissingAccrualUnits(
