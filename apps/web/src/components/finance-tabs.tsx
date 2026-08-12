@@ -46,6 +46,7 @@ import { PartyCombobox } from "@/components/party-combobox";
 import { ServerPagination } from "@/components/server-pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -211,7 +212,7 @@ function LedgerPanel({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="amount">{t("amount")}</Label>
-              <Input id="amount" name="amount" required />
+              <AmountInput id="amount" name="amount" required />
             </div>
             <div className="grid gap-2">
               <Label>{t("cashbox")}</Label>
@@ -545,7 +546,7 @@ function StaffMovementForm({
         </div>
         <div className="grid gap-2">
           <Label htmlFor={`staff-amount-${profile.id}`}>{t("amount")}</Label>
-          <Input id={`staff-amount-${profile.id}`} name="amount" required />
+          <AmountInput id={`staff-amount-${profile.id}`} name="amount" required />
         </div>
         {cashboxAllowed ? (
           <div className="grid gap-2">

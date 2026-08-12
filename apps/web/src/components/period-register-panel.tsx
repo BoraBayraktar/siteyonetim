@@ -22,6 +22,7 @@ import { debtUnitLabel, formatDebtMoney } from "@/components/debt-status-table";
 import { FormDrawer } from "@/components/form-drawer";
 import { HelpButton } from "@/components/help-button";
 import { ServerPagination } from "@/components/server-pagination";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -367,12 +368,12 @@ function RegisterPaymentForm({
       </div>
       <div className="grid gap-2">
         <Label htmlFor="register-pay-amount">{tDues("amount")}</Label>
-        <Input
+        <AmountInput
           id="register-pay-amount"
           name="amount"
           required
           value={payAmount}
-          onChange={(event) => setPayAmount(event.target.value)}
+          onChange={setPayAmount}
         />
       </div>
       <div className="grid gap-2">

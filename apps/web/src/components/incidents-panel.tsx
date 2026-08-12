@@ -18,6 +18,7 @@ import { ServerPagination } from "@/components/server-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -121,7 +122,7 @@ function CloseIncidentWithExpenseDrawer({
         </div>
         <div className="grid gap-2">
           <Label htmlFor={`expense-amount-${item.id}`}>{tFinance("amount")}</Label>
-          <Input id={`expense-amount-${item.id}`} name="amount" required />
+          <AmountInput id={`expense-amount-${item.id}`} name="amount" required />
         </div>
         <div className="grid gap-2">
           <Label>{tFinance("cashbox")}</Label>

@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -381,7 +382,7 @@ function RecalculateAccrualDrawer({
         <p className="text-sm text-muted-foreground">{t("recalculateAccrualHint")}</p>
         <div className="grid gap-2">
           <Label htmlFor={`recalc-total-${run.id}`}>{t("totalBillAmount")}</Label>
-          <Input id={`recalc-total-${run.id}`} name="totalBillAmount" defaultValue={defaultTotalBill} required />
+          <AmountInput id={`recalc-total-${run.id}`} name="totalBillAmount" defaultValue={defaultTotalBill} required />
         </div>
         <div className="grid gap-2">
           <Label htmlFor={`recalc-consumption-${run.id}`}>{t("totalBillConsumptionM3")}</Label>

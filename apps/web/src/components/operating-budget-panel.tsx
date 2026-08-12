@@ -8,7 +8,7 @@ import { useActionState } from "react";
 import { saveOperatingBudgetAction, type BudgetActionState } from "@/app/actions/budget";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
@@ -100,11 +100,8 @@ export function OperatingBudgetPanel({ locale, propertyId, year, categories, bud
                           <input type="hidden" name="categoryId" value={category.id} />
                         </TableCell>
                         <TableCell>
-                          <Input
+                          <AmountInput
                             name="plannedAmount"
-                            type="number"
-                            min={0}
-                            step="0.01"
                             defaultValue={plannedByCategory.get(category.id) ?? ""}
                             className="w-full min-w-[8rem]"
                           />

@@ -15,6 +15,7 @@ import { FieldHelp, LabelWithHelp } from "@/components/field-help";
 import { LateFeeDecisionGuide } from "@/components/late-fee-decision-guide";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AmountInput } from "@/components/ui/amount-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -260,10 +261,10 @@ export function DueDefinitionWizard({
                 calculationMode === DueCalculationMode.SHARE_RATIO ? tHelp("shareRatio") : tHelp("calculationMode")
               }
             />
-            <Input
+            <AmountInput
               id="wizard-fixed-amount"
               value={fixedAmount}
-              onChange={(e) => setFixedAmount(e.target.value)}
+              onChange={setFixedAmount}
               placeholder={tPh("fixedAmount")}
               required
             />
@@ -272,10 +273,10 @@ export function DueDefinitionWizard({
         {calculationMode === DueCalculationMode.METER_CONSUMPTION ? (
           <div className="grid gap-2">
             <Label htmlFor="wizard-rate">{t("unitPrice")}</Label>
-            <Input
+            <AmountInput
               id="wizard-rate"
               value={ratePerM2}
-              onChange={(e) => setRatePerM2(e.target.value)}
+              onChange={setRatePerM2}
               placeholder={tPh("ratePerM2")}
               required
             />
@@ -284,10 +285,10 @@ export function DueDefinitionWizard({
         {calculationMode === DueCalculationMode.AREA_M2 ? (
           <div className="grid gap-2">
             <Label htmlFor="wizard-rate-area">{t("ratePerM2")}</Label>
-            <Input
+            <AmountInput
               id="wizard-rate-area"
               value={ratePerM2}
-              onChange={(e) => setRatePerM2(e.target.value)}
+              onChange={setRatePerM2}
               placeholder={tPh("ratePerM2")}
               required
             />
