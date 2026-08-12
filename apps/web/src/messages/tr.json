@@ -1164,6 +1164,7 @@
     "month": "Ay",
     "block": "Blok",
     "allBlocks": "Tüm bloklar",
+    "unitCodePlaceholder": "Taşınmaz no (tam eşleşme)",
     "exportCsv": "CSV indir",
     "exportXlsx": "Excel indir",
     "exportPdf": "PDF indir",

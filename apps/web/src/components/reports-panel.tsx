@@ -13,15 +13,17 @@ import type {
   ReportQuarterScope,
 } from "@siteyonetim/reporting-standard";
 import type { BlockDto } from "@siteyonetim/property-core";
+import { Search } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 
 import { requestAsyncReportExportAction, type ReportExportActionState } from "@/app/actions/report-export";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { YearMonthFilterSelects } from "@/components/year-month-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,6 +51,7 @@ type Props = {
   month: number;
   quarter: ReportQuarterScope;
   blockId: string | null;
+  unitCode: string | null;
   activeKind: StandardReportKind;
   blocks: BlockDto[];
   accrual: DueAccrualSummaryReport | null;
@@ -77,6 +80,7 @@ export function ReportsPanel({
   month,
   quarter,
   blockId,
+  unitCode,
   activeKind,
   blocks,
   accrual,
@@ -105,6 +109,12 @@ export function ReportsPanel({
     {} as ReportExportActionState,
   );
   const [asyncFormat, setAsyncFormat] = useState("CSV");
+  const [unitCodeInput, setUnitCodeInput] = useState(unitCode ?? "");
+  const [syncedUnitCode, setSyncedUnitCode] = useState(unitCode);
+  if (unitCode !== syncedUnitCode) {
+    setSyncedUnitCode(unitCode);
+    setUnitCodeInput(unitCode ?? "");
+  }
 
   function applyFilters(next: {
     report?: StandardReportKind;
@@ -112,6 +122,7 @@ export function ReportsPanel({
     month?: number;
     quarter?: ReportQuarterScope;
     blockId?: string | null;
+    unitCode?: string | null;
   }) {
     const params = new URLSearchParams();
     params.set("report", next.report ?? activeKind);
@@ -124,8 +135,22 @@ export function ReportsPanel({
     if (nextBlockId) {
       params.set("blockId", nextBlockId);
     }
+    const nextUnitCode = next.unitCode !== undefined ? next.unitCode : unitCode;
+    if (nextUnitCode) {
+      params.set("unitCode", nextUnitCode);
+    }
     router.push(`${pathname}?${params.toString()}`);
   }
+
+  useEffect(() => {
+    const trimmed = unitCodeInput.trim();
+    if (trimmed === (unitCode ?? "")) return;
+    const timer = window.setTimeout(() => {
+      applyFilters({ unitCode: trimmed || null });
+    }, 300);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitCodeInput]);
 
   function exportHref(kind: StandardReportKind, format: "csv" | "xlsx" | "pdf" | "zip") {
     const exportMonth = isAnnualReportKind(kind) ? 1 : month;
@@ -137,6 +162,7 @@ export function ReportsPanel({
       format,
     });
     if (blockId) params.set("blockId", blockId);
+    if (unitCode) params.set("unitCode", unitCode);
     if (isAnnualReportKind(kind) && quarter !== "ANNUAL") {
       params.set("quarter", quarter);
     }
@@ -204,6 +230,20 @@ export function ReportsPanel({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid gap-2 sm:col-span-2">
+            <Label htmlFor="rep-unit-code">{t("unit")}</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="rep-unit-code"
+                value={unitCodeInput}
+                onChange={(event) => setUnitCodeInput(event.target.value)}
+                placeholder={t("unitCodePlaceholder")}
+                className="pl-9"
+                aria-label={t("unit")}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

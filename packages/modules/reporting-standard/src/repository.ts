@@ -32,9 +32,11 @@ function reportDateRange(filter: ReportFilter) {
   return { start: new Date(filter.year, 0, 1), end: new Date(filter.year + 1, 0, 1) };
 }
 
-function unitWhere(blockId?: string | null): Prisma.UnitWhereInput | undefined {
-  if (!blockId) return undefined;
-  return { blockId };
+function unitWhere(blockId?: string | null, unitCode?: string | null): Prisma.UnitWhereInput | undefined {
+  const where: Prisma.UnitWhereInput = {};
+  if (blockId) where.blockId = blockId;
+  if (unitCode) where.code = { equals: unitCode.trim(), mode: "insensitive" };
+  return Object.keys(where).length > 0 ? where : undefined;
 }
 
 export class StandardReportRepository {
@@ -45,7 +47,7 @@ export class StandardReportRepository {
   }
 
   async dueAccrualLines(filter: ReportFilter) {
-    const unitFilter = unitWhere(filter.blockId);
+    const unitFilter = unitWhere(filter.blockId, filter.unitCode);
     return prisma.dueAccrualLine.findMany({
       where: {
         ...notDeleted,
@@ -82,7 +84,7 @@ export class StandardReportRepository {
           where: notDeleted,
           include: {
             dueAccrualLine: {
-              include: { unit: { select: { blockId: true } } },
+              include: { unit: { select: { blockId: true, code: true } } },
             },
           },
         },
@@ -90,11 +92,16 @@ export class StandardReportRepository {
       orderBy: { paymentDate: "asc" },
     });
 
-    if (!filter.blockId) return payments;
-
-    return payments.filter((p) =>
-      p.allocations.some((a) => a.dueAccrualLine.unit.blockId === filter.blockId),
-    );
+    const unitCode = filter.unitCode?.trim().toLowerCase();
+    return payments.filter((p) => {
+      if (filter.blockId && !p.allocations.some((a) => a.dueAccrualLine.unit.blockId === filter.blockId)) {
+        return false;
+      }
+      if (unitCode && !p.allocations.some((a) => a.dueAccrualLine.unit.code.toLowerCase() === unitCode)) {
+        return false;
+      }
+      return true;
+    });
   }
 
   async expenseByCategory(filter: ReportFilter) {
@@ -137,7 +144,7 @@ export class StandardReportRepository {
   }
 
   async openDebtLines(filter: ReportFilter) {
-    const unitFilter = unitWhere(filter.blockId);
+    const unitFilter = unitWhere(filter.blockId, filter.unitCode);
     return prisma.dueAccrualLine.findMany({
       where: {
         ...notDeleted,

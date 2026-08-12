@@ -1164,6 +1164,7 @@
     "month": "Month",
     "block": "Block",
     "allBlocks": "All blocks",
+    "unitCodePlaceholder": "Unit no (exact match)",
     "exportCsv": "Download CSV",
     "exportXlsx": "Download Excel",
     "exportPdf": "Download PDF",

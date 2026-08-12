@@ -27,6 +27,7 @@ export type ReportFilter = {
   year: number;
   month: number;
   blockId?: string | null;
+  unitCode?: string | null;
   actorUserId?: string | null;
   locale?: string;
   fromMonth?: number;

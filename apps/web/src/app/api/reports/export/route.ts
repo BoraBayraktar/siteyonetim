@@ -58,6 +58,7 @@ export async function GET(request: Request) {
   const year = Number(url.searchParams.get("year") ?? now.getFullYear());
   const month = Number(url.searchParams.get("month") ?? now.getMonth() + 1);
   const blockId = url.searchParams.get("blockId") || null;
+  const unitCode = url.searchParams.get("unitCode") || null;
   const locale = url.searchParams.get("locale") ?? "tr";
   const quarterMonths = reportQuarterToMonthRange(parseReportQuarter(url.searchParams.get("quarter")));
 
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
     year,
     month: isAnnualReportKind(kind) ? 1 : month,
     blockId,
+    unitCode,
     actorUserId: session!.user!.id,
     locale,
     ...quarterMonths,

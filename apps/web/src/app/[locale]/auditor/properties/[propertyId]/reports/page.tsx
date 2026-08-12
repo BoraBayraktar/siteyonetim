@@ -28,7 +28,14 @@ const KINDS: StandardReportKind[] = [
 
 type Props = {
   params: Promise<{ locale: string; propertyId: string }>;
-  searchParams: Promise<{ report?: string; year?: string; month?: string; quarter?: string; blockId?: string }>;
+  searchParams: Promise<{
+    report?: string;
+    year?: string;
+    month?: string;
+    quarter?: string;
+    blockId?: string;
+    unitCode?: string;
+  }>;
 };
 
 export default async function AuditorPropertyReportsPage({ params, searchParams }: Props) {
@@ -58,6 +65,7 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
   const year = Number(sp.year ?? now.getFullYear());
   const month = Number(sp.month ?? now.getMonth() + 1);
   const blockId = sp.blockId ?? null;
+  const unitCode = sp.unitCode?.trim() || null;
   const quarter = parseReportQuarter(sp.quarter);
   const quarterMonths = reportQuarterToMonthRange(quarter);
   const activeKind = KINDS.includes(sp.report as StandardReportKind)
@@ -70,6 +78,7 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
     year,
     month: isAnnualReportKind(activeKind) ? 1 : month,
     blockId,
+    unitCode,
     actorUserId: session.user.id,
     locale,
     ...quarterMonths,
@@ -146,6 +155,7 @@ export default async function AuditorPropertyReportsPage({ params, searchParams 
           month={month}
           quarter={quarter}
           blockId={blockId}
+          unitCode={unitCode}
           activeKind={activeKind}
           blocks={blocksPage.items}
           accrual={null}
