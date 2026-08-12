@@ -47,14 +47,17 @@ Uygulama: [http://localhost:3000/tr](http://localhost:3000/tr)
 1. GitHub reposunu bu team altındaki projeye bağlayın: [siteyonetim/siteyonetim](https://vercel.com/siteyonetim/siteyonetim)
 2. **Root Directory:** `apps/web` (projede ayarlı)
 3. CLI her zaman bu team ile: `npx vercel -S siteyonetim …`
-4. Deploy (monorepo **kökünden**): `npx vercel deploy --prod -S siteyonetim`
+4. Deploy (monorepo **kökünden**): `npx vercel deploy --prod -S siteyonetim --regions fra1`
+   - **`--regions fra1` zorunlu** — Neon veritabanı Frankfurt'ta (`eu-central-1`); bu bayrak olmadan fonksiyonlar Vercel'in varsayılanı olan `iad1`'e (ABD) döner ve her sorgu transatlantik gecikmeye maruz kalır (sayfa yükleri ~3s'den ~0.5s'ye düşüyor bu bayrakla).
+   - **Önemli:** `apps/web/vercel.json` içindeki `"regions": ["fra1"]` ayarı test edildi ve **hem CLI hem git-push ile tetiklenen deploy'larda tek başına işe yaramadı** (fonksiyonlar yine `iad1`'de kaldı) — sebebi netleşmedi, muhtemelen dashboard'daki proje ayarı override ediyor. Kalıcı çözüm: Vercel dashboard → `siteyonetim` projesi → **Settings → Functions → Function Region** → **Frankfurt (fra1)** seçip kaydedin. Bu yapılmadan git push ile otomatik deploy'lar sessizce `iad1`'e dönebilir; CLI ile deploy ederken de her seferinde `--regions fra1` bayrağını unutmayın.
+   - `.env` dosyanız asla deploy paketine dahil edilmemeli (`load-env.cjs` varlığını görürse `DATABASE_URL`'i yerel Docker'a çevirir) — kök `.vercelignore` bunu engelliyor, silmeyin.
 5. **Neon + migration + seed:**
    ```bash
    cd ~/Documents/GitHub/siteyonetim
    ./scripts/vercel-neon-setup.sh
    ```
    Neon şartları: [siteyonetim team Neon terms](https://vercel.com/siteyonetim/~/integrations/accept-terms/neon?source=cli)
-6. Ortam: `AUTH_SECRET` (Production + Preview); Neon sonrası `DATABASE_URL` otomatik gelir.
+6. Ortam: `AUTH_SECRET` (Production + Preview); Neon sonrası `DATABASE_URL` otomatik gelir. Ayrıca **Storage → Upstash Redis** entegrasyonu (bölge: Frankfurt) eklenmeli — `UPSTASH_REDIS_REST_URL`/`TOKEN` olmadan merkezi cache (`platform-cache`) sessizce devre dışı kalır.
 
 **Eski kurulum:** `beemmb-arge/siteyonetim-web` artık kullanılmamalı; karışıklığı önlemek için Vercel panelinden **silebilirsiniz** (`devbeemmb` projesine dokunmayın).
 

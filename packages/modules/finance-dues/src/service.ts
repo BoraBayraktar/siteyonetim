@@ -1332,13 +1332,15 @@ export class DuesService implements DuesServiceContract {
 
   async listAccrualRunCorrections(ctx: DuesContext): Promise<Record<string, AccrualRunCorrectionDto>> {
     await this.assertCtx(ctx);
-    const [units, runs, facts, definitions] = await Promise.all([
+    const [units, runs, facts, definitions, lateFeePolicy] = await Promise.all([
       this.repository.getUnitsWithArea(ctx),
       this.repository.listRuns(ctx),
       this.repository.getRunCorrectionFacts(ctx),
       this.repository.listDefinitions(ctx),
+      this.repository.getLateFeePolicy(ctx),
     ]);
 
+    const lateFeeDefinitionId = lateFeePolicy?.active ? lateFeePolicy.lateFeeDefinitionId : null;
     const defById = new Map(definitions.map((definition) => [definition.id, definition]));
     const totalUnitCount = units.length;
     const partyMap = await this.repository.resolvePartyAccountsForUnits(ctx, units);
@@ -1364,7 +1366,11 @@ export class DuesService implements DuesServiceContract {
         accruedUnitCount < totalUnitCount
       ) {
         const definition = defById.get(run.dueDefinitionId);
-        if (definition) {
+        if (definition && definition.id === lateFeeDefinitionId) {
+          // Gecikme faizi satırları generic tahakkuk hattından değil, applyLateFees'in
+          // gecikmiş borç taramasından gelir; borcu olmayan daire gerçek bir eksiklik değildir.
+          missingUnits = [];
+        } else if (definition) {
           missingUnits = await this.resolveMissingAccrualUnits(
             ctx,
             run,
